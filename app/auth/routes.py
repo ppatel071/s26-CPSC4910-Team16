@@ -1,22 +1,19 @@
 from flask import *
 
-app = Flask(__name__)
+from app.auth import auth_bp
 
-@app.route('/')
+@auth_bp.route('/')
 def home():
     return render_template('home.html')
 
-@app.route('/login')
+@auth_bp.route('/login')
 def login():
     return render_template('login.html')
 
-@app.route('/register')
+@auth_bp.route('/register')
 def register():
     return render_template('register.html')
 
-@app.route('/about')
+@auth_bp.route('/about')
 def about():
     return render_template('about.html')
-
-if __name__=='__main__':
-   app.run()
