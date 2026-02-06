@@ -16,9 +16,9 @@ def login():
         success = login_user(username, password)
 
         if success:
-            return redirect(url_for('main.about'))
+            return redirect(url_for('auth.about'))
 
-        return redirect(url_for('auth.login'))
+        return render_template('login.html', error='Invalid username or password')
 
     return render_template('login.html')
 

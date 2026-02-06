@@ -1,4 +1,7 @@
 <h1>Log In</h1>
+{% if error %}
+  <p>{{ error }}</p>
+{% endif %}
 <form action="/login", method="POST">
     Username:<br>
     <input type="text" name="username"><br>
