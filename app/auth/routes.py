@@ -2,6 +2,8 @@ from flask import render_template, request, redirect, url_for
 from app.auth import auth_bp
 from app.auth.services import authenticate, register_user
 from flask_login import login_user
+from flask_login import logout_user
+
 
 @auth_bp.route('/')  # probably should put this route somewhere else
 def home():
@@ -48,3 +50,9 @@ def register():
 # Use @login_required to protect a route
 def about():
     return render_template('about.html')
+
+# Logs user out and redirects to home page
+@auth_bp.route('/logout', methods=['GET', 'POST'])
+def logout():
+    logout_user()
+    return redirect(url_for('auth.login'))
