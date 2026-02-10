@@ -2,3 +2,4 @@ flask
 dotenv
 Flask-SQLAlchemy
 pymysql
+flask-login

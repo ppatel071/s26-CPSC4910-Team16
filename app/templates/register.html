@@ -1,14 +1,17 @@
 <h1>Sign Up</h1>
+{% if error %}
+  <p>{{ error }}</p>
+{% endif %}
 <form action="/register", method="POST">
     Role:<br>
-    <input type="radio" name="role" value="Sponsor">Sponsor<br>
-    <input type="radio" name="role" value="Driver">Driver<br>
-    <input type="radio" name="role" value="Admin">Admin<br><br>
+    <input type="radio" name="role" value="Sponsor" {% if role == 'Sponsor' %}checked{% endif %}>Sponsor<br>
+    <input type="radio" name="role" value="Driver" {% if role == 'Driver' %}checked{% endif %}>Driver<br>
+    <input type="radio" name="role" value="Admin" {% if role == 'Admin' %}checked{% endif %}>Admin<br><br>
 
     Email:<br>
-    <input type="text" name="email"><br>
+    <input type="text" name="email" value="{{ email|default('') }}"><br>
     Username:<br>
-    <input type="text" name="username"><br>
+    <input type="text" name="username" value="{{ username|default('') }}"><br>
     Password:<br>
     <input type="password" name="password"><br>
     Confirm Password:<br>
