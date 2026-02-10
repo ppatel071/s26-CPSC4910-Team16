@@ -7,7 +7,8 @@ def create_app():
     app = Flask(__name__)
 
     # config setup
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv('DB_URI')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DB_URI')
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
     # extensions init
     db.init_app(app)
