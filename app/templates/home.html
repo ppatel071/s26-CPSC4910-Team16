@@ -5,10 +5,9 @@
 <body>
     <h1>Team 16</h1>
     <div></div>
+        <a class="button" href="{{ url_for('auth.about') }}">About Page</a>
+        <a class="button" href="{{ url_for('auth.reset_password') }}">Reset Password</a>
         <a class="button" href="{{ url_for('auth.logout') }}"
            onclick="return confirm('Are you sure you want to log out?');">Logout</a>
-        <a class="button" href="login">Log in</a>
-        <a class="button" href="register">Register</a>
-        <a class="button" href="about">About Page</a>
     </div>
 </body>

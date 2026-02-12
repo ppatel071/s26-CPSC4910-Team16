@@ -13,6 +13,7 @@ def create_app():
     # extensions init
     db.init_app(app)
     login_manager.init_app(app)
+    login_manager.login_view = 'auth.login' # type: ignore
     
     # blueprint registration
     app.register_blueprint(auth_bp)

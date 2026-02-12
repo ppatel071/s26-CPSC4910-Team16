@@ -39,3 +39,19 @@ def register_user(username: str, password: str, role: str, email: str):
     )
     db.session.add(user)
     db.session.commit()
+
+
+def reset_user_password(
+    user,
+    current_password: str,
+    new_password: str,
+):
+    if not check_password_hash(user.password, current_password):
+        raise ValueError('Current password is incorrect')
+
+    valid, msg = validate_complexity(new_password)
+    if not valid:
+        raise ValueError(msg)
+
+    user.password = generate_password_hash(new_password)
+    db.session.commit()
