@@ -1,13 +1,20 @@
-<head>
-    <meta charset="UTF-8"/>
-    <link rel="stylesheet" href="/static/home.css">
-</head>
-<body>
-    <h1>Team 16</h1>
-    <div></div>
-        <a class="button" href="{{ url_for('auth.about') }}">About Page</a>
-        <a class="button" href="{{ url_for('auth.reset_password') }}">Reset Password</a>
-        <a class="button" href="{{ url_for('auth.logout') }}"
-           onclick="return confirm('Are you sure you want to log out?');">Logout</a>
-    </div>
-</body>
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="/static/home.css">
+{% endblock %}
+
+{% block content %}
+<h1>Team 16</h1>
+<div>
+    <a class="button" href="{{ url_for('auth.about') }}">About Page</a>
+    <a class="button" href="{{ url_for('auth.reset_password') }}">Reset Password</a>
+    <a class="button" href="{{ url_for('auth.logout') }}"
+       onclick="return confirm('Are you sure you want to log out?');">Logout</a>
+    {% if current_user.role_type.value == 'SPONSOR' %}
+    <a class="button" href="{{ url_for('sponsor.dashboard') }}">Sponsor Dashboard</a>
+    {% endif %}
+</div>
+{% endblock %}

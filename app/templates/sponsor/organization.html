@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}My Organization{% endblock %}
+
+{% block content %}
+<h1>My Organization</h1>
+<p>View and update sponsor organization details and program settings.</p>
+
+{% if organization %}
+<h2>Organization Summary</h2>
+<p><strong>Name:</strong> {{ organization.name }}</p>
+<p><strong>Point Value:</strong> {{ organization.point_value }}</p>
+<p><strong>Created:</strong> {{ organization.create_time }}</p>
+
+<h2>Update Organization</h2>
+<form method="POST" action="">
+  <input type="hidden" name="organization_id" value="{{ organization.organization_id }}">
+
+  <label for="name">Organization Name:</label><br>
+  <input
+    id="name"
+    type="text"
+    name="name"
+    required
+    value="{{ organization.name }}"
+  ><br><br>
+
+  <label for="point_value">Point Value (dollar per point):</label><br>
+  <input
+    id="point_value"
+    type="number"
+    name="point_value"
+    step="0.0001"
+    min="0"
+    required
+    value="{{ organization.point_value }}"
+  ><br><br>
+
+  <button type="submit">Save Changes</button>
+</form>
+{% else %}
+<p>Error getting organization</p>
+{% endif %}
+
+<p><a href="{{ url_for('sponsor.dashboard') }}">Back to Dashboard</a></p>
+{% endblock %}
