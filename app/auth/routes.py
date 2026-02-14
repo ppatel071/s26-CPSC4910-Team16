@@ -8,7 +8,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 def home():
     if not current_user.is_authenticated:
         return redirect(url_for('auth.login'))
-    return render_template('home.html')
+    return render_template('home.html', current_user=current_user)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():

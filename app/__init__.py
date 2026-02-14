@@ -1,6 +1,7 @@
 import os
 from flask import Flask
 from app.auth import auth_bp
+from app.sponsor import sponsor_bp
 from app.extensions import db, login_manager
 
 def create_app():
@@ -17,5 +18,6 @@ def create_app():
     
     # blueprint registration
     app.register_blueprint(auth_bp)
+    app.register_blueprint(sponsor_bp, url_prefix='/sponsor')
     
     return app
