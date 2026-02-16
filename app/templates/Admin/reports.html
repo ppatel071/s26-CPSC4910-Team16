@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Sponsor Reports{% endblock %}
+
+{% block content %}
+<h1>Reports</h1>
+
+<h2>Sponsors</h2>
+{% if sponsors %}
+  <ul>
+    {% for sponsor in sponsors %}
+      <li>
+        <strong>{{ sponsor.name }}</strong>
+        (ID: {{ sponsor.organization_id }})
+        - Point Value: {{ sponsor.point_value }}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No sponsors found.</p>
+{% endif %}
+{% endblock %}
