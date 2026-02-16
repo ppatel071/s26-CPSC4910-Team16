@@ -1,9 +1,9 @@
-from flask import render_template, request, abort, session
+from flask import render_template, request, abort
 from functools import wraps
 from flask_login import current_user, login_required
 from app.sponsor import sponsor_bp
 from app.sponsor.services import update_sponsor_organization
-from app.models.users import RoleType
+from app.models.users import RoleType, SponsorOrganization, SponsorUser
 
 def sponsor_required(f):
     '''Simple wrapper to ensure sponsor role for sponsor routes'''
@@ -20,13 +20,16 @@ def sponsor_required(f):
 @login_required
 @sponsor_required
 def dashboard():
-    return render_template('sponsor/dashboard.html')
+    s_user: SponsorUser = current_user.sponsor_user
+    sponsor_users = s_user.organization.sponsor_users
+    users = [s.user for s in sponsor_users if s.sponsor_id != s_user.sponsor_id]
+    return render_template('sponsor/dashboard.html', users=users)
 
 @sponsor_bp.route('/organization', methods=['GET', 'POST'])
 @login_required
 @sponsor_required
 def organization():
-    org = current_user.sponsor_user.organization
+    org: SponsorOrganization = current_user.sponsor_user.organization
     if request.method == 'POST':
         name = request.form.get('name', '')
         point_value = request.form.get('point_value', '')

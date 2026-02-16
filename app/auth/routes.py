@@ -2,13 +2,15 @@ from flask import render_template, request, redirect, url_for
 from app.auth import auth_bp
 from app.auth.services import authenticate, register_user, reset_user_password
 from flask_login import login_user, logout_user, login_required, current_user
-
+from app.models.users import RoleType
 
 @auth_bp.route('/')  # probably should put this route somewhere else
 def home():
     if not current_user.is_authenticated:
         return redirect(url_for('auth.login'))
-    return render_template('home.html', current_user=current_user)
+    if current_user.role_type == RoleType.SPONSOR:
+        return redirect(url_for('sponsor.dashboard'))
+    return render_template('home.html')
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():

@@ -1,0 +1,9 @@
+<div>
+    <a class="button" href="{{ url_for('auth.home') }}">Home</a>
+    <a class="button" href="{{ url_for('auth.about') }}">About Page</a>
+    <a class="button" href="{{ url_for('auth.reset_password') }}">Reset Password</a>
+    {% if current_user.is_authenticated %}
+    <a class="button" href="{{ url_for('auth.logout') }}"
+       onclick="return confirm('Are you sure you want to log out?');">Logout</a>
+    {% endif %}
+</div>
