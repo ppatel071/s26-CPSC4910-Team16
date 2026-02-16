@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Sales by Driver{% endblock %}
+{% block content %}
+<h1>Sales by Driver</h1>
+
+<p>
+  <a class="button" href="{{ url_for('admin.sales_by_driver_report') }}">Summary</a>
+  <a class="button" href="{{ url_for('admin.sales_by_driver_report', detail=1) }}">Detailed</a>
+  <a class="button" href="{{ url_for('admin.reports') }}">Back to Reports</a>
+</p>
+
+{% if detail %}
+  <h2>Detailed</h2>
+  <table>
+    <tr>
+      <th>Driver</th>
+      <th>Sponsor</th>
+      <th>Amount</th>
+      <th>Sale Time</th>
+    </tr>
+    {% for row in rows %}
+      <tr>
+        <td>{{ row.driver_username }}</td>
+        <td>{{ row.sponsor_name }}</td>
+        <td>{{ row.amount }}</td>
+        <td>{{ row.sale_time }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <h2>Summary</h2>
+  <table>
+    <tr>
+      <th>Driver</th>
+      <th>Sales</th>
+      <th>Total Amount</th>
+    </tr>
+    {% for row in rows %}
+      <tr>
+        <td>{{ row.driver_username }}</td>
+        <td>{{ row.sale_count }}</td>
+        <td>{{ row.total_amount }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+{% endif %}
+{% endblock %}

@@ -5,7 +5,16 @@
 {% block content %}
 <h1>Admin Dashboard</h1>
 <p>Welcome, admin.</p>
-    <p>
-    <a class="button" href="{{ url_for('admin.reports') }}">View Sponsor Reports</a>
+<p>
+  <a class="button" href="{{ url_for('admin.reports') }}">View Sponsor Reports</a>
+</p>
+<p>
+  <a class="button" href="{{ url_for('admin.reports') }}">Edit Sponsors</a>
+</p>
+<p>
+  <a class="button" href="{{ url_for('admin.sales_by_sponsor_report') }}">Sales by Sponsors</a>
+</p>
+<p>
+  <a class="button" href="{{ url_for('admin.sales_by_driver_report') }}">Sales by Drivers</a>
 </p>
 {% endblock %}

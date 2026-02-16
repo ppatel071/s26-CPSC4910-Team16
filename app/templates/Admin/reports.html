@@ -4,6 +4,21 @@
 
 {% block content %}
 <h1>Reports</h1>
+    <p>
+  <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+</p>
+
+<h2>Sales by Sponsor</h2>
+<p>
+  <a class="button" href="{{ url_for('admin.sales_by_sponsor_report') }}">Summary</a>
+  <a class="button" href="{{ url_for('admin.sales_by_sponsor_report', detail=1) }}">Detailed</a>
+</p>
+
+<h2>Sales by Driver</h2>
+<p>
+  <a class="button" href="{{ url_for('admin.sales_by_driver_report') }}">Summary</a>
+  <a class="button" href="{{ url_for('admin.sales_by_driver_report', detail=1) }}">Detailed</a>
+</p>
 
 <h2>Sponsors</h2>
 {% if sponsors %}
@@ -13,6 +28,7 @@
         <strong>{{ sponsor.name }}</strong>
         (ID: {{ sponsor.organization_id }})
         - Point Value: {{ sponsor.point_value }}
+        - <a href="{{ url_for('admin.edit_sponsor', organization_id=sponsor.organization_id) }}">Edit</a>
       </li>
     {% endfor %}
   </ul>
