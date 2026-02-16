@@ -10,6 +10,8 @@ def home():
         return redirect(url_for('auth.login'))
     if current_user.role_type == RoleType.SPONSOR:
         return redirect(url_for('sponsor.dashboard'))
+    if current_user.role_type == RoleType.ADMIN:
+        return redirect(url_for('admin.dashboard'))
     return render_template('home.html')
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
