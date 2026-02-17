@@ -1,6 +1,6 @@
 # Business logic for the auth routes
 import re
-from app.models.users import User, RoleType
+from app.models import User, RoleType
 from app.extensions import db
 from werkzeug.security import check_password_hash, generate_password_hash
 from typing import Tuple

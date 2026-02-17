@@ -1,6 +1,6 @@
 from decimal import Decimal, InvalidOperation
 from app.extensions import db
-from app.models.users import SponsorOrganization
+from app.models import SponsorOrganization
 
 
 

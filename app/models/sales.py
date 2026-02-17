@@ -4,7 +4,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import DateTime, ForeignKey, DECIMAL
 from sqlalchemy.sql import func
 from app.extensions import db
-from app.models.users import SponsorOrganization, User
+from app.models.users import User
+from app.models.organization import SponsorOrganization
 
 
 class Sale(db.Model):

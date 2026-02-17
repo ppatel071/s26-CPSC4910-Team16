@@ -3,14 +3,14 @@ from functools import wraps
 from flask_login import current_user, login_required
 from app.sponsor import sponsor_bp
 from app.sponsor.services import update_sponsor_organization
-from app.models.users import RoleType, SponsorOrganization, SponsorUser
+from app.models import SponsorOrganization, SponsorUser
+from app.models.enums import RoleType
 
 def sponsor_required(f):
     '''Simple wrapper to ensure sponsor role for sponsor routes'''
     @wraps(f)
     def wrapper(*args, **kwargs):
         # impersonation logic may work well here
-        print(current_user.role_type)
         if current_user.role_type != RoleType.SPONSOR:
             abort(403)
         return f(*args, **kwargs)

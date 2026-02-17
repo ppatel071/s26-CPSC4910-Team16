@@ -3,7 +3,7 @@ from flask import render_template, abort, request, redirect, url_for
 from functools import wraps
 from flask_login import current_user, login_required
 from app.Admin import admin_bp
-from app.models.users import RoleType
+from app.models.enums import RoleType
 from app.Admin.services import (
     get_all_sponsors,
     get_sponsor_by_id,

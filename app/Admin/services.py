@@ -2,7 +2,7 @@ import datetime as dt
 import datetime as dt
 from sqlalchemy import func
 from app.extensions import db
-from app.models.users import SponsorOrganization, User
+from app.models import SponsorOrganization, User
 from app.sponsor.services import update_sponsor_organization
 from app.models.sales import Sale
 
