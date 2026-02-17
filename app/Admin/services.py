@@ -1,3 +1,5 @@
+import datetime as dt
+import datetime as dt
 from sqlalchemy import func
 from app.extensions import db
 from app.models.users import SponsorOrganization, User
@@ -65,6 +67,42 @@ def get_sales_by_driver(detail: bool):
             func.sum(Sale.amount).label('total_amount'),
         )
         .join(Sale, Sale.driver_user_id == User.user_id)
+        .group_by(User.username)
+        .order_by(User.username.asc())
+        .all()
+    )
+
+
+def get_driver_purchase_summary(start_date: dt.date, end_date: dt.date):
+    start_dt = dt.datetime.combine(start_date, dt.time.min)
+    end_dt = dt.datetime.combine(end_date + dt.timedelta(days=1), dt.time.min)
+
+    return (
+        db.session.query(
+            User.username.label('driver_username'),
+            func.count(Sale.sale_id).label('purchase_count'),
+            func.sum(Sale.amount).label('total_amount'),
+        )
+        .join(Sale, Sale.driver_user_id == User.user_id)
+        .filter(Sale.sale_time >= start_dt, Sale.sale_time < end_dt)
+        .group_by(User.username)
+        .order_by(User.username.asc())
+        .all()
+    )
+
+def get_driver_purchase_summary(start_date: dt.date, end_date: dt.date):
+    # Inclusive end date by querying < next day
+    start_dt = dt.datetime.combine(start_date, dt.time.min)
+    end_dt = dt.datetime.combine(end_date + dt.timedelta(days=1), dt.time.min)
+
+    return (
+        db.session.query(
+            User.username.label('driver_username'),
+            func.count(Sale.sale_id).label('purchase_count'),
+            func.sum(Sale.amount).label('total_amount'),
+        )
+        .join(Sale, Sale.driver_user_id == User.user_id)
+        .filter(Sale.sale_time >= start_dt, Sale.sale_time < end_dt)
         .group_by(User.username)
         .order_by(User.username.asc())
         .all()

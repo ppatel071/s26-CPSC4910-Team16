@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Driver Purchases Summary{% endblock %}
+{% block content %}
+<h1>Driver Purchases Summary</h1>
+
+<p>
+  <a class="button" href="{{ url_for('admin.reports') }}">Back to Reports</a>
+</p>
+
+<form method="GET" action="{{ url_for('admin.driver_purchases_summary') }}">
+  <label for="start_date">Start date:</label><br>
+  <input id="start_date" type="date" name="start_date" value="{{ start_date }}" required><br><br>
+
+  <label for="end_date">End date:</label><br>
+  <input id="end_date" type="date" name="end_date" value="{{ end_date }}" required><br><br>
+
+  <button type="submit">Run Report</button>
+</form>
+
+{% if error %}
+  <p style="color: red;">{{ error }}</p>
+{% endif %}
+
+{% if rows %}
+  <h2>Summary</h2>
+  <table>
+    <tr>
+      <th>Driver</th>
+      <th>Purchases</th>
+      <th>Total Amount</th>
+    </tr>
+    {% for row in rows %}
+     <tr>
+        <td>{{ row.driver_username }}</td>
+        <td>{{ row.purchase_count }}</td>
+        <td>{{ row.total_amount }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <p>No purchases found for the selected date range.</p>
+{% endif %}
+{% endblock %}

@@ -9,12 +9,15 @@
   <a class="button" href="{{ url_for('admin.reports') }}">View Sponsor Reports</a>
 </p>
 <p>
-  <a class="button" href="{{ url_for('admin.reports') }}">Edit Sponsors</a>
+  <a class="button" href="{{ url_for('admin.reports') }}#sponsors">Edit Sponsors</a>
 </p>
 <p>
   <a class="button" href="{{ url_for('admin.sales_by_sponsor_report') }}">Sales by Sponsors</a>
 </p>
 <p>
   <a class="button" href="{{ url_for('admin.sales_by_driver_report') }}">Sales by Drivers</a>
+</p>
+<p>
+  <a class="button" href="{{ url_for('admin.driver_purchases_summary') }}">Driver Purchases Summary</a>
 </p>
 {% endblock %}

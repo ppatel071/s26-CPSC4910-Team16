@@ -20,7 +20,12 @@
   <a class="button" href="{{ url_for('admin.sales_by_driver_report', detail=1) }}">Detailed</a>
 </p>
 
-<h2>Sponsors</h2>
+    <h2>Driver Purchases Summary</h2>
+<p>
+  <a class="button" href="{{ url_for('admin.driver_purchases_summary') }}">Run Summary</a>
+</p>
+
+<h2 id="sponsors">Sponsors</h2>
 {% if sponsors %}
   <ul>
     {% for sponsor in sponsors %}

@@ -1,3 +1,4 @@
+import datetime as dt
 from flask import render_template, abort, request, redirect, url_for
 from functools import wraps
 from flask_login import current_user, login_required
@@ -9,6 +10,7 @@ from app.Admin.services import (
     admin_update_sponsor,
     get_sales_by_sponsor,
     get_sales_by_driver,
+    get_driver_purchase_summary,
 )
 
 def admin_required(f):
@@ -69,3 +71,41 @@ def sales_by_driver_report():
     rows = get_sales_by_driver(detail)
     return render_template('Admin/sales_by_driver.html', detail=detail, rows=rows)
 
+@admin_bp.route('/reports/driver-purchases-summary', methods=['GET'])
+@login_required
+@admin_required
+def driver_purchases_summary():
+    # Default to last 7 days if no dates provided
+    today = dt.date.today()
+    default_start = today - dt.timedelta(days=6)
+
+    start_str = request.args.get('start_date') or default_start.isoformat()
+    end_str = request.args.get('end_date') or today.isoformat()
+
+    try:
+        start_date = dt.date.fromisoformat(start_str)
+        end_date = dt.date.fromisoformat(end_str)
+    except ValueError:
+        return render_template(
+            'Admin/driver_purchases_summary.html',
+            error='Invalid date format. Use YYYY-MM-DD.',
+            rows=[],
+            start_date=start_str,
+            end_date=end_str,
+        )
+
+    if end_date < start_date:
+        return render_template(
+            'Admin/driver_purchases_summary.html',
+            error='End date must be on or after start date.',
+            rows=[],
+            start_date=start_str,
+            end_date=end_str,
+        )
+    rows = get_driver_purchase_summary(start_date, end_date)
+    return render_template(
+        'Admin/driver_purchases_summary.html',
+        rows=rows,
+        start_date=start_date.isoformat(),
+        end_date=end_date.isoformat(),
+    )
