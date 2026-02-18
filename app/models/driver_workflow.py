@@ -28,7 +28,6 @@ class DriverApplication(db.Model):
     decided_by_user: Mapped['User | None'] = relationship(back_populates='applications_decided')
 
 
-
 class PointTransaction(db.Model):
     __tablename__ = 'point_transactions'
 

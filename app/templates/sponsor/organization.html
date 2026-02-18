@@ -13,7 +13,7 @@
 <p><strong>Created:</strong> {{ organization.create_time }}</p>
 
 <h2>Update Organization</h2>
-<form method="POST" action="">
+<form method="POST" action="" onsubmit="return confirm('Are you sure you want to save these changes?');">
   <input type="hidden" name="organization_id" value="{{ organization.organization_id }}">
 
   <label for="name">Organization Name:</label><br>

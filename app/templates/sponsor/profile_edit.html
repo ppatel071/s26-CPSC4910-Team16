@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Profile{% endblock %}
+
+{% block content %}
+<h1>Edit My Profile</h1>
+
+<form method="POST" action="" onsubmit="return confirm('Are you sure you want to save these changes?');">
+  <label for="username">Username</label><br>
+  <input id="username" name="username" type="text" required value="{{ user.username }}"><br><br>
+
+  <label for="email">Email</label><br>
+  <input id="email" name="email" type="email" value="{{ user.email or '' }}"><br><br>
+
+  <button type="submit">Save</button>
+</form>
+
+<p><a href="{{ url_for('auth.home') }}">Back to Dashboard</a></p>
+{% endblock %}

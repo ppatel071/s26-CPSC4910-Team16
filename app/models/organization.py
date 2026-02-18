@@ -38,6 +38,6 @@ class SponsorCatalogItem(db.Model):
     product_name: Mapped[str] = mapped_column(String(255), nullable=False)
     product_description: Mapped[str | None] = mapped_column(String(255))
     price: Mapped[int] = mapped_column(nullable=False)
-    last_update: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    last_update: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     organization: Mapped[SponsorOrganization] = relationship(back_populates='catalog_items')
     order_items: Mapped[List['OrderItem']] = relationship(back_populates='catalog_item')
