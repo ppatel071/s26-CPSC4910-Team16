@@ -5,6 +5,7 @@ from app.extensions import db
 from werkzeug.security import check_password_hash, generate_password_hash
 from typing import Tuple
 
+
 def validate_complexity(password: str) -> Tuple[bool, str]:
     if len(password) < 8:
         return False, 'Password must be at least 8 characters'
@@ -15,6 +16,7 @@ def validate_complexity(password: str) -> Tuple[bool, str]:
     if not re.search(r'\d', password):
         return False, 'Password must have a number'
     return True, ''
+
 
 def authenticate(username: str, password: str) -> User | None:
     user = User.query.filter_by(username=username).first()

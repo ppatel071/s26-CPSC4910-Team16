@@ -3,6 +3,7 @@ from app.auth import auth_bp
 from app.auth.services import authenticate, register_user, reset_user_password
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models.enums import RoleType
+from app.models import AboutPage
 
 
 @auth_bp.route('/')
@@ -72,7 +73,8 @@ def register():
 @auth_bp.route('/about')
 @login_required
 def about():
-    return render_template('about.html')
+    about = AboutPage.query.get(16)
+    return render_template('about.html', about=about)
 
 
 @auth_bp.route('/logout', methods=['GET', 'POST'])

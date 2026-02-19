@@ -3,7 +3,13 @@
 {% block title %}About Page{% endblock %}
 
 {% block content %}
-<h1>About this site</h1>
+<h1>About</h1>
 
-<p>This is the web application for the driver incentive program made by Team 16</p>
+<ul>
+    <li><strong>Team Number:</strong> {{ about.team_num }}</li>
+    <li><strong>Sprint Number:</strong> {{ about.sprint_num }}</li>
+    <li><strong>Release Date:</strong> {{ about.release_date }}</li>
+    <li><strong>Product Name:</strong> {{ about.product_name }}</li>
+    <li><strong>Product Description:</strong> {{ about.product_description }}</li>
+</ul>
 {% endblock %}

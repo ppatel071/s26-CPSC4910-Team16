@@ -1,6 +1,6 @@
 from app.extensions import db
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, DateTime, Enum, ForeignKey, DECIMAL
+from sqlalchemy import String, DateTime, ForeignKey, DECIMAL
 from sqlalchemy.sql import func
 from decimal import Decimal
 import datetime as dt
