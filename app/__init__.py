@@ -7,7 +7,6 @@ from app.extensions import db, login_manager
 from app.driver import driver_bp
 
 
-
 def create_app():
     app = Flask(__name__)
 
@@ -18,13 +17,12 @@ def create_app():
     # extensions init
     db.init_app(app)
     login_manager.init_app(app)
-    login_manager.login_view = 'auth.login' # type: ignore
-    
+    login_manager.login_view = 'auth.login'  # type: ignore
+
     # blueprint registration
     app.register_blueprint(auth_bp)
     app.register_blueprint(sponsor_bp, url_prefix='/sponsor')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(driver_bp, url_prefix='/driver')
 
-    
     return app

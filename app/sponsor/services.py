@@ -3,7 +3,6 @@ from app.extensions import db
 from app.models import SponsorOrganization
 
 
-
 def update_sponsor_organization(organization: SponsorOrganization, name: str, point_value: str) -> SponsorOrganization:
     if not organization:
         raise ValueError('No sponsor organization found for this user')

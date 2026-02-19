@@ -65,7 +65,7 @@ class SponsorUser(db.Model):
 
     sponsor_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False, unique=True)
-    organization_id: Mapped[int] = mapped_column(ForeignKey('sponsor_organization.organization_id', ondelete='RESTRICT'),nullable=False)
+    organization_id: Mapped[int] = mapped_column(ForeignKey('sponsor_organization.organization_id', ondelete='RESTRICT'), nullable=False)
     create_time: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     user: Mapped[User] = relationship(back_populates='sponsor_user')
     organization: Mapped['SponsorOrganization'] = relationship('SponsorOrganization', back_populates='sponsor_users', passive_deletes=True)

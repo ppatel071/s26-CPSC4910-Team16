@@ -4,6 +4,9 @@
 
 {% block content %}
 <h1>Sign Up</h1>
+
+<p><a href="{{ url_for('auth.login') }}">Already have an account? Log in</a></p>
+
 <form action="/register", method="POST">
     Role:<br>
     <input type="radio" name="role" value="Sponsor" {% if role == 'Sponsor' %}checked{% endif %}>Sponsor<br>
@@ -13,13 +16,23 @@
     Email:<br>
     <input type="text" name="email" value="{{ email|default('') }}"><br>
     Username:<br>
-    <input type="text" name="username" value="{{ username|default('') }}"><br>
+    <input type="text" name="username" value="{{ username|default('') }}" required><br>
     Password:<br>
-    <input type="password" name="password"><br>
+    <input type="password" name="password" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
+        title="Password must contain at least 8 characters (including a lowercase letter, uppercase letter, and number)"
+    required><br>
     Confirm Password:<br>
-    <input type="password" name="confpass"><br><br>
+    <input type="password" name="confpass" required><br><br>
 
     <input type="submit" value="Sign Up">
 </form>
-<p><a href="{{ url_for('auth.login') }}">Already have an account? Log in</a></p>
+
+<h3>Password must contain the following:</h3>
+<ul>
+    <li id="letter" class="invalid">A <b>lowercase</b> letter</li>
+    <li id="capital" class="invalid">An <b>uppercase</b> letter</li>
+    <li id="number" class="invalid">A <b>number</b></li>
+    <li id="length" class="invalid">Minimum <b>8 characters</b></li>
+</ul>
+
 {% endblock %}
