@@ -9,6 +9,13 @@
     {% endblock %}
   </head>
   <body>
+
+    <div class = 'button'>
+      <button onclick="ChangeFontSize(12)">Shrink Text Size</button>
+      <button onclick="ChangeFontSize(16)">Default Text Size</button>
+      <button onclick="ChangeFontSize(20)">Enlarge Text Size</button>
+    </div>
+
     {% block nav %}
     {% include "partials/navbar.html" %}
     {% endblock %}
@@ -24,5 +31,19 @@
 
     {% block scripts %}
     {% endblock %}
+
+    <script>
+      function ChangeFontSize(size) {
+        document.documentElement.style.setProperty('--base-font-size', size + 'px')
+        localStorage.setItem('fontSize', size)
+      }
+
+      window.onload = function() {
+        const savedSize = localStorage.getItem('fontSize');
+        if(savedSize) {
+          document.documentElement.style.setProperty('--base-font-size', savedSize + 'px')
+        }
+      }
+    </script>
   </body>
 </html>

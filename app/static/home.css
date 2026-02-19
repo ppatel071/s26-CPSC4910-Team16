@@ -13,3 +13,27 @@
 
     text-decoration: none;
 }
+
+.button:hover {
+    background-color: #0bacd0c4;
+}
+
+:root {
+    --base-font-size: 16px;
+}
+
+body {
+    font-size: var(--base-font-size);
+}
+
+h1 {
+    font-size: 2rem;
+}
+
+h2 {
+    font-size: 1.5rem;
+}
+
+p {
+    font-size: 1rem;
+}
