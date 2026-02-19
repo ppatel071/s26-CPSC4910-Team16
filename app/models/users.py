@@ -25,6 +25,9 @@ class User(db.Model, UserMixin):
     email: Mapped[str | None] = mapped_column(String(255), unique=True)
     create_time: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     role_type: Mapped[RoleType] = mapped_column(Enum(RoleType), nullable=False)
+    first_name: Mapped[str] = mapped_column(String(255))
+    last_name: Mapped[str] = mapped_column(String(255))
+
     sponsor_user: Mapped[Optional['SponsorUser']] = relationship(back_populates='user', uselist=False)
     driver: Mapped[List['Driver']] = relationship(back_populates='user', uselist=False)
     login_attempts: Mapped[List['LoginAttempt']] = relationship(back_populates='user', passive_deletes=True)
