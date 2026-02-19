@@ -20,17 +20,6 @@
     value="{{ organization.name }}"
   ><br><br>
 
-  <label for="point_value">Point Value (dollar per point):</label><br>
-  <input
-    id="point_value"
-    type="number"
-    name="point_value"
-    step="0.0001"
-    min="0"
-    required
-    value="{{ organization.point_value }}"
-  ><br><br>
-
   <button type="submit">Save Changes</button>
 </form>
 {% else %}

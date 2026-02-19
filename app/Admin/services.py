@@ -11,9 +11,9 @@ def get_all_sponsors():
 def get_sponsor_by_id(organization_id: int) -> SponsorOrganization | None:
     return SponsorOrganization.query.get(organization_id)
 
-def admin_update_sponsor(organization_id: int, name: str, point_value: str) -> SponsorOrganization:
+def admin_update_sponsor(organization_id: int, name: str) -> SponsorOrganization:
     org = get_sponsor_by_id(organization_id)
-    return update_sponsor_organization(org, name, point_value)
+    return update_sponsor_organization(org, name, str(org.point_value))
 
 
 def get_sales_by_sponsor(detail: bool):
@@ -88,4 +88,3 @@ def get_driver_purchase_summary(start_date: dt.date, end_date: dt.date):
         .order_by(User.username.asc())
         .all()
     )
-

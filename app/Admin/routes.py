@@ -44,9 +44,8 @@ def edit_sponsor(organization_id):
 
     if request.method == 'POST':
         name = request.form.get('name', '')
-        point_value = request.form.get('point_value', '')
         try:
-            admin_update_sponsor(organization_id, name, point_value)
+            admin_update_sponsor(organization_id, name)
             return redirect(url_for('admin.reports'))
         except ValueError as e:
             return render_template('Admin/edit_sponsor.html', organization=org, error=str(e))
