@@ -13,6 +13,7 @@ from app.Admin.services import (
     get_driver_purchase_summary,
 )
 
+
 def admin_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -21,11 +22,13 @@ def admin_required(f):
         return f(*args, **kwargs)
     return wrapper
 
+
 @admin_bp.route('/dashboard')
 @login_required
 @admin_required
 def dashboard():
     return render_template('Admin/admin_dashboard.html')
+
 
 @admin_bp.route('/reports')
 @login_required
@@ -33,6 +36,7 @@ def dashboard():
 def reports():
     sponsors = get_all_sponsors()
     return render_template('Admin/reports.html', sponsors=sponsors)
+
 
 @admin_bp.route('/sponsors/<int:organization_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -69,6 +73,7 @@ def sales_by_driver_report():
     detail = request.args.get('detail') == '1'
     rows = get_sales_by_driver(detail)
     return render_template('Admin/sales_by_driver.html', detail=detail, rows=rows)
+
 
 @admin_bp.route('/reports/driver-purchases-summary', methods=['GET'])
 @login_required

@@ -1,15 +1,20 @@
 import datetime as dt
 from sqlalchemy import func
 from app.extensions import db
-from app.models import SponsorOrganization, User
+from app.models import SponsorOrganization, User, Order
 from app.sponsor.services import update_sponsor_organization
-from app.models.sales import Sale
+
 
 def get_all_sponsors():
     return SponsorOrganization.query.order_by(SponsorOrganization.name.asc()).all()
 
-def get_sponsor_by_id(organization_id: int) -> SponsorOrganization | None:
-    return SponsorOrganization.query.get(organization_id)
+
+def get_sponsor_by_id(organization_id: int) -> SponsorOrganization:
+    org = SponsorOrganization.query.get(organization_id)
+    if org is None:
+        raise ValueError('No organization exists for that id')
+    return org
+
 
 def admin_update_sponsor(organization_id: int, name: str) -> SponsorOrganization:
     org = get_sponsor_by_id(organization_id)
@@ -21,23 +26,23 @@ def get_sales_by_sponsor(detail: bool):
         return (
             db.session.query(
                 SponsorOrganization.name.label('sponsor_name'),
-                Sale.amount.label('amount'),
-                Sale.sale_time.label('sale_time'),
+                Order.points.label('amount'),
+                Order.create_time.label('sale_time'),
                 User.username.label('driver_username'),
             )
-            .join(Sale, Sale.sponsor_id == SponsorOrganization.organization_id)
-            .join(User, User.user_id == Sale.driver_user_id)
-            .order_by(SponsorOrganization.name.asc(), Sale.sale_time.desc())
+            .join(Order.organization)
+            .join(Order.placed_by_user)
+            .order_by(SponsorOrganization.name.asc(), Order.create_time.desc())
             .all()
         )
 
     return (
         db.session.query(
             SponsorOrganization.name.label('sponsor_name'),
-            func.count(Sale.sale_id).label('sale_count'),
-            func.sum(Sale.amount).label('total_amount'),
+            func.count(Order.order_id).label('sale_count'),
+            func.sum(Order.points).label('total_amount'),
         )
-        .join(Sale, Sale.sponsor_id == SponsorOrganization.organization_id)
+        .join(Order.organization)
         .group_by(SponsorOrganization.name)
         .order_by(SponsorOrganization.name.asc())
         .all()
@@ -49,23 +54,23 @@ def get_sales_by_driver(detail: bool):
         return (
             db.session.query(
                 User.username.label('driver_username'),
-                Sale.amount.label('amount'),
-                Sale.sale_time.label('sale_time'),
+                Order.points.label('amount'),
+                Order.create_time.label('sale_time'),
                 SponsorOrganization.name.label('sponsor_name'),
             )
-            .join(Sale, Sale.driver_user_id == User.user_id)
-            .join(SponsorOrganization, SponsorOrganization.organization_id == Sale.sponsor_id)
-            .order_by(User.username.asc(), Sale.sale_time.desc())
+            .join(Order.placed_by_user)
+            .join(Order.organization)
+            .order_by(User.username.asc(), Order.create_time.desc())
             .all()
         )
 
     return (
         db.session.query(
             User.username.label('driver_username'),
-            func.count(Sale.sale_id).label('sale_count'),
-            func.sum(Sale.amount).label('total_amount'),
+            func.count(Order.order_id).label('sale_count'),
+            func.sum(Order.points).label('total_amount'),
         )
-        .join(Sale, Sale.driver_user_id == User.user_id)
+        .join(Order.placed_by_user)
         .group_by(User.username)
         .order_by(User.username.asc())
         .all()
@@ -79,11 +84,11 @@ def get_driver_purchase_summary(start_date: dt.date, end_date: dt.date):
     return (
         db.session.query(
             User.username.label('driver_username'),
-            func.count(Sale.sale_id).label('purchase_count'),
-            func.sum(Sale.amount).label('total_amount'),
+            func.count(Order.order_id).label('purchase_count'),
+            func.sum(Order.points).label('total_amount'),
         )
-        .join(Sale, Sale.driver_user_id == User.user_id)
-        .filter(Sale.sale_time >= start_dt, Sale.sale_time < end_dt)
+        .join(Order.placed_by_user)
+        .filter(Order.create_time >= start_dt, Order.create_time < end_dt)
         .group_by(User.username)
         .order_by(User.username.asc())
         .all()
