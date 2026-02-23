@@ -2,7 +2,7 @@ from flask import render_template, request, abort, redirect, url_for
 from functools import wraps
 from flask_login import current_user, login_required
 from app.sponsor import sponsor_bp
-from app.sponsor.services import update_sponsor_organization
+from app.sponsor.services import update_sponsor_organization, create_sponsor_user
 from app.extensions import db
 from app.models import SponsorOrganization, SponsorUser, User
 from app.models.enums import RoleType
@@ -75,3 +75,27 @@ def profile_edit():
         return redirect(url_for('sponsor.profile_edit'))
 
     return render_template('sponsor/profile_edit.html', user=user)
+
+
+@sponsor_bp.route('/create', methods=['GET', 'POST'])
+@login_required
+@sponsor_required
+def create_user():
+    fields = {'username': '', 'email': ''}
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        email = request.form.get('email', '').strip()
+        fields = {'username': username, 'email': email}
+
+        organization = current_user.sponsor_user.organization
+
+        try:
+            create_sponsor_user(username, password, email, organization)
+        except ValueError as e:
+            return render_template('sponsor/create_user.html', fields=fields, error=str(e))
+
+        return redirect(url_for('auth.home'))
+
+    return render_template('sponsor/create_user.html', fields=fields)
