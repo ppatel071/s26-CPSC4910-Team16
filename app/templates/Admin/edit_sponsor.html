@@ -9,22 +9,16 @@
   <p style="color: red;">{{ error }}</p>
 {% endif %}
 
-{% if organization %}
-<form method="POST" action="">
-  <label for="name">Organization Name:</label><br>
-  <input
-    id="name"
-    type="text"
-    name="name"
-    required
-    value="{{ organization.name }}"
-  ><br><br>
-
-  <button type="submit">Save Changes</button>
-</form>
-{% else %}
-<p>Organization not found.</p>
-{% endif %}
+{% include "partials/organization_form.html" %}
 
 <p><a href="{{ url_for('admin.reports') }}">Back to Reports</a></p>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  startEdit();
+});
+</script>
 {% endblock %}

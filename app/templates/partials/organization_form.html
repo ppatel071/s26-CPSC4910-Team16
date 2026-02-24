@@ -1,0 +1,113 @@
+{% if organization %}
+
+<h2>Organization</h2>
+
+<form method="POST"
+      action=""
+      onsubmit="return confirm('Save changes?');">
+
+<input type="hidden"
+       name="organization_id"
+       value="{{ organization.organization_id }}">
+
+<p>
+
+<strong>Name:</strong>
+
+<span class="display">
+  {{ organization.name }}
+</span>
+
+<input
+  class="edit"
+  type="text"
+  name="name"
+  value="{{ organization.name }}"
+  required
+  style="display:none;">
+
+</p>
+
+<p>
+<strong>Point Value:</strong>
+
+<span class="display">
+  ${{ organization.point_value }} per point
+</span>
+
+<input
+  class="edit"
+  type="number"
+  name="point_value"
+  step="0.0001"
+  min="0.0001"
+  value="{{ organization.point_value }}"
+  required
+  style="display:none;">
+</p>
+
+<p>
+<strong>Created:</strong>
+{{ organization.create_time }}
+</p>
+
+<br>
+<button type="button"
+        id="editButton"
+        onclick="startEdit()">
+        Edit Organization
+</button>
+
+<button type="submit"
+        id="saveButton"
+        style="display:none;">
+        Save Changes
+</button>
+
+<button type="button"
+        id="cancelButton"
+        onclick="cancelEdit()"
+        style="display:none;">
+        Cancel
+</button>
+
+</form>
+
+{% block scripts %}
+<script>
+let originalValues = {
+  name: "{{ organization.name }}",
+  point_value: "{{ organization.point_value }}"
+};
+
+function startEdit() {
+  document.querySelectorAll(".display")
+    .forEach(el => el.style.display = "none");
+  document.querySelectorAll(".edit")
+    .forEach(el => el.style.display = "inline");
+  document.getElementById("editButton").style.display = "none";
+  document.getElementById("saveButton").style.display = "inline";
+  document.getElementById("cancelButton").style.display = "inline";
+
+}
+
+function cancelEdit() {
+  document.querySelector("input[name='name']").value = originalValues.name;
+  document.querySelector("input[name='point_value']")
+    .value = originalValues.point_value;
+  document.querySelectorAll(".display")
+    .forEach(el => el.style.display = "inline");
+  document.querySelectorAll(".edit")
+    .forEach(el => el.style.display = "none");
+  document.getElementById("editButton").style.display = "inline";
+  document.getElementById("saveButton").style.display = "none";
+  document.getElementById("cancelButton").style.display = "none";
+}
+</script>
+{% endblock %}
+
+{% else %}
+
+<p>Error getting organization</p>
+
+{% endif %}

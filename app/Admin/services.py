@@ -16,9 +16,9 @@ def get_sponsor_by_id(organization_id: int) -> SponsorOrganization:
     return org
 
 
-def admin_update_sponsor(organization_id: int, name: str) -> SponsorOrganization:
+def admin_update_sponsor(organization_id: int, name: str, point_value: str) -> SponsorOrganization:
     org = get_sponsor_by_id(organization_id)
-    return update_sponsor_organization(org, name, str(org.point_value))
+    return update_sponsor_organization(org, name, point_value)
 
 
 def get_sales_by_sponsor(detail: bool):

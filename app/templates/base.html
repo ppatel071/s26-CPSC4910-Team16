@@ -10,19 +10,19 @@
   </head>
   <body>
 
-    <div class = 'button'>
+    <div style="margin-bottom: 10px;">
       <button onclick="ChangeFontSize(12)">Shrink Text Size</button>
       <button onclick="ChangeFontSize(16)">Default Text Size</button>
       <button onclick="ChangeFontSize(20)">Enlarge Text Size</button>
     </div>
-
+    
     {% block nav %}
     {% include "partials/navbar.html" %}
     {% endblock %}
 
     <main>
       {% if error %}
-        <p>{{ error }}</p>
+        <p style="color: red;">{{ error }}</p>
       {% endif %}
 
       {% block content %}
