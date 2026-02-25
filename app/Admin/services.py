@@ -1,8 +1,9 @@
 import datetime as dt
 from sqlalchemy import func
 from app.extensions import db
-from app.models import SponsorOrganization, User, Order
+from app.models import SponsorOrganization, User, Order, LoginAttempt
 from app.sponsor.services import update_sponsor_organization
+from app.models.enums import RoleType
 
 
 def get_all_sponsors():
@@ -90,6 +91,15 @@ def get_driver_purchase_summary(start_date: dt.date, end_date: dt.date):
         .join(Order.placed_by_user)
         .filter(Order.create_time >= start_dt, Order.create_time < end_dt)
         .group_by(User.username)
+        .order_by(User.username.asc())
+        .all()
+    )
+def get_admin_users_with_logins():
+    return (
+        db.session.query(User)
+        .join(LoginAttempt, LoginAttempt.user_id == User.user_id)
+        .filter(User.role_type == RoleType.ADMIN, LoginAttempt.success.is_(True))
+        .distinct()
         .order_by(User.username.asc())
         .all()
     )

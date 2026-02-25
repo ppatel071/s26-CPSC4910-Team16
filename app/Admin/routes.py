@@ -11,7 +11,9 @@ from app.Admin.services import (
     get_sales_by_sponsor,
     get_sales_by_driver,
     get_driver_purchase_summary,
+    get_admin_users_with_logins,
 )
+from flask_login import current_user, login_required
 
 
 def admin_required(f):
@@ -114,3 +116,16 @@ def driver_purchases_summary():
         start_date=start_date.isoformat(),
         end_date=end_date.isoformat(),
     )
+
+@admin_bp.route('/profile')
+@login_required
+@admin_required
+def profile():
+    return render_template('Admin/admin_profile.html', user=current_user)
+
+@admin_bp.route('/admin-users')
+@login_required
+@admin_required
+def admin_logins():
+    users = get_admin_users_with_logins()
+    return render_template('Admin/admin_logins.html', users=users)
