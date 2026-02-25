@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Driver Management{% endblock %}
+
+{% block content %}
+<h1>Driver Management</h1>
+
+{% if error %}
+  <p style="color: red;">{{ error }}</p>
+{% endif %}
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr>
+      <th>Username</th>
+      <th>Email</th>
+      <th>First Name</th>
+      <th>Last Name</th>
+      <th>Edit</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in drivers %}
+      <tr>
+        <td>{{ user.username }}</td>
+        <td>{{ user.email or '' }}</td>
+        <td>{{ user.first_name }}</td>
+        <td>{{ user.last_name }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin.edit_driver', user_id=user.user_id) }}">
+            <input name="username" type="text" value="{{ user.username }}" required>
+            <input name="email" type="text" value="{{ user.email or '' }}">
+            <input name="first_name" type="text" value="{{ user.first_name }}" required>
+            <input name="last_name" type="text" value="{{ user.last_name }}" required>
+            <button type="submit">Save</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p>
+<a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+</p>
+{% endblock %}

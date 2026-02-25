@@ -12,8 +12,10 @@ from app.Admin.services import (
     get_sales_by_driver,
     get_driver_purchase_summary,
     get_admin_users_with_logins,
+    get_all_admin_users,
+    get_all_drivers,
+    admin_update_driver_user,
 )
-from flask_login import current_user, login_required
 
 
 def admin_required(f):
@@ -127,5 +129,30 @@ def profile():
 @login_required
 @admin_required
 def admin_logins():
-    users = get_admin_users_with_logins()
+    users = get_all_admin_users()
     return render_template('Admin/admin_logins.html', users=users)
+
+@admin_bp.route('/drivers')
+@login_required
+@admin_required
+def drivers_list():
+    drivers = get_all_drivers()
+    return render_template('Admin/drivers.html', drivers=drivers)
+
+@admin_bp.route('/drivers/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_driver(user_id):
+    if request.method == 'POST':
+        username = request.form.get('username', '')
+        email = request.form.get('email', '')
+        first_name = request.form.get('first_name', '')
+        last_name = request.form.get('last_name', '')
+        try:
+            admin_update_driver_user(user_id, username, email, first_name, last_name)
+            return redirect(url_for('admin.drivers_list'))
+        except ValueError as e:
+            drivers = get_all_drivers()
+            return render_template('Admin/drivers.html', drivers=drivers, error=str(e))
+
+    return redirect(url_for('admin.drivers_list'))
