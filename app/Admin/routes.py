@@ -11,7 +11,6 @@ from app.Admin.services import (
     get_sales_by_sponsor,
     get_sales_by_driver,
     get_driver_purchase_summary,
-    get_admin_users_with_logins,
     get_all_admin_users,
     get_all_drivers,
     admin_update_driver_user,
@@ -46,8 +45,9 @@ def reports():
 @login_required
 @admin_required
 def edit_sponsor(organization_id):
-    org = get_sponsor_by_id(organization_id)
-    if not org:
+    try:
+        org = get_sponsor_by_id(organization_id)
+    except ValueError:
         abort(404)
 
     if request.method == 'POST':

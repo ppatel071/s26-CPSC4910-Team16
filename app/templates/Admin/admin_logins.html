@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Login Users{% endblock %}
+{% block title %}Admin Users{% endblock %}
 
 {% block content %}
-<h1>Admin Login Users</h1>
+<h1>Admin Users</h1>
 <p>
   <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
 </p>
@@ -30,6 +30,6 @@
   </tbody>
 </table>
 {% else %}
-<p>No admin logins found.</p>
+<p>No admin users found.</p>
 {% endif %}
 {% endblock %}
