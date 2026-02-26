@@ -10,19 +10,19 @@ from app.driver import driver_bp
 def create_app():
     app = Flask(__name__)
 
-    # config setup
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DB_URI')
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
-    # extensions init
     db.init_app(app)
     login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'  # type: ignore
+    login_manager.login_view = 'auth.login'
 
-    # blueprint registration
     app.register_blueprint(auth_bp)
     app.register_blueprint(sponsor_bp, url_prefix='/sponsor')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(driver_bp, url_prefix='/driver')
+
+    with app.app_context():
+        db.create_all()
 
     return app
