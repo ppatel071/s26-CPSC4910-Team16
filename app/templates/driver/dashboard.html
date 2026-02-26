@@ -6,7 +6,27 @@
 <hr>
 
 <h2>Total Points</h2>
-<p><strong>Current Points:</strong> 0</p>
+<p><strong>Current Points:</strong> {{ current_user.driver.point_bal }}</p>
+
+<hr>
+
+<h2>Point History</h2>
+
+<table border="1" cellpadding="6" cellspacing="0">
+    <tr>
+        <th>Date</th>
+        <th>Points Changed</th>
+        <th>Reason</th>
+    </tr>
+
+    {% for t in transactions %}
+    <tr>
+        <td>{{ t.create_time }}</td>
+        <td>{{ t.point_change }}</td>
+        <td>{{ t.reason }}</td>
+    </tr>
+    {% endfor %}
+</table>
 
 <hr>
 
@@ -17,5 +37,23 @@
 
 <h2>Order Status</h2>
 <p>Coming soon...</p>
+
+<hr>
+
+<h2>Available Sponsor Organizations</h2>
+
+{% for org in organizations %}
+    {% if org.organization_id != current_user.driver.organization_id %}
+        <div style="margin-bottom:10px;">
+            <strong>{{ org.name }}</strong>
+
+            <form method="POST"
+                  action="{{ url_for('driver.apply_to_organization', organization_id=org.organization_id) }}"
+                  style="display:inline;">
+                <button class="button" type="submit">Apply</button>
+            </form>
+        </div>
+    {% endif %}
+{% endfor %}
 
 {% endblock %}
