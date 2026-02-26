@@ -1,5 +1,5 @@
 .button {
-    background-color: lightgray;
+    background-color: lightgreen;
 
     border-style: solid;
     border-color: black;
@@ -12,6 +12,8 @@
     padding-bottom: 2px;
 
     text-decoration: none;
+
+    color: blue
 }
 
 .button:hover {
@@ -20,10 +22,21 @@
 
 :root {
     --base-font-size: 16px;
+    --bg-color: white;
+    --text-color: black;
+    --nav-color: lightgray;
+}
+
+.dark-mode {
+    --bg-color: #121212;
+    --text-color: #ffffff;
+    --nav-color: #1e1e1e;
 }
 
 body {
     font-size: var(--base-font-size);
+    background-color: var(--bg-color);
+    color: var(--text-color);
 }
 
 h1 {

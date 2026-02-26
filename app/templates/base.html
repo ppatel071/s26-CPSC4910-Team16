@@ -11,9 +11,10 @@
   <body>
 
     <div style="margin-bottom: 10px;">
-      <button onclick="ChangeFontSize(12)">Shrink Text Size</button>
-      <button onclick="ChangeFontSize(16)">Default Text Size</button>
-      <button onclick="ChangeFontSize(20)">Enlarge Text Size</button>
+      <button class="button" onclick="ChangeFontSize(12)">Shrink Text Size</button>
+      <button class="button" onclick="ChangeFontSize(16)">Default Text Size</button>
+      <button class="button" onclick="ChangeFontSize(20)">Enlarge Text Size</button>
+      <button class="button" onclick="ToggleDarkMode()">Toggle Dark Mode</button>
     </div>
     
     {% block nav %}
@@ -34,14 +35,27 @@
 
     <script>
       function ChangeFontSize(size) {
-        document.documentElement.style.setProperty('--base-font-size', size + 'px')
-        localStorage.setItem('fontSize', size)
+        document.documentElement.style.setProperty('--base-font-size', size + 'px');
+        localStorage.setItem('fontSize', size);
+      }
+
+      function ToggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem('darkMode', isDark);
       }
 
       window.onload = function() {
         const savedSize = localStorage.getItem('fontSize');
+        const darkMode = localStorage.getItem('darkMode')
+
         if(savedSize) {
-          document.documentElement.style.setProperty('--base-font-size', savedSize + 'px')
+          document.documentElement.style.setProperty('--base-font-size', savedSize + 'px');
+        }
+
+        if(darkMode === "true") {
+          document.body.classList.add("dark-mode")
         }
       }
     </script>
