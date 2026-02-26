@@ -44,9 +44,9 @@
     <tr>
         <td>{{ order.order_id }}</td>
         <td>{{ order.point_cost }}</td>
-        <td>{{ order.status }}</td>
+        <td>{{ order.order_status }}</td>
         <td>
-            {% if order.status != OrderStatus.CANCELLED %}
+            {% if order.order_status.value != "CANCELLED" %}
             <form method="POST"
                   action="{{ url_for('driver.cancel_order', order_id=order.order_id) }}">
                 <button type="submit">Cancel</button>
