@@ -43,7 +43,7 @@
     {% for order in orders %}
     <tr>
         <td>{{ order.order_id }}</td>
-        <td>{{ order.point_cost }}</td>
+        <td>{{ order.points }}</td>
         <td>{{ order.order_status }}</td>
         <td>
             {% if order.order_status.value != "CANCELLED" %}

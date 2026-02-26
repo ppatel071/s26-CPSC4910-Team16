@@ -8,15 +8,14 @@
 <p><a href="{{ url_for('auth.login') }}">Already have an account? Log in</a></p>
 
 <form action="/register", method="POST">
-    Role:<br>
-    <input type="radio" name="role" value="Sponsor" {% if role == 'Sponsor' %}checked{% endif %}>Sponsor<br>
-    <input type="radio" name="role" value="Driver" {% if role == 'Driver' %}checked{% endif %}>Driver<br>
-    <input type="radio" name="role" value="Admin" {% if role == 'Admin' %}checked{% endif %}>Admin<br><br>
-
     Email:<br>
     <input type="text" name="email" value="{{ email|default('') }}"><br>
     Username:<br>
     <input type="text" name="username" value="{{ username|default('') }}" required><br>
+    First Name:<br>
+    <input type="text" name="first_name" value="{{ first_name|default('') }}"><br>
+    Last Name:<br>
+    <input type="text" name="last_name" value="{{ last_name|default('') }}" required><br>
     Password:<br>
     <input type="password" name="password" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
         title="Password must contain at least 8 characters (including a lowercase letter, uppercase letter, and number)"

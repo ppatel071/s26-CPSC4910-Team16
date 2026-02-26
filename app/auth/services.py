@@ -1,6 +1,6 @@
 # Business logic for the auth routes
 import re
-from app.models import User, RoleType
+from app.models import User, RoleType, Driver, DriverStatus
 from app.extensions import db
 from werkzeug.security import check_password_hash, generate_password_hash
 from typing import Tuple
@@ -26,7 +26,9 @@ def authenticate(username: str, password: str) -> User | None:
         return user
     return None
 
-def register_user(username: str, password: str, role: str, email: str):
+
+def register_user(username: str, password: str, role: str, email: str,
+                  first_name: str, last_name: str):
     valid, msg = validate_complexity(password)
     if not valid:
         raise ValueError(msg)
@@ -39,34 +41,23 @@ def register_user(username: str, password: str, role: str, email: str):
         password=password_hash,
         role_type=RoleType[role],
         email=email,
-        first_name="Default",
-        last_name="User"
+        first_name=first_name,
+        last_name=last_name
     )
 
     db.session.add(user)
     db.session.commit()
 
     if role == "DRIVER":
-        from app.models.users import Driver
-        from app.models.enums import DriverStatus
-        from app.models.organization import SponsorOrganization
-
-        org = SponsorOrganization.query.first()
-
-        if org is None:
-            org = SponsorOrganization(name="Default Org")
-            db.session.add(org)
-            db.session.commit()
-
         driver = Driver(
             user_id=user.user_id,
-            organization_id=org.organization_id,
             point_bal=0,
-            account_status=DriverStatus.ACTIVE
+            account_status=DriverStatus.PENDING
         )
 
         db.session.add(driver)
         db.session.commit()
+
 
 def reset_user_password(
     user,

@@ -49,15 +49,15 @@ def register():
         return redirect(url_for('auth.home'))
 
     if request.method == 'POST':
-        # 🔥 FORCE ALL NEW USERS TO BE DRIVER
         role = "DRIVER"
-
         email = request.form.get('email', '')
         username = request.form.get('username', '')
         password = request.form.get('password', '')
+        first_name = request.form.get('first_name', '')
+        last_name = request.form.get('last_name', '')
 
         try:
-            register_user(username, password, role, email)
+            register_user(username, password, role, email, first_name, last_name)
             return redirect(url_for('auth.login'))
         except ValueError as e:
             return render_template(
@@ -65,6 +65,8 @@ def register():
                 error=str(e),
                 email=email,
                 username=username,
+                first_name=first_name,
+                last_name=last_name
             )
 
     return render_template('register.html')

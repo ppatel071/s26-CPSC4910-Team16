@@ -29,7 +29,7 @@ class User(db.Model, UserMixin):
     last_name: Mapped[str] = mapped_column(String(255))
 
     sponsor_user: Mapped[Optional['SponsorUser']] = relationship(back_populates='user', uselist=False)
-    driver: Mapped[List['Driver']] = relationship(back_populates='user', uselist=False)
+    driver: Mapped[Optional['Driver']] = relationship(back_populates='user', uselist=False)
     login_attempts: Mapped[List['LoginAttempt']] = relationship(back_populates='user', passive_deletes=True)
     password_changes: Mapped[List['PasswordChange']] = relationship(back_populates='user', cascade='all, delete-orphan')
     issued_notifications: Mapped[List['Notification']] = relationship(back_populates='issued_by_user')
@@ -46,14 +46,15 @@ class Driver(db.Model):
 
     driver_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False, unique=True)
-    organization_id: Mapped[int] = mapped_column(ForeignKey('sponsor_organization.organization_id', ondelete='RESTRICT'), nullable=False)
+    organization_id: Mapped[int | None] = mapped_column(ForeignKey('sponsor_organization.organization_id', ondelete='RESTRICT'), nullable=True)
     point_bal: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    account_status: Mapped[DriverStatus] = mapped_column(Enum(DriverStatus), nullable=False)
+    account_status: Mapped[DriverStatus] = mapped_column(Enum(DriverStatus), nullable=False, default=DriverStatus.PENDING)
     point_change_alert: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     order_alert: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     create_time: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
     user: Mapped[User] = relationship(back_populates='driver')
-    organization: Mapped['SponsorOrganization'] = relationship('SponsorOrganization', back_populates='drivers', passive_deletes=True)
+    organization: Mapped['SponsorOrganization | None'] = relationship('SponsorOrganization', back_populates='drivers', passive_deletes=True)
     applications: Mapped[List['DriverApplication']] = relationship(back_populates='driver', cascade='all, delete-orphan')
     point_transactions: Mapped[List['PointTransaction']] = relationship(back_populates='driver', cascade='all, delete-orphan')
     notifications: Mapped[List['Notification']] = relationship(back_populates='driver', cascade='all, delete-orphan')
@@ -70,6 +71,7 @@ class SponsorUser(db.Model):
     user_id: Mapped[int] = mapped_column(ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False, unique=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey('sponsor_organization.organization_id', ondelete='RESTRICT'), nullable=False)
     create_time: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
     user: Mapped[User] = relationship(back_populates='sponsor_user')
     organization: Mapped['SponsorOrganization'] = relationship('SponsorOrganization', back_populates='sponsor_users', passive_deletes=True)
 
@@ -82,6 +84,7 @@ class LoginAttempt(db.Model):
     username_attempted: Mapped[str] = mapped_column(String(255), nullable=False)
     success: Mapped[bool] = mapped_column(Boolean, nullable=False)
     attempt_time: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
     user: Mapped[User] = relationship(back_populates='login_attempts')
 
 
@@ -92,4 +95,5 @@ class PasswordChange(db.Model):
     user_id: Mapped[int] = mapped_column(ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
     change_type: Mapped[PasswordChangeType] = mapped_column(Enum(PasswordChangeType), nullable=False)
     change_time: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
     user: Mapped[User] = relationship(back_populates='password_changes')
