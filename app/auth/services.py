@@ -6,7 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from typing import Tuple
 
 
-def validate_complexity(password: str) -> Tuple[bool, str]:
+def validate_complexity(password: str, confpass: str) -> Tuple[bool, str]:
     if len(password) < 8:
         return False, 'Password must be at least 8 characters'
     if not re.search(r'[A-Z]', password):
@@ -15,6 +15,20 @@ def validate_complexity(password: str) -> Tuple[bool, str]:
         return False, 'Password must have a lowercase letter'
     if not re.search(r'\d', password):
         return False, 'Password must have a number'
+    if password != confpass:
+        return False, 'Passwords do not match'
+    
+    return True, ''
+
+def check_unique(username: str, email: str) -> Tuple[bool, str]:
+    user = User.query.filter_by(username=username).first()
+    if user:
+        return False, 'Username is taken'
+    
+    email = User.query.filter_by(email=email).first()
+    if email:
+        return False, 'An account exists belonging to this email'
+    
     return True, ''
 
 
@@ -27,9 +41,13 @@ def authenticate(username: str, password: str) -> User | None:
     return None
 
 
-def register_user(username: str, password: str, role: str, email: str,
+def register_user(username: str, password: str, confpass: str, role: str, email: str,
                   first_name: str, last_name: str):
-    valid, msg = validate_complexity(password)
+    valid, msg = validate_complexity(password, confpass)
+    if not valid:
+        raise ValueError(msg)
+    
+    valid, msg = check_unique(username, email)
     if not valid:
         raise ValueError(msg)
 
