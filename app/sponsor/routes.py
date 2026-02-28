@@ -106,3 +106,11 @@ def create_user():
         return redirect(url_for('auth.home'))
 
     return render_template('sponsor/create_user.html', fields=fields)
+
+
+@sponsor_bp.route('/applications')
+@login_required
+@sponsor_required
+def get_applications():
+    apps = current_user.sponsor_user.organization.applications
+    return render_template('sponsor/driver_applications.html', applications=apps)

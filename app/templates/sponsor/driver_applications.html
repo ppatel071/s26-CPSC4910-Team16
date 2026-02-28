@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Driver Applications{% endblock %}
+
+{% block content %}
+<h1>Pending Driver Applications</h1>
+
+{% if applications %}
+  {% set pending_count = namespace(value=0) %}
+  {% for application in applications %}
+    {% if application.status.value == 'PENDING' %}
+      {% set pending_count.value = pending_count.value + 1 %}
+    {% endif %}
+  {% endfor %}
+
+  {% if pending_count.value > 0 %}
+  <table>
+    <thead>
+      <tr>
+        <th>Driver</th>
+        <th>Submitted</th>
+        <th>Status</th>
+        <th>Reason</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for application in applications %}
+        {% if application.status.value == 'PENDING' %}
+          <tr>
+            <td>
+              {% if application.driver and application.driver.user %}
+                {{ application.driver.user.username }}
+              {% else %}
+                Driver #{{ application.driver_id }}
+              {% endif %}
+            </td>
+            <td>{{ application.create_time }}</td>
+            <td>{{ application.status.value }}</td>
+            <td>
+              <form method="post" action="{{ application_action_url or '' }}">
+                <input type="hidden" name="application_id" value="{{ application.application_id }}">
+                <input
+                  type="text"
+                  name="reason"
+                  value="{{ application.reason or '' }}"
+                  placeholder="Optional reason"
+                >
+            </td>
+            <td>
+                <button type="submit" name="decision" value="APPROVED">Accept</button>
+                <button type="submit" name="decision" value="REJECTED">Reject</button>
+              </form>
+            </td>
+          </tr>
+        {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No pending driver applications.</p>
+  {% endif %}
+{% else %}
+  <p>No pending driver applications.</p>
+{% endif %}
+
+<p><a href="{{ url_for('sponsor.dashboard') }}">Back to Dashboard</a></p>
+{% endblock %}
