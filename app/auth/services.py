@@ -6,7 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from typing import Tuple
 
 
-def validate_complexity(password: str, confpass: str) -> Tuple[bool, str]:
+def validate_complexity(password: str, confpass: str | None = None) -> Tuple[bool, str]:
     if len(password) < 8:
         return False, 'Password must be at least 8 characters'
     if not re.search(r'[A-Z]', password):
@@ -15,20 +15,21 @@ def validate_complexity(password: str, confpass: str) -> Tuple[bool, str]:
         return False, 'Password must have a lowercase letter'
     if not re.search(r'\d', password):
         return False, 'Password must have a number'
-    if password != confpass:
+    if confpass is not None and password != confpass:
         return False, 'Passwords do not match'
-    
+
     return True, ''
+
 
 def check_unique(username: str, email: str) -> Tuple[bool, str]:
     user = User.query.filter_by(username=username).first()
     if user:
         return False, 'Username is taken'
-    
-    email = User.query.filter_by(email=email).first()
-    if email:
+
+    email_check = User.query.filter_by(email=email).first()
+    if email_check:
         return False, 'An account exists belonging to this email'
-    
+
     return True, ''
 
 
@@ -41,23 +42,29 @@ def authenticate(username: str, password: str) -> User | None:
     return None
 
 
-def register_user(username: str, password: str, confpass: str, role: str, email: str,
-                  first_name: str, last_name: str):
+def register_user(username: str, password: str, role: RoleType, email: str,
+                  first_name: str, last_name: str, confpass: str | None = None) -> User:
     valid, msg = validate_complexity(password, confpass)
     if not valid:
         raise ValueError(msg)
-    
+
     valid, msg = check_unique(username, email)
     if not valid:
         raise ValueError(msg)
 
-    role = role.upper()
+    if not username:
+        raise ValueError('Username is required')
+    if not password:
+        raise ValueError('Password is required')
+    if not email:
+        raise ValueError('Email is required')
+
     password_hash = generate_password_hash(password)
 
     user = User(
         username=username,
         password=password_hash,
-        role_type=RoleType[role],
+        role_type=role,
         email=email,
         first_name=first_name,
         last_name=last_name
@@ -66,7 +73,7 @@ def register_user(username: str, password: str, confpass: str, role: str, email:
     db.session.add(user)
     db.session.commit()
 
-    if role == "DRIVER":
+    if role == RoleType.DRIVER:
         driver = Driver(
             user_id=user.user_id,
             point_bal=0,
@@ -75,13 +82,10 @@ def register_user(username: str, password: str, confpass: str, role: str, email:
 
         db.session.add(driver)
         db.session.commit()
+    return user
 
 
-def reset_user_password(
-    user,
-    current_password: str,
-    new_password: str,
-):
+def reset_user_password(user, current_password: str, new_password: str):
     if not check_password_hash(user.password, current_password):
         raise ValueError('Current password is incorrect')
 

@@ -81,18 +81,25 @@ def profile_edit():
 @login_required
 @sponsor_required
 def create_user():
-    fields = {'username': '', 'email': ''}
+    fields = {'username': '', 'email': '', 'first_name': '', 'last_name': ''}
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         email = request.form.get('email', '').strip()
-        fields = {'username': username, 'email': email}
+        first_name = request.form.get('first_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
+        fields = {
+            'username': username,
+            'email': email,
+            'first_name': first_name,
+            'last_name': last_name
+        }
 
         organization = current_user.sponsor_user.organization
 
         try:
-            create_sponsor_user(username, password, email, organization)
+            create_sponsor_user(username, password, email, first_name, last_name, organization)
         except ValueError as e:
             return render_template('sponsor/create_user.html', fields=fields, error=str(e))
 

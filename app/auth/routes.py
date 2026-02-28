@@ -49,7 +49,7 @@ def register():
         return redirect(url_for('auth.home'))
 
     if request.method == 'POST':
-        role = "DRIVER"
+        role = RoleType.DRIVER
         email = request.form.get('email', '')
         username = request.form.get('username', '')
         password = request.form.get('password', '')
@@ -58,7 +58,7 @@ def register():
         last_name = request.form.get('last_name', '')
 
         try:
-            register_user(username, password, confpass, role, email, first_name, last_name)
+            register_user(username, password, role, email, first_name, last_name, confpass)
             return redirect(url_for('auth.login'))
         except ValueError as e:
             return render_template(
