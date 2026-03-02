@@ -1,11 +1,12 @@
+import datetime as dt
 from flask import render_template, request, abort, redirect, url_for
 from functools import wraps
 from flask_login import current_user, login_required
 from app.sponsor import sponsor_bp
-from app.sponsor.services import update_sponsor_organization, create_sponsor_user
+from app.sponsor.services import update_sponsor_organization, create_sponsor_user, approve_driver_for_sponsor
 from app.extensions import db
-from app.models import SponsorOrganization, SponsorUser, User
-from app.models.enums import RoleType
+from app.models import SponsorOrganization, SponsorUser, User, DriverApplication
+from app.models.enums import RoleType, DriverApplicationStatus
 
 
 def sponsor_required(f):
@@ -112,5 +113,46 @@ def create_user():
 @login_required
 @sponsor_required
 def get_applications():
-    apps = current_user.sponsor_user.organization.applications
-    return render_template('sponsor/driver_applications.html', applications=apps)
+    apps = (
+        DriverApplication.query
+        .filter_by(
+            organization_id=current_user.sponsor_user.organization_id,
+            status=DriverApplicationStatus.PENDING,
+        )
+        .order_by(DriverApplication.create_time.desc())
+        .all()
+    )
+    return render_template(
+        'sponsor/driver_applications.html',
+        applications=apps,
+    )
+
+
+@sponsor_bp.route('/applications/<int:application_id>/decide', methods=['POST'])
+@login_required
+@sponsor_required
+def decide_application(application_id: int):
+    decision = (request.form.get('decision', '') or '').upper()
+    reason = (request.form.get('reason', '') or '').strip()
+    if decision not in ('APPROVED', 'REJECTED'):
+        abort(400)
+
+    application: DriverApplication | None = DriverApplication.query.get(application_id)
+
+    if not application:
+        abort(404)
+
+    if application.status != DriverApplicationStatus.PENDING:
+        return redirect(url_for('sponsor.get_applications'))
+
+    decision = DriverApplicationStatus[decision]
+    if decision == DriverApplicationStatus.APPROVED:
+        approve_driver_for_sponsor(application.driver, current_user.sponsor_user.organization_id)
+
+    application.status = decision
+    application.reason = reason
+    application.decision_date = dt.datetime.now(tz=dt.timezone.utc)
+    application.decided_by_user_id = current_user.user_id
+    db.session.commit()
+
+    return redirect(url_for('sponsor.get_applications'))

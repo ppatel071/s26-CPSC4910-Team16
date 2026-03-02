@@ -6,14 +6,6 @@
 <h1>Pending Driver Applications</h1>
 
 {% if applications %}
-  {% set pending_count = namespace(value=0) %}
-  {% for application in applications %}
-    {% if application.status.value == 'PENDING' %}
-      {% set pending_count.value = pending_count.value + 1 %}
-    {% endif %}
-  {% endfor %}
-
-  {% if pending_count.value > 0 %}
   <table>
     <thead>
       <tr>
@@ -26,40 +18,35 @@
     </thead>
     <tbody>
       {% for application in applications %}
-        {% if application.status.value == 'PENDING' %}
-          <tr>
-            <td>
-              {% if application.driver and application.driver.user %}
-                {{ application.driver.user.username }}
-              {% else %}
-                Driver #{{ application.driver_id }}
-              {% endif %}
-            </td>
-            <td>{{ application.create_time }}</td>
-            <td>{{ application.status.value }}</td>
-            <td>
-              <form method="post" action="{{ application_action_url or '' }}">
-                <input type="hidden" name="application_id" value="{{ application.application_id }}">
-                <input
-                  type="text"
-                  name="reason"
-                  value="{{ application.reason or '' }}"
-                  placeholder="Optional reason"
-                >
-            </td>
-            <td>
-                <button type="submit" name="decision" value="APPROVED">Accept</button>
-                <button type="submit" name="decision" value="REJECTED">Reject</button>
-              </form>
-            </td>
-          </tr>
-        {% endif %}
+        <tr>
+          <td>
+            {% if application.driver and application.driver.user %}
+              {{ application.driver.user.username }}
+            {% else %}
+              Driver #{{ application.driver_id }}
+            {% endif %}
+          </td>
+          <td>{{ application.create_time }}</td>
+          <td>{{ application.status.value }}</td>
+          <td>
+            <form method="post" action="{{ url_for('sponsor.decide_application', application_id=application.application_id) }}">
+              <input
+                type="text"
+                name="reason"
+                value="{{ application.reason or '' }}"
+                placeholder="Reason"
+                required
+              >
+          </td>
+          <td>
+              <button type="submit" name="decision" value="APPROVED">Accept</button>
+              <button type="submit" name="decision" value="REJECTED">Reject</button>
+            </form>
+          </td>
+        </tr>
       {% endfor %}
     </tbody>
   </table>
-  {% else %}
-  <p>No pending driver applications.</p>
-  {% endif %}
 {% else %}
   <p>No pending driver applications.</p>
 {% endif %}
