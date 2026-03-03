@@ -5,7 +5,7 @@
 {% block content %}
 <h1>Pending Driver Applications</h1>
 
-{% if applications %}
+{% if pending_applications %}
   <table>
     <thead>
       <tr>
@@ -17,7 +17,7 @@
       </tr>
     </thead>
     <tbody>
-      {% for application in applications %}
+      {% for application in pending_applications %}
         <tr>
           <td>
             {% if application.driver and application.driver.user %}
@@ -51,5 +51,47 @@
   <p>No pending driver applications.</p>
 {% endif %}
 
+<h1>Historic Driver Applications</h1>
+{% if historic_applications %}
+  <table>
+    <thead>
+      <tr>
+        <th>Application ID</th>
+        <th>Driver</th>
+        <th>Submitted</th>
+        <th>Status</th>
+        <th>Reason</th>
+        <th>Decision Date</th>
+        <th>Decided By User</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for application in historic_applications %}
+        <tr>
+          <td>{{ application.application_id }}</td>
+          <td>
+            {% if application.driver and application.driver.user %}
+              {{ application.driver.user.username }}
+            {% else %}
+              Driver #{{ application.driver_id }}
+            {% endif %}
+          </td>
+          <td>{{ application.create_time }}</td>
+          <td>{{ application.status.value }}</td>
+          <td>{{ application.reason or '-' }}</td>
+          <td>{{ application.decision_date or '-' }}</td>
+          <td>
+            {% if application.decided_by_user %}
+              {{ application.decided_by_user.username }}
+            {% else %}
+              User #{{ application.decided_by_user_id or '-' }}
+            {% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No historic driver applications.</p>
+{% endif %}
 <p><a href="{{ url_for('sponsor.dashboard') }}">Back to Dashboard</a></p>
 {% endblock %}

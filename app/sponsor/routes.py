@@ -3,7 +3,12 @@ from flask import render_template, request, abort, redirect, url_for
 from functools import wraps
 from flask_login import current_user, login_required
 from app.sponsor import sponsor_bp
-from app.sponsor.services import update_sponsor_organization, create_sponsor_user, approve_driver_for_sponsor
+from app.sponsor.services import (
+    update_sponsor_organization,
+    create_sponsor_user,
+    approve_driver_for_sponsor,
+    get_driver_applications
+)
 from app.extensions import db
 from app.models import SponsorOrganization, SponsorUser, User, DriverApplication
 from app.models.enums import RoleType, DriverApplicationStatus
@@ -27,7 +32,11 @@ def dashboard():
     s_user: SponsorUser = current_user.sponsor_user
     sponsor_users = s_user.organization.sponsor_users
     users = [s.user for s in sponsor_users if s.sponsor_id != s_user.sponsor_id]
-    return render_template('sponsor/dashboard.html', users=users)
+    pending_applications, _ = get_driver_applications(current_user.sponsor_user.organization_id)
+    if pending_applications is None:
+        pending_applications = []
+    num_applications = len(pending_applications)
+    return render_template('sponsor/dashboard.html', users=users, num_applications=num_applications)
 
 
 @sponsor_bp.route('/organization', methods=['GET', 'POST'])
@@ -113,18 +122,11 @@ def create_user():
 @login_required
 @sponsor_required
 def get_applications():
-    apps = (
-        DriverApplication.query
-        .filter_by(
-            organization_id=current_user.sponsor_user.organization_id,
-            status=DriverApplicationStatus.PENDING,
-        )
-        .order_by(DriverApplication.create_time.desc())
-        .all()
-    )
+    pending_applications, historic_applications = get_driver_applications(current_user.sponsor_user.organization_id)
     return render_template(
         'sponsor/driver_applications.html',
-        applications=apps,
+        pending_applications=pending_applications,
+        historic_applications=historic_applications
     )
 
 

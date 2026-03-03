@@ -6,9 +6,12 @@ from app.models import (
     User,
     RoleType,
     Driver,
-    DriverStatus
+    DriverStatus,
+    DriverApplication,
+    DriverApplicationStatus
 )
 from app.auth.services import register_user
+from typing import Tuple, List
 
 
 def update_sponsor_organization(
@@ -61,6 +64,28 @@ def create_sponsor_user(
     db.session.add(sponsor_user)
     db.session.commit()
     return user
+
+
+def get_driver_applications(org_id: int) -> Tuple[List[DriverApplication] | None, List[DriverApplication] | None]:
+    pending_applications = (
+        DriverApplication.query
+        .filter_by(
+            organization_id=org_id,
+            status=DriverApplicationStatus.PENDING,
+        )
+        .order_by(DriverApplication.create_time.desc())
+        .all()
+    )
+    historic_applications = (
+        DriverApplication.query
+        .filter(
+            DriverApplication.organization_id == org_id,
+            DriverApplication.status != DriverApplicationStatus.PENDING,
+        )
+        .order_by(DriverApplication.create_time.desc())
+        .all()
+    )
+    return (pending_applications, historic_applications)
 
 
 def approve_driver_for_sponsor(driver: Driver, organization_id: int):
