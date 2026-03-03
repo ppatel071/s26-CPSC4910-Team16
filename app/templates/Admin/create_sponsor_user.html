@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Add Sponsor User{% endblock %}
+
+{% block content %}
+<h1>Add Sponsor User</h1>
+<p>
+  <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+</p>
+
+<form method="post">
+  <p>
+    <label for="username">Username</label><br>
+    <input id="username" name="username" type="text" value="{{ username or '' }}" required>
+  </p>
+
+  <p>
+    <label for="email">Email</label><br>
+    <input id="email" name="email" type="text" value="{{ email or '' }}" required>
+  </p>
+
+  <p>
+    <label for="organization_name">Sponsor Organization Name</label><br>
+    <input id="organization_name" name="organization_name" type="text" value="{{ organization_name or '' }}" required>
+  </p>
+
+  <p>
+    <label for="password">Password</label><br>
+    <input id="password" name="password" type="password" required>
+  </p>
+
+  <p>
+    <button class="button" type="submit">Create Sponsor</button>
+    <a class="button" href="{{ url_for('admin.sponsor_users_list') }}">Back to Sponsor Users</a>
+  </p>
+</form>
+{% endblock %}

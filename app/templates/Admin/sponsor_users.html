@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Sponsor User Details{% endblock %}
+
+{% block content %}
+<h1>Sponsor User Details</h1>
+<p><a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a></p>
+
+{% if rows %}
+  <table>
+    <thead>
+      <tr>
+        <th>Sponsor</th>
+        <th>Username</th>
+        <th>Email</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.sponsor_name }}</td>
+        <td>{{ row.username }}</td>
+        <td>{{ row.email or "" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No sponsor users found.</p>
+{% endif %}
+<p><a class="button" href="{{ url_for('admin.create_sponsor_user') }}">Add Sponsor User</a></p>
+{% endblock %}

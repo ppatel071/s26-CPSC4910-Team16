@@ -1,9 +1,11 @@
 import datetime as dt
 from sqlalchemy import func
 from app.extensions import db
-from app.models import SponsorOrganization, User, Order, LoginAttempt
+from app.auth.services import register_user
+from app.models import SponsorOrganization, SponsorUser, User, Order, LoginAttempt
 from app.sponsor.services import update_sponsor_organization
 from app.models.enums import RoleType
+
 
 
 def get_all_sponsors():
@@ -173,4 +175,99 @@ def admin_update_driver_user(
     user.first_name = clean_first
     user.last_name = clean_last
     db.session.commit()
+    return user
+
+def admin_update_own_profile(
+    user: User,
+    username: str,
+    email: str,
+    first_name: str,
+    last_name: str,
+):
+    clean_username = (username or '').strip()
+    clean_email = (email or '').strip().lower()
+    clean_first = (first_name or '').strip()
+    clean_last = (last_name or '').strip()
+
+    if not clean_username:
+        raise ValueError('Username is required')
+    if not clean_first:
+        raise ValueError('First name is required')
+    if not clean_last:
+        raise ValueError('Last name is required')
+
+    existing_username = (
+        User.query.filter(User.username == clean_username, User.user_id != user.user_id).first()
+    )
+    if existing_username:
+        raise ValueError('Username is already in use')
+
+    if clean_email == '':
+        clean_email = None
+    if clean_email:
+        existing_email = (
+            User.query.filter(User.email == clean_email, User.user_id != user.user_id).first()
+        )
+        if existing_email:
+            raise ValueError('Email is already in use')
+
+    user.username = clean_username
+    user.email = clean_email
+    user.first_name = clean_first
+    user.last_name = clean_last
+    db.session.commit()
+    return user
+
+def get_all_sponsor_users():
+    return (
+        db.session.query(
+            SponsorOrganization.name.label('sponsor_name'),
+            User.username.label('username'),
+            User.email.label('email'),
+            User.first_name.label('first_name'),
+            User.last_name.label('last_name'),
+        )
+        .select_from(SponsorUser)
+        .join(
+            SponsorOrganization,
+            SponsorUser.organization_id == SponsorOrganization.organization_id,
+        )
+        .join(User, SponsorUser.user_id == User.user_id)
+        .order_by(SponsorOrganization.name.asc(), User.username.asc())
+        .all()
+    )
+
+def create_sponsor_account(
+    username: str,
+    email: str,
+    organization_name: str,
+    password: str,
+) -> User:
+    clean_username = (username or '').strip()
+    clean_email = (email or '').strip()
+    clean_org_name = (organization_name or '').strip()
+
+    if not clean_org_name:
+        raise ValueError('Sponsor organization name is required')
+
+    user = register_user(
+        username=clean_username,
+        password=password,
+        role=RoleType.SPONSOR,
+        email=clean_email,
+        first_name='',
+        last_name='',
+    )
+
+    organization = SponsorOrganization(name=clean_org_name, point_value=0.01)
+    db.session.add(organization)
+    db.session.flush()
+
+    sponsor_user = SponsorUser(
+        user_id=user.user_id,
+        organization_id=organization.organization_id,
+    )
+    db.session.add(sponsor_user)
+    db.session.commit()
+
     return user
