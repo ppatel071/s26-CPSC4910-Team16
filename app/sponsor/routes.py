@@ -66,6 +66,8 @@ def profile_edit():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         email = request.form.get('email', '').strip() or None
+        first_name = request.form.get('first_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
 
         if not username:
             return render_template('sponsor/profile_edit.html', user=user, error='Username is required.')
@@ -81,6 +83,8 @@ def profile_edit():
 
         user.username = username
         user.email = email
+        user.first_name = first_name
+        user.last_name = last_name
         db.session.commit()
         return redirect(url_for('sponsor.profile_edit'))
 

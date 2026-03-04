@@ -12,6 +12,12 @@
   <label for="email">Email</label><br>
   <input id="email" name="email" type="email" value="{{ user.email or '' }}"><br><br>
 
+  <label for="first_name">First Name</label><br>
+  <input id="first_name" name="first_name" type="first_name" value="{{ user.first_name or '' }}"><br><br>
+
+  <label for="last_name">Last Name</label><br>
+  <input id="last_name" name="last_name" type="last_name" value="{{ user.last_name or '' }}"><br><br>
+
   <button type="submit">Save</button>
 </form>
 
