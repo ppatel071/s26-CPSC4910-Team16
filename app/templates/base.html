@@ -58,6 +58,19 @@
           document.body.classList.add("dark-mode")
         }
       }
+
+      function showAltText(imageId) {
+        const img = document.getElementById(imageId)
+        const popup = document.getElementById(imageId + "-alt")
+
+        popup.textContent = img.alt;
+
+        if(popup.style.display === "block") {
+          popup.style.display = "none"
+        } else {
+          popup.style.display = "block"
+        }
+      }
     </script>
   </body>
 </html>

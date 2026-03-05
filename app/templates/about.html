@@ -12,4 +12,13 @@
     <li><strong>Product Name:</strong> {{ about.product_name }}</li>
     <li><strong>Product Description:</strong> {{ about.product_description }}</li>
 </ul>
+
+<div class="image-container">
+    <img src="images/test_truck.jpg" alt="Test image of a truck" style="width:128px;height:128px" id="testImg">
+    <button class="button" onclick="showAltText('testImg')">
+        ALT
+    </button>
+
+    <p class="alt-text-popup" id="testImg-alt"></p>
+</div>
 {% endblock %}

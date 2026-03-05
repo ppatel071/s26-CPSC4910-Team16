@@ -10,32 +10,32 @@
 <form method="post">
   <p>
     <label for="username">Username</label><br>
-    <input id="username" name="username" type="text" value="{{ username or '' }}" required>
+    <input id="username" name="username" type="text" value="{{ username or '' }}" placeholder="e.g. jsmith" required>
   </p>
 
   <p>
     <label for="email">Email</label><br>
-    <input id="email" name="email" type="text" value="{{ email or '' }}" required>
+    <input id="email" name="email" type="text" value="{{ email or '' }}" placeholder="e.g. jsmith123@gmail.com" required>
   </p>
 
   <p>
     <label for="first_name">First Name</label><br>
-    <input id="first_name" name="first_name" type="text" value="{{ first_name or '' }}" required>
+    <input id="first_name" name="first_name" type="text" value="{{ first_name or '' }}" placeholder="e.g. John" required>
   </p>
 
   <p>
     <label for="last_name">Last Name</label><br>
-    <input id="last_name" name="last_name" type="text" value="{{ last_name or '' }}" required>
+    <input id="last_name" name="last_name" type="text" value="{{ last_name or '' }}" placeholder="e.g. Smith" required>
   </p>
 
   <p>
     <label for="password">Password</label><br>
-    <input id="password" name="password" type="password" required>
+    <input id="password" name="password" type="password" placeholder="e.g. Password123" required>
   </p>
 
   <p>
     <label for="confpass">Confirm Password</label><br>
-    <input id="confpass" name="confpass" type="password" required>
+    <input id="confpass" name="confpass" type="password" placeholder="e.g. Password123" required>
   </p>
 
   <p>
