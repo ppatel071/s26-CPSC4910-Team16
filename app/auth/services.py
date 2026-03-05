@@ -1,6 +1,6 @@
 # Business logic for the auth routes
 import re
-from app.models import User, RoleType, Driver, DriverStatus
+from app.models import User, RoleType, Driver, DriverStatus, PasswordChange, PasswordChangeType
 from app.extensions import db
 from werkzeug.security import check_password_hash, generate_password_hash
 from typing import Tuple
@@ -85,7 +85,7 @@ def register_user(username: str, password: str, role: RoleType, email: str,
     return user
 
 
-def reset_user_password(user, current_password: str, new_password: str):
+def reset_user_password(user : User, current_password: str, new_password: str):
     if not check_password_hash(user.password, current_password):
         raise ValueError('Current password is incorrect')
 
@@ -94,4 +94,11 @@ def reset_user_password(user, current_password: str, new_password: str):
         raise ValueError(msg)
 
     user.password = generate_password_hash(new_password)
+
+    password_change = PasswordChange(
+        user_id=user.user_id,
+        change_type=PasswordChangeType.UPDATE
+    )
+
+    db.session.add(password_change)
     db.session.commit()
