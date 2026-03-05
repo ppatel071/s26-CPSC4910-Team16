@@ -13,12 +13,13 @@ if TYPE_CHECKING:
 
 class SponsorOrganization(db.Model):
     __tablename__ = 'sponsor_organization'
-
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-
     organization_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    contact_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(255), nullable=True)
     point_value: Mapped[Decimal] = mapped_column(DECIMAL(10, 4), nullable=False, server_default='0.01')
     create_time: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     sponsor_users: Mapped[List['SponsorUser']] = relationship('SponsorUser', back_populates='organization', passive_deletes=True)
