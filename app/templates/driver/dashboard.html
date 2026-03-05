@@ -10,6 +10,32 @@
 
 <hr>
 
+<h2>Redeem Points</h2>
+
+<form method="POST" action="{{ url_for('driver.redeem_points') }}">
+    <input type="number" name="points" min="1" placeholder="Enter points to redeem" required>
+    <button type="submit">Redeem</button>
+</form>
+
+<hr>
+
+<h2>Point Notifications</h2>
+
+<p>
+    Status:
+    {% if current_user.driver.point_change_alert %}
+        <strong>Enabled</strong>
+    {% else %}
+        <strong>Disabled</strong>
+    {% endif %}
+</p>
+
+<form method="POST" action="{{ url_for('driver.toggle_point_alert') }}">
+    <button type="submit">Toggle Notifications</button>
+</form>
+
+<hr>
+
 <h2>Point History</h2>
 
 <table border="1" cellpadding="6" cellspacing="0">
@@ -68,8 +94,7 @@
             <strong>{{ org.name }}</strong>
 
             <form method="POST"
-                  action="{{ url_for('driver.apply_to_organization', organization_id=org.organization_id) }}"
-                  style="display:inline;">
+                  action="{{ url_for('driver.apply_to_organization', organization_id=org.organization_id) }}">
                 <button type="submit">Apply</button>
             </form>
         </div>
@@ -94,8 +119,7 @@
             <strong>{{ org.name }}</strong>
 
             <form method="POST"
-                  action="{{ url_for('driver.request_sponsor_change', organization_id=org.organization_id) }}"
-                  style="display:inline;">
+                  action="{{ url_for('driver.request_sponsor_change', organization_id=org.organization_id) }}">
                 <button type="submit">Request Change</button>
             </form>
         </div>
