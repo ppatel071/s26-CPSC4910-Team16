@@ -9,6 +9,19 @@
     {% endblock %}
   </head>
   <body>
+    <nav class="breadcrumbs">
+      {% if breadcrumbs %}
+        {% for name, link in breadcrumbs %}
+
+          {% if link %}
+            <a href="{{ link }}">{{ name }}</a> >
+          {% else %}
+            <span>{{ name }}</span>
+          {% endif %}
+
+        {% endfor %}
+      {% endif %}
+    </nav>
 
     <div style="margin-bottom: 10px;">
       <button class="button" onclick="ChangeFontSize(12)">Shrink Text Size</button>
@@ -56,6 +69,19 @@
 
         if(darkMode === "true") {
           document.body.classList.add("dark-mode")
+        }
+      }
+
+      function showAltText(imageId) {
+        const img = document.getElementById(imageId)
+        const popup = document.getElementById(imageId + "-alt")
+
+        popup.textContent = img.alt;
+
+        if(popup.style.display === "block") {
+          popup.style.display = "none"
+        } else {
+          popup.style.display = "block"
         }
       }
     </script>

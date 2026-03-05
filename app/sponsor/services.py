@@ -1,11 +1,24 @@
 from decimal import Decimal, InvalidOperation
 from app.extensions import db
-from app.models import SponsorOrganization, SponsorUser, RoleType, DriverApplication, DriverApplicationStatus
+from app.models import (
+    SponsorOrganization,
+    SponsorUser,
+    User,
+    RoleType,
+    Driver,
+    DriverStatus,
+    DriverApplication,
+    DriverApplicationStatus
+)
 from app.auth.services import register_user
+from typing import Tuple, List
 
 
-def update_sponsor_organization(organization: SponsorOrganization, name: str,
-                                point_value: str) -> SponsorOrganization:
+def update_sponsor_organization(
+        organization: SponsorOrganization,
+        name: str,
+        point_value: str) -> SponsorOrganization:
+
     if not organization:
         raise ValueError('No sponsor organization found for this user')
 
@@ -27,11 +40,22 @@ def update_sponsor_organization(organization: SponsorOrganization, name: str,
     return organization
 
 
-def create_sponsor_user(username: str, password: str, email: str, first_name: str,
-                        last_name: str, organization: SponsorOrganization):
+def create_sponsor_user(
+        username: str,
+        password: str,
+        email: str,
+        first_name: str,
+        last_name: str,
+        organization: SponsorOrganization) -> User:
 
-    user = register_user(username, password, RoleType.SPONSOR, email,
-                         first_name, last_name)
+    user = register_user(
+        username,
+        password,
+        RoleType.SPONSOR,
+        email,
+        first_name,
+        last_name
+    )
 
     sponsor_user = SponsorUser(
         user=user,
@@ -40,3 +64,34 @@ def create_sponsor_user(username: str, password: str, email: str, first_name: st
     db.session.add(sponsor_user)
     db.session.commit()
     return user
+
+
+def get_driver_applications(org_id: int) -> Tuple[List[DriverApplication] | None, List[DriverApplication] | None]:
+    pending_applications = (
+        DriverApplication.query
+        .filter_by(
+            organization_id=org_id,
+            status=DriverApplicationStatus.PENDING,
+        )
+        .order_by(DriverApplication.create_time.desc())
+        .all()
+    )
+    historic_applications = (
+        DriverApplication.query
+        .filter(
+            DriverApplication.organization_id == org_id,
+            DriverApplication.status != DriverApplicationStatus.PENDING,
+        )
+        .order_by(DriverApplication.create_time.desc())
+        .all()
+    )
+    return (pending_applications, historic_applications)
+
+
+def approve_driver_for_sponsor(driver: Driver, organization_id: int):
+    if not driver:
+        raise ValueError('Driver does not exist')
+    driver.organization_id = organization_id
+    driver.account_status = DriverStatus.ACTIVE
+
+    return driver

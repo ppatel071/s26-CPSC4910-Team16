@@ -26,6 +26,9 @@
 </p>
 
 <h2 id="sponsors">Sponsors</h2>
+<p>
+  <a class="button" href="{{ url_for('admin.create_sponsor_user') }}">Add Sponsor User</a>
+</p>
 {% if sponsors %}
   <ul>
     {% for sponsor in sponsors %}

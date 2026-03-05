@@ -4,7 +4,7 @@
 
 {% block content %}
 <h1>Admin Dashboard</h1>
-<p>Welcome, admin.</p>
+<p>Welcome, {{ current_user.first_name or current_user.username }}.</p>
 <p>
   <a class="button" href="{{ url_for('admin.reports') }}">View Sponsor Reports</a>
 </p>
@@ -24,7 +24,16 @@
   <a class="button" href="{{ url_for('admin.profile') }}">View Admin Profile</a>
 </p>
 <p>
-  <a class="button" href="{{ url_for('admin.admin_logins') }}">Admin Login Users</a>
+  <a class="button" href="{{ url_for('admin.admin_logins') }}">View All Admin Users</a>
+</p>
+<p>
+  <a class="button" href="{{ url_for('admin.create_admin_user') }}">Add New Admin User</a>
+</p>
+<p>
+  <a class="button" href="{{ url_for('admin.sponsor_users_list') }}">View All Sponsor User Details</a>
+</p>
+<p>
+  <a class="button" href="{{ url_for('admin.create_sponsor_user') }}">Add New Sponsor User</a>
 </p>
 <p>
   <a class="button" href="{{ url_for('admin.drivers_list') }}">Manage Drivers</a>

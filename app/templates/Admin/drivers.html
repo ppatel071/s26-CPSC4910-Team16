@@ -28,10 +28,10 @@
         <td>{{ user.last_name }}</td>
         <td>
           <form method="POST" action="{{ url_for('admin.edit_driver', user_id=user.user_id) }}">
-            <input name="username" type="text" value="{{ user.username }}" required>
-            <input name="email" type="text" value="{{ user.email or '' }}">
-            <input name="first_name" type="text" value="{{ user.first_name }}" required>
-            <input name="last_name" type="text" value="{{ user.last_name }}" required>
+            <input name="username" type="text" value="{{ user.username }}" placeholder="e.g. jsmith" required>
+            <input name="email" type="text" value="{{ user.email or '' }}" placeholder="e.g. jsmith123@gmail.com">
+            <input name="first_name" type="text" value="{{ user.first_name }}" placeholder="e.g. John" required>
+            <input name="last_name" type="text" value="{{ user.last_name }}" placeholder="e.g. Smith" required>
             <button type="submit">Save</button>
           </form>
         </td>

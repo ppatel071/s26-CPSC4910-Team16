@@ -17,11 +17,16 @@ def dashboard():
     transactions = driver.point_transactions if driver else []
     orders = driver.orders if driver else []
 
+    breadcrumbs = [
+        ("Driver Dashboard", None)
+    ]
+
     return render_template(
         'driver/dashboard.html',
         organizations=organizations,
         transactions=transactions,
-        orders=orders
+        orders=orders,
+        breadcrumbs=breadcrumbs
     )
 
 

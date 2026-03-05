@@ -4,10 +4,13 @@
 
 {% block content %}
 <h1>Admin Profile</h1>
+<p>
+  <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+</p>
 <p><strong>Username:</strong> {{ user.username }}</p>
 <p><strong>Email:</strong> {{ user.email }}</p>
 <p><strong>Name:</strong> {{ user.first_name }} {{ user.last_name }}</p>
 <p>
-<a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+  <a class="button" href="{{ url_for('admin.edit_profile') }}">Edit Profile</a>
 </p>
 {% endblock %}

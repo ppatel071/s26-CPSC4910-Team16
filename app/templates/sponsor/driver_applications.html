@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Driver Applications{% endblock %}
+
+{% block content %}
+<h1>Pending Driver Applications</h1>
+
+{% if pending_applications %}
+  <table>
+    <thead>
+      <tr>
+        <th>Driver</th>
+        <th>Submitted</th>
+        <th>Status</th>
+        <th>Reason</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for application in pending_applications %}
+        <tr>
+          <td>
+            {% if application.driver and application.driver.user %}
+              {{ application.driver.user.username }}
+            {% else %}
+              Driver #{{ application.driver_id }}
+            {% endif %}
+          </td>
+          <td>{{ application.create_time }}</td>
+          <td>{{ application.status.value }}</td>
+          <td>
+            <form method="post" action="{{ url_for('sponsor.decide_application', application_id=application.application_id) }}">
+              <input
+                type="text"
+                name="reason"
+                value="{{ application.reason or '' }}"
+                placeholder="Reason"
+                required
+              >
+          </td>
+          <td>
+              <button type="submit" name="decision" value="APPROVED">Accept</button>
+              <button type="submit" name="decision" value="REJECTED">Reject</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No pending driver applications.</p>
+{% endif %}
+
+<h1>Historic Driver Applications</h1>
+{% if historic_applications %}
+  <table>
+    <thead>
+      <tr>
+        <th>Application ID</th>
+        <th>Driver</th>
+        <th>Submitted</th>
+        <th>Status</th>
+        <th>Reason</th>
+        <th>Decision Date</th>
+        <th>Decided By User</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for application in historic_applications %}
+        <tr>
+          <td>{{ application.application_id }}</td>
+          <td>
+            {% if application.driver and application.driver.user %}
+              {{ application.driver.user.username }}
+            {% else %}
+              Driver #{{ application.driver_id }}
+            {% endif %}
+          </td>
+          <td>{{ application.create_time }}</td>
+          <td>{{ application.status.value }}</td>
+          <td>{{ application.reason or '-' }}</td>
+          <td>{{ application.decision_date or '-' }}</td>
+          <td>
+            {% if application.decided_by_user %}
+              {{ application.decided_by_user.username }}
+            {% else %}
+              User #{{ application.decided_by_user_id or '-' }}
+            {% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No historic driver applications.</p>
+{% endif %}
+<p><a href="{{ url_for('sponsor.dashboard') }}">Back to Dashboard</a></p>
+{% endblock %}
