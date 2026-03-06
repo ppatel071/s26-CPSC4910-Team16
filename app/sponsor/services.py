@@ -6,6 +6,7 @@ from app.models import (
     User,
     RoleType,
     Driver,
+    DriverSponsorship,
     DriverStatus,
     DriverApplication,
     DriverApplicationStatus
@@ -91,7 +92,18 @@ def get_driver_applications(org_id: int) -> Tuple[List[DriverApplication] | None
 def approve_driver_for_sponsor(driver: Driver, organization_id: int):
     if not driver:
         raise ValueError('Driver does not exist')
-    driver.organization_id = organization_id
-    driver.account_status = DriverStatus.ACTIVE
+    sponsorship = DriverSponsorship.query.filter_by(
+        driver_id=driver.driver_id,
+        organization_id=organization_id,
+    ).first()
 
-    return driver
+    if sponsorship is None:
+        sponsorship = DriverSponsorship(
+            driver_id=driver.driver_id,
+            organization_id=organization_id,
+            status=DriverStatus.ACTIVE
+        )
+        db.session.add(sponsorship)
+
+    sponsorship.status = DriverStatus.ACTIVE
+    return sponsorship

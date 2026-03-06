@@ -3,7 +3,7 @@ from app.auth import auth_bp
 from app.auth.services import authenticate, register_user, reset_user_password
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models.enums import RoleType
-from app.models import AboutPage
+from app.models import AboutPage, User
 
 
 @auth_bp.route('/')
@@ -90,13 +90,15 @@ def logout():
 @auth_bp.route('/resetpassword', methods=['GET', 'POST'])
 @login_required
 def reset_password():
+    assert isinstance(current_user, User)
+    user: User = current_user
     if request.method == 'POST':
         current_password = request.form.get('current_password', '')
         new_password = request.form.get('new_password', '')
 
         try:
             reset_user_password(
-                current_user,
+                user,
                 current_password,
                 new_password,
             )

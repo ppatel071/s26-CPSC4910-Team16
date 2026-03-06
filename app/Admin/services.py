@@ -7,7 +7,6 @@ from app.sponsor.services import update_sponsor_organization
 from app.models.enums import RoleType
 
 
-
 def get_all_sponsors():
     return SponsorOrganization.query.order_by(SponsorOrganization.name.asc()).all()
 
@@ -97,6 +96,7 @@ def get_driver_purchase_summary(start_date: dt.date, end_date: dt.date):
         .all()
     )
 
+
 def get_admin_users_with_logins():
     return (
         db.session.query(User)
@@ -177,6 +177,7 @@ def admin_update_driver_user(
     db.session.commit()
     return user
 
+
 def admin_update_own_profile(
     user: User,
     username: str,
@@ -218,6 +219,7 @@ def admin_update_own_profile(
     db.session.commit()
     return user
 
+
 def get_all_sponsor_users():
     return (
         db.session.query(
@@ -236,6 +238,7 @@ def get_all_sponsor_users():
         .order_by(SponsorOrganization.name.asc(), User.username.asc())
         .all()
     )
+
 
 def create_sponsor_account(
     username: str,

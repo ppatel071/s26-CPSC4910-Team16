@@ -1,6 +1,6 @@
 from app.extensions import db
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, DateTime, Enum, ForeignKey, Boolean, Integer
+from sqlalchemy import String, DateTime, Enum, ForeignKey, Boolean
 from sqlalchemy.sql import func
 from flask_login import UserMixin
 from typing import List, Optional, TYPE_CHECKING
@@ -68,6 +68,9 @@ class DriverSponsorship(db.Model):
         db.UniqueConstraint('driver_id', 'organization_id', name='uq_driver_sponsorship'),
     )
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
     driver_sponsorship_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     driver_id: Mapped[int] = mapped_column(ForeignKey('drivers.driver_id', ondelete='CASCADE'), nullable=False)
     organization_id: Mapped[int] = mapped_column(ForeignKey('sponsor_organization.organization_id', ondelete='RESTRICT'), nullable=False)
@@ -97,6 +100,9 @@ class SponsorUser(db.Model):
 class LoginAttempt(db.Model):
     __tablename__ = 'login_attempts'
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
     attempt_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey('users.user_id', ondelete='SET NULL'))
     username_attempted: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -108,6 +114,9 @@ class LoginAttempt(db.Model):
 
 class PasswordChange(db.Model):
     __tablename__ = 'password_changes'
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
     pass_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)

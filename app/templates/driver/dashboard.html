@@ -10,10 +10,11 @@
 <div class="a">
     <h1>Driver Dashboard</h1>
 </div>
+{% include "driver/partials/active_sponsorship_dropdown.html" %}
 <hr>
 
 <h2>Total Points</h2>
-<p><strong>Current Points:</strong> {{ current_user.driver.point_bal }}</p>
+<p><strong>Current Points:</strong> {{ active_sponsorship.point_balance if active_sponsorship else 0 }}</p>
 
 <hr>
 
@@ -94,13 +95,13 @@
 
 <h2>My Sponsor Contact Information</h2>
 
-{% if current_user.driver.organization %}
+{% if active_sponsorship and active_sponsorship.organization %}
 
 <div style="border:1px solid #ccc; padding:15px; width:400px;">
-    <p><strong>Sponsor Name:</strong> {{ current_user.driver.organization.name }}</p>
-    <p><strong>Contact Email:</strong> {{ current_user.driver.organization.contact_email or "Not provided" }}</p>
-    <p><strong>Contact Phone:</strong> {{ current_user.driver.organization.contact_phone or "Not provided" }}</p>
-    <p><strong>Address:</strong> {{ current_user.driver.organization.address or "Not provided" }}</p>
+    <p><strong>Sponsor Name:</strong> {{ active_sponsorship.organization.name }}</p>
+    <p><strong>Contact Email:</strong> {{ active_sponsorship.organization.contact_email or "Not provided" }}</p>
+    <p><strong>Contact Phone:</strong> {{ active_sponsorship.organization.contact_phone or "Not provided" }}</p>
+    <p><strong>Address:</strong> {{ active_sponsorship.organization.address or "Not provided" }}</p>
 </div>
 
 {% else %}
@@ -111,43 +112,17 @@
 
 <h2>Available Sponsor Organizations</h2>
 
-{% for org in organizations %}
-    {% if current_user.driver.organization is none or
-          org.organization_id != current_user.driver.organization_id %}
-        <div style="margin-bottom:10px;">
-            <strong>{{ org.name }}</strong>
+{% for org in available_organizations %}
+    <div style="margin-bottom:10px;">
+        <strong>{{ org.name }}</strong>
 
-            <form method="POST"
-                  action="{{ url_for('driver.apply_to_organization', organization_id=org.organization_id) }}">
-                <button type="submit">Apply</button>
-            </form>
-        </div>
-    {% endif %}
+        <form method="POST"
+                action="{{ url_for('driver.apply_to_organization', organization_id=org.organization_id) }}">
+            <button type="submit">Apply</button>
+        </form>
+    </div>
 {% endfor %}
 
 <hr>
-
-<h2>Request Sponsor Change</h2>
-
-{% if current_user.driver.organization %}
-<p>
-    <strong>Current Organization:</strong>
-    {{ current_user.driver.organization.name }}
-</p>
-{% endif %}
-
-{% for org in organizations %}
-    {% if current_user.driver.organization is none or
-          org.organization_id != current_user.driver.organization_id %}
-        <div style="margin-bottom:10px;">
-            <strong>{{ org.name }}</strong>
-
-            <form method="POST"
-                  action="{{ url_for('driver.request_sponsor_change', organization_id=org.organization_id) }}">
-                <button type="submit">Request Change</button>
-            </form>
-        </div>
-    {% endif %}
-{% endfor %}
 
 {% endblock %}

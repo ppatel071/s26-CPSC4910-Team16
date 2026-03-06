@@ -35,6 +35,9 @@ class SponsorOrganization(db.Model):
 class SponsorCatalogItem(db.Model):
     __tablename__ = 'sponsor_catalog_items'
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
     catalog_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey('sponsor_organization.organization_id', ondelete='CASCADE'), nullable=False)
     external_id: Mapped[int] = mapped_column(nullable=False)
