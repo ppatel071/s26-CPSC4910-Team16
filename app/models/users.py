@@ -49,19 +49,34 @@ class Driver(db.Model):
 
     driver_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False, unique=True)
-    organization_id: Mapped[int | None] = mapped_column(ForeignKey('sponsor_organization.organization_id', ondelete='RESTRICT'), nullable=True)
-    point_bal: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    account_status: Mapped[DriverStatus] = mapped_column(Enum(DriverStatus), nullable=False, default=DriverStatus.PENDING)
     point_change_alert: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     order_alert: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     create_time: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     user: Mapped[User] = relationship(back_populates='driver')
-    organization: Mapped['SponsorOrganization | None'] = relationship('SponsorOrganization', back_populates='drivers', passive_deletes=True)
     applications: Mapped[List['DriverApplication']] = relationship(back_populates='driver', cascade='all, delete-orphan')
     point_transactions: Mapped[List['PointTransaction']] = relationship(back_populates='driver', cascade='all, delete-orphan')
     notifications: Mapped[List['Notification']] = relationship(back_populates='driver', cascade='all, delete-orphan')
     orders: Mapped[List['Order']] = relationship(back_populates='driver')
+    sponsorships: Mapped[List['DriverSponsorship']] = relationship(back_populates='driver', cascade='all, delete-orphan')
+
+
+class DriverSponsorship(db.Model):
+    __tablename__ = 'driver_sponsorships'
+
+    __table_args__ = (
+        db.UniqueConstraint('driver_id', 'organization_id', name='uq_driver_sponsorship'),
+    )
+
+    driver_sponsorship_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    driver_id: Mapped[int] = mapped_column(ForeignKey('drivers.driver_id', ondelete='CASCADE'), nullable=False)
+    organization_id: Mapped[int] = mapped_column(ForeignKey('sponsor_organization.organization_id', ondelete='RESTRICT'), nullable=False)
+    point_balance: Mapped[int] = mapped_column(nullable=False, default=0)
+    status: Mapped[DriverStatus] = mapped_column(Enum(DriverStatus), nullable=False, default=DriverStatus.PENDING)
+    create_time: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    organization: Mapped['SponsorOrganization'] = relationship('SponsorOrganization', back_populates='driver_sponsorships', passive_deletes=True)
+    driver: Mapped['Driver'] = relationship(back_populates='sponsorships')
 
 
 class SponsorUser(db.Model):
