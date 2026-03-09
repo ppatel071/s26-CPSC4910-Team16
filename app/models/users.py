@@ -27,6 +27,7 @@ class User(db.Model, UserMixin):
     role_type: Mapped[RoleType] = mapped_column(Enum(RoleType), nullable=False)
     first_name: Mapped[str] = mapped_column(String(255))
     last_name: Mapped[str] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     sponsor_user: Mapped[Optional['SponsorUser']] = relationship(back_populates='user', uselist=False)
     driver: Mapped[Optional['Driver']] = relationship(back_populates='user', uselist=False)

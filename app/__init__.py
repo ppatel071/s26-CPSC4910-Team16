@@ -1,10 +1,25 @@
 import os
 from flask import Flask
+from sqlalchemy import inspect, text
 from app.auth import auth_bp
 from app.sponsor import sponsor_bp
 from app.Admin import admin_bp
 from app.extensions import db, login_manager
 from app.driver import driver_bp
+
+
+def _ensure_user_is_active_column():
+    inspector = inspect(db.engine)
+    tables = inspector.get_table_names()
+    if 'users' not in tables:
+        return
+
+    columns = {column['name'] for column in inspector.get_columns('users')}
+    if 'is_active' in columns:
+        return
+
+    db.session.execute(text('ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE'))
+    db.session.commit()
 
 
 def create_app():
@@ -24,5 +39,6 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        _ensure_user_is_active_column()
 
     return app

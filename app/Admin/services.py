@@ -274,3 +274,86 @@ def create_sponsor_account(
     db.session.commit()
 
     return user
+
+
+def get_users_for_removal_page():
+    admin_users = (
+        db.session.query(User)
+        .filter(User.role_type == RoleType.ADMIN)
+        .order_by(User.username.asc())
+        .all()
+    )
+
+    sponsor_users = (
+        db.session.query(
+            User.user_id.label('user_id'),
+            User.username.label('username'),
+            User.email.label('email'),
+            User.is_active.label('is_active'),
+            SponsorOrganization.name.label('sponsor_name'),
+        )
+        .select_from(SponsorUser)
+        .join(User, SponsorUser.user_id == User.user_id)
+        .join(SponsorOrganization, SponsorUser.organization_id == SponsorOrganization.organization_id)
+        .order_by(SponsorOrganization.name.asc(), User.username.asc())
+        .all()
+    )
+
+    driver_users = (
+        db.session.query(User)
+        .filter(User.role_type == RoleType.DRIVER)
+        .order_by(User.username.asc())
+        .all()
+    )
+
+    return admin_users, sponsor_users, driver_users
+
+
+def deactivate_driver_user(user_id: int):
+    user = User.query.get(user_id)
+    if user is None:
+        raise ValueError('Driver user not found')
+    if user.role_type != RoleType.DRIVER:
+        raise ValueError('Selected user is not a driver')
+    if not user.is_active:
+        raise ValueError('Driver user is already deactivated')
+
+    user.is_active = False
+    db.session.commit()
+    return user
+
+
+def deactivate_admin_user(user_id: int):
+    user = User.query.get(user_id)
+    if user is None:
+        raise ValueError('Admin user not found')
+    if user.role_type != RoleType.ADMIN:
+        raise ValueError('Selected user is not an admin')
+    if not user.is_active:
+        raise ValueError('Admin user is already deactivated')
+
+    user.is_active = False
+    db.session.commit()
+    return user
+
+
+def deactivate_sponsor_user(user_id: int):
+    user = User.query.get(user_id)
+    if user is None:
+        raise ValueError('Sponsor user not found')
+    if user.role_type != RoleType.SPONSOR:
+        raise ValueError('Selected user is not a sponsor user')
+    if not user.is_active:
+        raise ValueError('Sponsor user is already deactivated')
+
+    user.is_active = False
+    db.session.commit()
+    return user
+
+
+def get_all_system_users():
+    return (
+        db.session.query(User)
+        .order_by(User.role_type.asc(), User.username.asc())
+        .all()
+    )

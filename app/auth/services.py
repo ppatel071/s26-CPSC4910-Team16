@@ -37,6 +37,8 @@ def authenticate(username: str, password: str) -> User | None:
     user = User.query.filter_by(username=username).first()
     if not user:
         return None
+    if not user.is_active:
+        return None
     if check_password_hash(user.password, password):
         return user
     return None

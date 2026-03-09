@@ -4,38 +4,38 @@
 
 {% block content %}
 <h1>Admin Dashboard</h1>
-<p>Welcome, {{ current_user.first_name or current_user.username }}.</p>
+<h2>Welcome, {{ current_user.first_name or current_user.username }}.</h2>
+
+<h2>Users</h2>
 <p>
-  <a class="button" href="{{ url_for('admin.reports') }}">View Sponsor Reports</a>
+  <a class="button" href="{{ url_for('admin.system_users') }}">System Users</a>
+  <a class="button" href="{{ url_for('admin.remove_users_page') }}">Remove Users</a>
 </p>
-<p>
-  <a class="button" href="{{ url_for('admin.reports') }}#sponsors">View Sponsors List</a>
-</p>
-<p>
-  <a class="button" href="{{ url_for('admin.sales_by_sponsor_report') }}">Sales by Sponsors</a>
-</p>
-<p>
-  <a class="button" href="{{ url_for('admin.sales_by_driver_report') }}">Sales by Drivers</a>
-</p>
-<p>
-  <a class="button" href="{{ url_for('admin.driver_purchases_summary') }}">Driver Purchases Summary</a>
-</p>
+
+<h2>Admins</h2>
 <p>
   <a class="button" href="{{ url_for('admin.profile') }}">View Admin Profile</a>
-</p>
-<p>
   <a class="button" href="{{ url_for('admin.admin_logins') }}">View All Admin Users</a>
-</p>
-<p>
   <a class="button" href="{{ url_for('admin.create_admin_user') }}">Add New Admin User</a>
 </p>
+
+<h2>Sponsors</h2>
 <p>
+  <a class="button" href="{{ url_for('admin.reports') }}#sponsors">View Sponsors List</a>
   <a class="button" href="{{ url_for('admin.sponsor_users_list') }}">View All Sponsor User Details</a>
-</p>
-<p>
   <a class="button" href="{{ url_for('admin.create_sponsor_user') }}">Add New Sponsor User</a>
 </p>
+
+<h2>Drivers</h2>
 <p>
   <a class="button" href="{{ url_for('admin.drivers_list') }}">Manage Drivers</a>
+</p>
+
+<h2>Reports</h2>
+<p>
+  <a class="button" href="{{ url_for('admin.reports') }}">View Sponsor Reports</a>
+  <a class="button" href="{{ url_for('admin.sales_by_sponsor_report') }}">Sales by Sponsors</a>
+  <a class="button" href="{{ url_for('admin.sales_by_driver_report') }}">Sales by Drivers</a>
+  <a class="button" href="{{ url_for('admin.driver_purchases_summary') }}">Driver Purchases Summary</a>
 </p>
 {% endblock %}

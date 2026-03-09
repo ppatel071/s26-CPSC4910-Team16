@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Remove Users{% endblock %}
+
+{% block head %}
+<style>
+  .status-active {
+    color: green;
+    font-weight: 600;
+  }
+  .status-locked {
+    color: darkorange;
+    font-weight: 600;
+  }
+  .status-deactivated {
+    color: red;
+    font-weight: 600;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Remove Users</h1>
+
+{% if message %}
+  <p style="color: green;">{{ message }}</p>
+{% endif %}
+{% if error %}
+  <p style="color: red;">{{ error }}</p>
+{% endif %}
+
+<h2>Admin Users</h2>
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr>
+      <th>Username</th>
+      <th>Email</th>
+      <th>Status</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in admin_users %}
+      <tr>
+        <td>{{ user.username }}</td>
+        <td>{{ user.email or '' }}</td>
+        <td>
+          {% if user.is_active %}
+            <span class="status-active">Active</span>
+          {% else %}
+            <span class="status-deactivated">Deactivated Admin User</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if user.is_active and user.user_id != current_user.user_id %}
+            <form method="POST" action="{{ url_for('admin.deactivate_admin', user_id=user.user_id) }}">
+              <button type="submit" onclick="return confirm('Deactivate this admin user?');">Remove Admin User</button>
+            </form>
+          {% elif user.is_active and user.user_id == current_user.user_id %}
+            Current account
+          {% else %}
+            Already deactivated
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Sponsor Users</h2>
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr>
+      <th>Username</th>
+      <th>Email</th>
+      <th>Sponsor</th>
+      <th>Status</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in sponsor_users %}
+      <tr>
+        <td>{{ row.username }}</td>
+        <td>{{ row.email or '' }}</td>
+        <td>{{ row.sponsor_name }}</td>
+        <td>
+          {% if row.is_active %}
+            <span class="status-active">Active</span>
+          {% else %}
+            <span class="status-deactivated">Deactivated Sponsor User</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if row.is_active %}
+            <form method="POST" action="{{ url_for('admin.deactivate_sponsor', user_id=row.user_id) }}">
+              <button type="submit" onclick="return confirm('Deactivate this sponsor user?');">Remove Sponsor User</button>
+            </form>
+          {% else %}
+            Already deactivated
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Driver Users</h2>
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr>
+      <th>Username</th>
+      <th>Email</th>
+      <th>Status</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in driver_users %}
+      <tr>
+        <td>{{ user.username }}</td>
+        <td>{{ user.email or '' }}</td>
+        <td>
+          {% if user.is_active %}
+            <span class="status-active">Active</span>
+          {% else %}
+            <span class="status-deactivated">Deactivated Driver User</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if user.is_active %}
+            <form method="POST" action="{{ url_for('admin.deactivate_driver', user_id=user.user_id) }}">
+              <button type="submit" onclick="return confirm('Deactivate this driver user?');">Remove Driver User</button>
+            </form>
+          {% else %}
+            Already deactivated
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p>
+  <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+</p>
+{% endblock %}

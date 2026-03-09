@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}System Users{% endblock %}
+
+{% block head %}
+<style>
+  .status-active {
+    color: green;
+    font-weight: 600;
+  }
+  .status-locked {
+    color: darkorange;
+    font-weight: 600;
+  }
+  .status-deactivated {
+    color: red;
+    font-weight: 600;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>System Users</h1>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Username</th>
+      <th>Email</th>
+      <th>Role</th>
+      <th>Status Label</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in users %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ user.username }}</td>
+        <td>{{ user.email or '' }}</td>
+        <td>{{ user.role_type.value }}</td>
+        <td>
+          {% if user.role_type == RoleType.DRIVER and not user.is_active %}
+            <span class="status-deactivated">Deactivated Driver User</span>
+          {% elif user.is_active %}
+            <span class="status-active">Active</span>
+          {% else %}
+            <span class="status-locked">Locked User</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p>
+  <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+</p>
+{% endblock %}
