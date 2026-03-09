@@ -33,6 +33,7 @@
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
     <tr>
+      <th>#</th>
       <th>Username</th>
       <th>Email</th>
       <th>Status</th>
@@ -42,6 +43,7 @@
   <tbody>
     {% for user in admin_users %}
       <tr>
+        <td>{{ loop.index }}</td>
         <td>{{ user.username }}</td>
         <td>{{ user.email or '' }}</td>
         <td>
@@ -71,6 +73,7 @@
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
     <tr>
+      <th>#</th>
       <th>Username</th>
       <th>Email</th>
       <th>Sponsor</th>
@@ -81,6 +84,7 @@
   <tbody>
     {% for row in sponsor_users %}
       <tr>
+        <td>{{ loop.index }}</td>
         <td>{{ row.username }}</td>
         <td>{{ row.email or '' }}</td>
         <td>{{ row.sponsor_name }}</td>
@@ -109,6 +113,7 @@
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
     <tr>
+      <th>#</th>
       <th>Username</th>
       <th>Email</th>
       <th>Status</th>
@@ -118,6 +123,7 @@
   <tbody>
     {% for user in driver_users %}
       <tr>
+        <td>{{ loop.index }}</td>
         <td>{{ user.username }}</td>
         <td>{{ user.email or '' }}</td>
         <td>
