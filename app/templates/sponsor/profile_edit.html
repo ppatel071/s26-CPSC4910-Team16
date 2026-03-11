@@ -6,19 +6,7 @@
 <h1>Edit My Profile</h1>
 
 <form method="POST" action="" onsubmit="return confirm('Are you sure you want to save these changes?');">
-  <label for="username">Username</label><br>
-  <input id="username" name="username" type="text" required value="{{ user.username }}" placeholder="e.g. jsmith123"><br><br>
-
-  <label for="email">Email</label><br>
-  <input id="email" name="email" type="email" value="{{ user.email or '' }}" placeholder="e.g. jsmith@gmail.com"><br><br>
-
-  <label for="first_name">First Name</label><br>
-  <input id="first_name" name="first_name" type="first_name" value="{{ user.first_name or '' }}" placeholder="e.g. John"><br><br>
-
-  <label for="last_name">Last Name</label><br>
-  <input id="last_name" name="last_name" type="last_name" value="{{ user.last_name or '' }}" placeholder="e.g. Smith"><br><br>
-
-  <button type="submit">Save</button>
+  {% include "partials/profile_form.html" with context %}
 </form>
 
 <p><a href="{{ url_for('auth.home') }}">Back to Dashboard</a></p>

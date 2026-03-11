@@ -7,11 +7,15 @@ from app.sponsor.services import (
     update_sponsor_organization,
     create_sponsor_user,
     approve_driver_for_sponsor,
-    get_driver_applications
+    get_driver_applications,
+    validate_and_apply_user_profile_updates,
+    get_organization_drivers,
+    update_driver_profile_for_sponsor,
+    set_driver_status_for_sponsor
 )
 from app.extensions import db
 from app.models import SponsorOrganization, SponsorUser, User, DriverApplication
-from app.models.enums import RoleType, DriverApplicationStatus
+from app.models.enums import RoleType, DriverApplicationStatus, DriverStatus
 
 
 def sponsor_required(f):
@@ -24,9 +28,11 @@ def sponsor_required(f):
         return f(*args, **kwargs)
     return wrapper
 
+
 def sponsor_breadcrumbs(*crumbs):
     base = [("Sponsor Dashboard", url_for("sponsor.dashboard"))]
     return base + list(crumbs)
+
 
 @sponsor_bp.route('/dashboard')
 @login_required
@@ -80,24 +86,23 @@ def profile_edit():
         first_name = request.form.get('first_name', '').strip()
         last_name = request.form.get('last_name', '').strip()
 
-        if not username:
-            return render_template('sponsor/profile_edit.html', user=user, error='Username is required.', breadcrumbs=breadcrumbs)
-
-        existing_username = User.query.filter(User.username == username, User.user_id != user.user_id).first()
-        if existing_username:
-            return render_template('sponsor/profile_edit.html', user=user, error='Username is already in use.', breadcrumbs=breadcrumbs)
-
-        if email:
-            existing_email = User.query.filter(User.email == email, User.user_id != user.user_id).first()
-            if existing_email:
-                return render_template('sponsor/profile_edit.html', user=user, error='Email is already in use.', breadcrumbs=breadcrumbs)
-
-        user.username = username
-        user.email = email
-        user.first_name = first_name
-        user.last_name = last_name
-        db.session.commit()
-        return redirect(url_for('sponsor.profile_edit'))
+        try:
+            validate_and_apply_user_profile_updates(
+                user,
+                username,
+                email,
+                first_name,
+                last_name
+            )
+            db.session.commit()
+            return redirect(url_for('sponsor.profile_edit'))
+        except ValueError as e:
+            return render_template(
+                'sponsor/profile_edit.html',
+                user=user,
+                error=str(e),
+                breadcrumbs=breadcrumbs
+            )
 
     return render_template('sponsor/profile_edit.html', user=user, breadcrumbs=breadcrumbs)
 
@@ -140,7 +145,7 @@ def create_user():
 @sponsor_required
 def get_applications():
     pending_applications, historic_applications = get_driver_applications(current_user.sponsor_user.organization_id)
-    
+
     breadcrumbs = sponsor_breadcrumbs(("Applications", None))
 
     return render_template(
@@ -179,3 +184,86 @@ def decide_application(application_id: int):
     db.session.commit()
 
     return redirect(url_for('sponsor.get_applications'))
+
+
+@sponsor_bp.route('/drivers', methods=['GET', 'POST'])
+@login_required
+@sponsor_required
+def driver_management():
+    org_id = current_user.sponsor_user.organization_id
+    editing_id = request.args.get('editing_id', type=int)
+
+    if request.method == 'POST':
+        action = (request.form.get('action') or '').strip().lower()
+        sponsorship_id = request.form.get('driver_sponsorship_id', type=int)
+        editing_id = sponsorship_id
+
+        if not sponsorship_id:
+            return redirect(url_for('sponsor.driver_management'))
+
+        if action == 'update':
+            username = (request.form.get('username') or '').strip()
+            email = (request.form.get('email') or '').strip() or None
+            first_name = (request.form.get('first_name') or '').strip()
+            last_name = (request.form.get('last_name') or '').strip()
+            try:
+                update_driver_profile_for_sponsor(
+                    org_id,
+                    sponsorship_id,
+                    username,
+                    email,
+                    first_name,
+                    last_name
+                )
+                return redirect(url_for('sponsor.driver_management'))
+            except ValueError as e:
+                breadcrumbs = sponsor_breadcrumbs(("Driver Management", None))
+                drivers = get_organization_drivers(org_id)
+                return render_template(
+                    'sponsor/driver_management.html',
+                    drivers=drivers,
+                    editing_id=editing_id,
+                    error=str(e),
+                    breadcrumbs=breadcrumbs
+                )
+
+        if action == 'drop':
+            try:
+                set_driver_status_for_sponsor(org_id, sponsorship_id, DriverStatus.DROPPED, current_user)
+                return redirect(url_for('sponsor.driver_management'))
+            except ValueError as e:
+                breadcrumbs = sponsor_breadcrumbs(("Driver Management", None))
+                drivers = get_organization_drivers(org_id)
+                return render_template(
+                    'sponsor/driver_management.html',
+                    drivers=drivers,
+                    editing_id=None,
+                    error=str(e),
+                    breadcrumbs=breadcrumbs
+                )
+
+        if action == 'restore':
+            try:
+                set_driver_status_for_sponsor(org_id, sponsorship_id, DriverStatus.ACTIVE, current_user)
+                return redirect(url_for('sponsor.driver_management'))
+            except ValueError as e:
+                breadcrumbs = sponsor_breadcrumbs(("Driver Management", None))
+                drivers = get_organization_drivers(org_id)
+                return render_template(
+                    'sponsor/driver_management.html',
+                    drivers=drivers,
+                    editing_id=None,
+                    error=str(e),
+                    breadcrumbs=breadcrumbs
+                )
+
+        abort(400)
+
+    drivers = get_organization_drivers(org_id)
+    breadcrumbs = sponsor_breadcrumbs(("Driver Management", None))
+    return render_template(
+        'sponsor/driver_management.html',
+        drivers=drivers,
+        editing_id=editing_id,
+        breadcrumbs=breadcrumbs
+    )
