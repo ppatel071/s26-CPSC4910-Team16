@@ -4,6 +4,7 @@ from app.models import User, RoleType, Driver, PasswordChange, PasswordChangeTyp
 from app.extensions import db
 from werkzeug.security import check_password_hash, generate_password_hash
 from typing import Tuple
+from redmail import gmail
 
 
 def validate_complexity(password: str, confpass: str | None = None) -> Tuple[bool, str]:
@@ -84,6 +85,18 @@ def register_user(username: str, password: str, role: RoleType, email: str,
         db.session.commit()
     return user
 
+def send_reset_email(user_email: str):
+    
+    email = (
+        db.session.query(
+            User.email
+        )
+        .filter((User.username == user_email) | (User.email == user_email))
+        .first()
+    )
+
+    if not email:
+        raise ValueError('Email not found')
 
 def reset_user_password(user: User, current_password: str, new_password: str):
     if not check_password_hash(user.password, current_password):

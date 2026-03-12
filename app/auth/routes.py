@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for
 from app.auth import auth_bp
-from app.auth.services import authenticate, register_user, reset_user_password
+from app.auth.services import authenticate, register_user, reset_user_password, send_reset_email
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models.enums import RoleType
 from app.models import AboutPage, User
@@ -72,6 +72,22 @@ def register():
 
     return render_template('register.html')
 
+@auth_bp.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        user_email = request.form.get('user_email')
+
+        try:
+            send_reset_email(user_email)
+            return redirect(url_for('auth.login'))
+        except ValueError as e:
+            return render_template(
+                'forgot_password.html',
+                error=str(e),
+                user_email=user_email
+            )
+
+    return render_template('forgot_password.html')
 
 @auth_bp.route('/about')
 @login_required
