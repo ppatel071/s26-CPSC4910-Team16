@@ -4,6 +4,7 @@ from app.extensions import db
 from app.models.driver_workflow import DriverApplication, Order
 from app.models.organization import SponsorOrganization
 from app.models.enums import DriverApplicationStatus, OrderStatus
+from app.models.driver_application_form import DriverApplicationForm
 from app.driver import driver_bp
 import datetime as dt
 
@@ -12,21 +13,15 @@ import datetime as dt
 @login_required
 def dashboard():
     driver = current_user.driver
-
     organizations = SponsorOrganization.query.all()
     transactions = driver.point_transactions if driver else []
     orders = driver.orders if driver else []
-
-    breadcrumbs = [
-        ("Driver Dashboard", None)
-    ]
 
     return render_template(
         'driver/dashboard.html',
         organizations=organizations,
         transactions=transactions,
-        orders=orders,
-        breadcrumbs=breadcrumbs
+        orders=orders
     )
 
 
@@ -34,37 +29,10 @@ def dashboard():
 @login_required
 def redeem_points():
     driver = current_user.driver
-    amount = int(request.form.get("points"))
+    points = int(request.form.get("points", 0))
 
-    if amount <= 0:
-        return redirect(url_for('driver.dashboard'))
-
-    if driver.point_bal < amount:
-        return redirect(url_for('driver.dashboard'))
-
-    order = Order(
-        driver_id=driver.driver_id,
-        points=amount,
-        order_status=OrderStatus.PENDING,
-        create_time=dt.datetime.utcnow()
-    )
-
-    driver.point_bal -= amount
-
-    db.session.add(order)
-    db.session.commit()
-
-    return redirect(url_for('driver.dashboard'))
-
-
-@driver_bp.route('/cancel/<int:order_id>', methods=['POST'])
-@login_required
-def cancel_order(order_id):
-    order = Order.query.get_or_404(order_id)
-
-    if order.order_status != OrderStatus.CANCELLED:
-        order.order_status = OrderStatus.CANCELLED
-        current_user.driver.point_bal += order.points
+    if points > 0 and driver.point_bal >= points:
+        driver.point_bal -= points
         db.session.commit()
 
     return redirect(url_for('driver.dashboard'))
@@ -126,6 +94,44 @@ def request_sponsor_change(organization_id):
     )
 
     db.session.add(application)
+    db.session.commit()
+
+    return redirect(url_for('driver.dashboard'))
+
+
+@driver_bp.route('/cancel/<int:order_id>', methods=['POST'])
+@login_required
+def cancel_order(order_id):
+    order = Order.query.get_or_404(order_id)
+
+    if order.order_status != OrderStatus.CANCELLED:
+        order.order_status = OrderStatus.CANCELLED
+        current_user.driver.point_bal += order.points
+        db.session.commit()
+
+    return redirect(url_for('driver.dashboard'))
+
+
+@driver_bp.route('/application-form')
+@login_required
+def application_form():
+    return render_template('driver/application_form.html')
+
+
+@driver_bp.route('/submit-application', methods=['POST'])
+@login_required
+def submit_application():
+    driver = current_user.driver
+
+    form = DriverApplicationForm(
+        driver_id=driver.driver_id,
+        full_name=request.form.get("full_name"),
+        phone_number=request.form.get("phone_number"),
+        address=request.form.get("address"),
+        experience=request.form.get("experience")
+    )
+
+    db.session.add(form)
     db.session.commit()
 
     return redirect(url_for('driver.dashboard'))
