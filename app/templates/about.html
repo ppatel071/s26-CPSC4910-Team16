@@ -3,18 +3,18 @@
 {% block title %}About Page{% endblock %}
 
 {% block content %}
-<h1>About</h1>
+<h1 style="text-align: center;">About</h1>
 
-<ul>
-    <li><strong>Team Number:</strong> {{ about.team_num }}</li>
-    <li><strong>Sprint Number:</strong> {{ about.sprint_num }}</li>
-    <li><strong>Release Date:</strong> {{ about.release_date }}</li>
-    <li><strong>Product Name:</strong> {{ about.product_name }}</li>
-    <li><strong>Product Description:</strong> {{ about.product_description }}</li>
-</ul>
+<div class="login" style="text-align: center;">
+    <p style="text-align: center;"><strong>Team Number:</strong> {{ about.team_num }}</p>
+    <p style="text-align: center;"><strong>Sprint Number:</strong> {{ about.sprint_num }}</p>
+    <p style="text-align: center;"><strong>Release Date:</strong> {{ about.release_date }}</p>
+    <p style="text-align: center;"><strong>Product Name:</strong> {{ about.product_name }}</p>
+    <p style="text-align: center;"><strong>Product Description:</strong> {{ about.product_description }}</p>
+</div>
 
 <div class="image-container">
-    <img src="images/test_truck.jpg" alt="Test image of a truck" style="width:128px;height:128px" id="testImg">
+    <img src="images/test_truck.jpg" alt="Test image of a truck" style="width:128px; height:128px;" id="testImg">
     <button class="button" onclick="showAltText('testImg')">
         ALT
     </button>

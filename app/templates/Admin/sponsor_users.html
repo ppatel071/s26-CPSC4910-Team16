@@ -6,7 +6,7 @@
 <h1>Sponsor User Details</h1>
 <p><a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a></p>
 <form method="GET" action="{{ url_for('admin.sponsor_users_list') }}" style="margin: 12px 0;">
-  <label for="username">Search by Username</label>
+  <label for="username">Search by Username:</label>
   <input id="username" name="username" type="text" value="{{ username or '' }}" placeholder="e.g. jsmith">
   <button type="submit">Search</button>
   {% if username %}
@@ -15,7 +15,7 @@
 </form>
 
 {% if rows %}
-  <table>
+  <table border="1" cellpadding="6" cellspacing="0">
     <thead>
       <tr>
         <th>Sponsor</th>

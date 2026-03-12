@@ -1,6 +1,6 @@
 {% if driver_sponsorships %}
 <form method="POST" action="{{ url_for('driver.set_active_sponsorship') }}" style="margin: 12px 0;">
-    <label for="driver_sponsorship_id"><strong>Active Sponsorship:</strong></label>
+    <label style="text-align: center;" for="driver_sponsorship_id"><strong>Active Sponsorship:</strong></label>
     <select id="driver_sponsorship_id" name="driver_sponsorship_id" onchange="this.form.submit()">
         {% for sponsorship in driver_sponsorships %}
             <option
@@ -17,5 +17,5 @@
     </noscript>
 </form>
 {% else %}
-<p><strong>Active Sponsorship:</strong> None</p>
+<p style="text-align: center;"><strong >Active Sponsorship:</strong> None</p>
 {% endif %}

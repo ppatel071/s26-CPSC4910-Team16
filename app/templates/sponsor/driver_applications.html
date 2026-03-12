@@ -6,7 +6,7 @@
 <h1>Pending Driver Applications</h1>
 
 {% if pending_applications %}
-  <table>
+  <table border="1" cellpadding="6" cellspacing="0">
     <thead>
       <tr>
         <th>Driver</th>
@@ -51,9 +51,12 @@
   <p>No pending driver applications.</p>
 {% endif %}
 
+<br>
+<hr>
+
 <h1>Historic Driver Applications</h1>
 {% if historic_applications %}
-  <table>
+  <table border="1" cellpadding="6" cellspacing="0">
     <thead>
       <tr>
         <th>Application ID</th>
@@ -93,5 +96,5 @@
 {% else %}
   <p>No historic driver applications.</p>
 {% endif %}
-<p><a href="{{ url_for('sponsor.dashboard') }}">Back to Dashboard</a></p>
+<p><a class="button" href="{{ url_for('sponsor.dashboard') }}">Back to Dashboard</a></p>
 {% endblock %}
