@@ -1,162 +1,237 @@
 {% extends "base.html" %}
 
 {% block content %}
+
 <style>
-    div.a {
-        text-align: center;
-    }
+.dashboard-container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px;
+}
+
+.dashboard-title {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.section-card {
+    background: white;
+    padding: 25px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.section-title {
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.notification-card {
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    background: #f4f8ff;
+    border-left: 5px solid #4a90e2;
+}
+
+.notification-card.read {
+    background: #f5f5f5;
+    border-left: 5px solid #ccc;
+}
+
+.badge-new {
+    background: #4a90e2;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    float: right;
+}
+
+.points-display {
+    font-size: 32px;
+    font-weight: bold;
+    color: #4a90e2;
+}
+
+.form-inline {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table th {
+    background: #f0f4f8;
+    padding: 10px;
+    text-align: left;
+}
+
+table td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+button {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #4a90e2;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #357ABD;
+}
+
+.sponsor-box {
+    background: #fafafa;
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #eee;
+}
 </style>
 
-<div class="a">
-    <h1>Driver Dashboard</h1>
-</div>
 
-<hr>
+<div class="dashboard-container">
 
-<h2>Apply to Sponsor Program</h2>
+    <div class="dashboard-title">
+        <h1>Driver Dashboard</h1>
+    </div>
 
-<a href="{{ url_for('driver.application_form') }}">
-    <button>Fill Out Application Form</button>
-</a>
+    <!-- Notifications -->
+    <div class="section-card">
+        <div class="section-title">Notifications</div>
 
-<hr>
+        {% if current_user.driver.notifications %}
+            {% for n in current_user.driver.notifications %}
+                <div class="notification-card {% if n.is_read %}read{% endif %}">
+                    {% if not n.is_read %}
+                        <span class="badge-new">NEW</span>
+                    {% endif %}
+                    <strong>{{ n.message }}</strong>
+                    <div style="margin-top:6px; font-size:13px; color:#666;">
+                        {{ n.create_time.strftime('%B %d, %Y at %I:%M %p') }}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p style="color:#777;">No notifications yet.</p>
+        {% endif %}
+    </div>
 
-<h2>Total Points</h2>
-<p><strong>Current Points:</strong> {{ current_user.driver.point_bal }}</p>
+    <!-- Apply -->
+    <div class="section-card">
+        <div class="section-title">Apply to Sponsor Program</div>
+        <a href="{{ url_for('driver.application_form') }}">
+            <button>Fill Out Application Form</button>
+        </a>
+    </div>
 
-<hr>
+    <!-- Points -->
+    <div class="section-card">
+        <div class="section-title">Total Points</div>
+        <div class="points-display">
+            {{ current_user.driver.point_bal }}
+        </div>
+    </div>
 
-<h2>Redeem Points</h2>
+    <!-- Redeem -->
+    <div class="section-card">
+        <div class="section-title">Redeem Points</div>
+        <form method="POST" action="{{ url_for('driver.redeem_points') }}" class="form-inline">
+            <input type="number" name="points" min="1" required>
+            <button type="submit">Redeem</button>
+        </form>
+    </div>
 
-<form method="POST" action="{{ url_for('driver.redeem_points') }}">
-    <input type="number" name="points" min="1" placeholder="Enter points to redeem" required>
-    <button type="submit">Redeem</button>
-</form>
+    <!-- Point Notifications -->
+    <div class="section-card">
+        <div class="section-title">Point Notifications</div>
 
-<hr>
-
-<h2>Point Notifications</h2>
-
-<p>
-    Status:
-    {% if current_user.driver.point_change_alert %}
-        <strong>Enabled</strong>
-    {% else %}
-        <strong>Disabled</strong>
-    {% endif %}
-</p>
-
-<form method="POST" action="{{ url_for('driver.toggle_point_alert') }}">
-    <button type="submit">Toggle Notifications</button>
-</form>
-
-<hr>
-
-<h2>Point History</h2>
-
-<table border="1" cellpadding="6" cellspacing="0">
-    <tr>
-        <th>Date</th>
-        <th>Points Changed</th>
-        <th>Reason</th>
-    </tr>
-
-    {% for t in transactions %}
-    <tr>
-        <td>{{ t.create_time }}</td>
-        <td>{{ t.point_change }}</td>
-        <td>{{ t.reason }}</td>
-    </tr>
-    {% endfor %}
-</table>
-
-<hr>
-
-<h2>My Orders</h2>
-
-<table border="1" cellpadding="6" cellspacing="0">
-    <tr>
-        <th>Order ID</th>
-        <th>Points Used</th>
-        <th>Status</th>
-        <th>Action</th>
-    </tr>
-
-    {% for order in orders %}
-    <tr>
-        <td>{{ order.order_id }}</td>
-        <td>{{ order.points }}</td>
-        <td>{{ order.order_status }}</td>
-        <td>
-            {% if order.order_status.value != "CANCELLED" %}
-            <form method="POST"
-                  action="{{ url_for('driver.cancel_order', order_id=order.order_id) }}">
-                <button type="submit">Cancel</button>
-            </form>
+        <p>
+            Status:
+            {% if current_user.driver.point_change_alert %}
+                <strong style="color:green;">Enabled</strong>
+            {% else %}
+                <strong style="color:red;">Disabled</strong>
             {% endif %}
-        </td>
-    </tr>
-    {% endfor %}
-</table>
+        </p>
 
-<hr>
+        <form method="POST" action="{{ url_for('driver.toggle_point_alert') }}">
+            <button type="submit">Toggle Notifications</button>
+        </form>
+    </div>
 
-<h2>My Sponsor Contact Information</h2>
+    <!-- History -->
+    <div class="section-card">
+        <div class="section-title">Point History</div>
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Points Changed</th>
+                <th>Reason</th>
+            </tr>
+            {% for t in transactions %}
+            <tr>
+                <td>{{ t.create_time }}</td>
+                <td>{{ t.point_change }}</td>
+                <td>{{ t.reason }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
 
-{% if current_user.driver.organization %}
+    <!-- Orders -->
+    <div class="section-card">
+        <div class="section-title">My Orders</div>
+        <table>
+            <tr>
+                <th>Order ID</th>
+                <th>Points Used</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+            {% for order in orders %}
+            <tr>
+                <td>{{ order.order_id }}</td>
+                <td>{{ order.points }}</td>
+                <td>{{ order.order_status }}</td>
+                <td>
+                    {% if order.order_status.value != "CANCELLED" %}
+                    <form method="POST" action="{{ url_for('driver.cancel_order', order_id=order.order_id) }}">
+                        <button type="submit">Cancel</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
 
-<div style="border:1px solid #ccc; padding:15px; width:400px;">
-    <p><strong>Sponsor Name:</strong> {{ current_user.driver.organization.name }}</p>
-    <p><strong>Contact Email:</strong> {{ current_user.driver.organization.contact_email or "Not provided" }}</p>
-    <p><strong>Contact Phone:</strong> {{ current_user.driver.organization.contact_phone or "Not provided" }}</p>
-    <p><strong>Address:</strong> {{ current_user.driver.organization.address or "Not provided" }}</p>
+    <!-- Sponsor Info -->
+    <div class="section-card">
+        <div class="section-title">My Sponsor Contact Information</div>
+
+        {% if current_user.driver.organization %}
+            <div class="sponsor-box">
+                <p><strong>Name:</strong> {{ current_user.driver.organization.name }}</p>
+                <p><strong>Email:</strong> {{ current_user.driver.organization.contact_email or "Not provided" }}</p>
+                <p><strong>Phone:</strong> {{ current_user.driver.organization.contact_phone or "Not provided" }}</p>
+                <p><strong>Address:</strong> {{ current_user.driver.organization.address or "Not provided" }}</p>
+            </div>
+        {% else %}
+            <p>You are not currently assigned to a sponsor organization.</p>
+        {% endif %}
+    </div>
+
 </div>
-
-{% else %}
-<p>You are not currently assigned to a sponsor organization.</p>
-{% endif %}
-
-<hr>
-
-<h2>Available Sponsor Organizations</h2>
-
-{% for org in organizations %}
-    {% if current_user.driver.organization is none or
-          org.organization_id != current_user.driver.organization_id %}
-        <div style="margin-bottom:10px;">
-            <strong>{{ org.name }}</strong>
-
-            <form method="POST"
-                  action="{{ url_for('driver.apply_to_organization', organization_id=org.organization_id) }}">
-                <button type="submit">Apply</button>
-            </form>
-        </div>
-    {% endif %}
-{% endfor %}
-
-<hr>
-
-<h2>Request Sponsor Change</h2>
-
-{% if current_user.driver.organization %}
-<p>
-    <strong>Current Organization:</strong>
-    {{ current_user.driver.organization.name }}
-</p>
-{% endif %}
-
-{% for org in organizations %}
-    {% if current_user.driver.organization is none or
-          org.organization_id != current_user.driver.organization_id %}
-        <div style="margin-bottom:10px;">
-            <strong>{{ org.name }}</strong>
-
-            <form method="POST"
-                  action="{{ url_for('driver.request_sponsor_change', organization_id=org.organization_id) }}">
-                <button type="submit">Request Change</button>
-            </form>
-        </div>
-    {% endif %}
-{% endfor %}
 
 {% endblock %}

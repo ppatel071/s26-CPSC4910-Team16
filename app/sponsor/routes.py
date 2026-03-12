@@ -11,22 +11,23 @@ from app.sponsor.services import (
 )
 from app.extensions import db
 from app.models import SponsorOrganization, SponsorUser, User, DriverApplication
-from app.models.enums import RoleType, DriverApplicationStatus
+from app.models.enums import RoleType, DriverApplicationStatus, NotificationCategory
+from app.models.system import Notification
 
 
 def sponsor_required(f):
-    '''Simple wrapper to ensure sponsor role for sponsor routes'''
     @wraps(f)
     def wrapper(*args, **kwargs):
-        # impersonation logic may work well here
         if current_user.role_type != RoleType.SPONSOR:
             abort(403)
         return f(*args, **kwargs)
     return wrapper
 
+
 def sponsor_breadcrumbs(*crumbs):
     base = [("Sponsor Dashboard", url_for("sponsor.dashboard"))]
     return base + list(crumbs)
+
 
 @sponsor_bp.route('/dashboard')
 @login_required
@@ -42,7 +43,12 @@ def dashboard():
 
     breadcrumbs = [("Sponsor Dashboard", None)]
 
-    return render_template('sponsor/dashboard.html', users=users, num_applications=num_applications, breadcrumbs=breadcrumbs)
+    return render_template(
+        'sponsor/dashboard.html',
+        users=users,
+        num_applications=num_applications,
+        breadcrumbs=breadcrumbs
+    )
 
 
 @sponsor_bp.route('/organization', methods=['GET', 'POST'])
@@ -69,9 +75,7 @@ def organization():
 @login_required
 @sponsor_required
 def profile_edit():
-    assert isinstance(current_user, User)
     user: User = current_user
-
     breadcrumbs = sponsor_breadcrumbs(("Edit Profile", None))
 
     if request.method == 'POST':
@@ -107,7 +111,6 @@ def profile_edit():
 @sponsor_required
 def create_user():
     fields = {'username': '', 'email': '', 'first_name': '', 'last_name': ''}
-
     breadcrumbs = sponsor_breadcrumbs(("Create Sponsor User", None))
 
     if request.method == 'POST':
@@ -116,6 +119,7 @@ def create_user():
         email = request.form.get('email', '').strip()
         first_name = request.form.get('first_name', '').strip()
         last_name = request.form.get('last_name', '').strip()
+
         fields = {
             'username': username,
             'email': email,
@@ -140,7 +144,6 @@ def create_user():
 @sponsor_required
 def get_applications():
     pending_applications, historic_applications = get_driver_applications(current_user.sponsor_user.organization_id)
-    
     breadcrumbs = sponsor_breadcrumbs(("Applications", None))
 
     return render_template(
@@ -157,6 +160,7 @@ def get_applications():
 def decide_application(application_id: int):
     decision = (request.form.get('decision', '') or '').upper()
     reason = (request.form.get('reason', '') or '').strip()
+
     if decision not in ('APPROVED', 'REJECTED'):
         abort(400)
 
@@ -168,14 +172,28 @@ def decide_application(application_id: int):
     if application.status != DriverApplicationStatus.PENDING:
         return redirect(url_for('sponsor.get_applications'))
 
-    decision = DriverApplicationStatus[decision]
-    if decision == DriverApplicationStatus.APPROVED:
-        approve_driver_for_sponsor(application.driver, current_user.sponsor_user.organization_id)
+    decision_enum = DriverApplicationStatus[decision]
 
-    application.status = decision
+    if decision_enum == DriverApplicationStatus.APPROVED:
+        approve_driver_for_sponsor(application.driver, current_user.sponsor_user.organization_id)
+        message = "Your sponsor application has been approved."
+    else:
+        message = "Your sponsor application has been rejected."
+
+    notification = Notification(
+        driver_id=application.driver.driver_id,
+        issued_by_user_id=current_user.user_id,
+        category=NotificationCategory.APPLICATION,
+        message=message,
+        is_read=False
+    )
+
+    application.status = decision_enum
     application.reason = reason
     application.decision_date = dt.datetime.now(tz=dt.timezone.utc)
     application.decided_by_user_id = current_user.user_id
+
+    db.session.add(notification)
     db.session.commit()
 
     return redirect(url_for('sponsor.get_applications'))
