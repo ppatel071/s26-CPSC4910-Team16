@@ -6,10 +6,11 @@
 <h1>Pending Driver Applications</h1>
 
 {% if pending_applications %}
-  <table>
+  <table border="1" cellpadding="6" cellspacing="0">
     <thead>
       <tr>
         <th>Driver</th>
+        <th>Applicant Info</th>
         <th>Submitted</th>
         <th>Status</th>
         <th>Reason</th>
@@ -25,6 +26,12 @@
             {% else %}
               Driver #{{ application.driver_id }}
             {% endif %}
+          </td>
+          <td>
+            <div>{{ application.full_name or '-' }}</div>
+            <div>{{ application.phone_number or '-' }}</div>
+            <div>{{ application.address or '-' }}</div>
+            <div>{{ application.experience or '-' }}</div>
           </td>
           <td>{{ application.create_time }}</td>
           <td>{{ application.status.value }}</td>
@@ -51,13 +58,17 @@
   <p>No pending driver applications.</p>
 {% endif %}
 
+<br>
+<hr>
+
 <h1>Historic Driver Applications</h1>
 {% if historic_applications %}
-  <table>
+  <table border="1" cellpadding="6" cellspacing="0">
     <thead>
       <tr>
         <th>Application ID</th>
         <th>Driver</th>
+        <th>Applicant Info</th>
         <th>Submitted</th>
         <th>Status</th>
         <th>Reason</th>
@@ -76,6 +87,12 @@
               Driver #{{ application.driver_id }}
             {% endif %}
           </td>
+          <td>
+            <div>{{ application.full_name or '-' }}</div>
+            <div>{{ application.phone_number or '-' }}</div>
+            <div>{{ application.address or '-' }}</div>
+            <div>{{ application.experience or '-' }}</div>
+          </td>
           <td>{{ application.create_time }}</td>
           <td>{{ application.status.value }}</td>
           <td>{{ application.reason or '-' }}</td>
@@ -93,5 +110,5 @@
 {% else %}
   <p>No historic driver applications.</p>
 {% endif %}
-<p><a href="{{ url_for('sponsor.dashboard') }}">Back to Dashboard</a></p>
+<p><a class="button" href="{{ url_for('sponsor.dashboard') }}">Back to Dashboard</a></p>
 {% endblock %}

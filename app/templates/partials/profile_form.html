@@ -1,0 +1,38 @@
+{# Reusable profile form fields for user-like entities. #}
+{% set profile_field_prefix = profile_field_prefix|default('') %}
+{% set show_driver_fields = show_driver_fields|default(false) %}
+{% set submit_label = submit_label|default('Save') %}
+{% set cancel_label = cancel_label|default('Cancel') %}
+{% set include_cancel = include_cancel|default(false) %}
+
+{% set id_username = profile_field_prefix ~ 'username' %}
+{% set id_email = profile_field_prefix ~ 'email' %}
+{% set id_first_name = profile_field_prefix ~ 'first_name' %}
+{% set id_last_name = profile_field_prefix ~ 'last_name' %}
+
+<label for="{{ id_username }}">Username</label><br>
+<input id="{{ id_username }}" name="username" type="text" required value="{{ user.username or '' }}" placeholder="e.g. jsmith123"><br><br>
+
+<label for="{{ id_email }}">Email</label><br>
+<input id="{{ id_email }}" name="email" type="email" value="{{ user.email or '' }}" placeholder="e.g. jsmith@gmail.com"><br><br>
+
+<label for="{{ id_first_name }}">First Name</label><br>
+<input id="{{ id_first_name }}" name="first_name" type="text" value="{{ user.first_name or '' }}" placeholder="e.g. John"><br><br>
+
+<label for="{{ id_last_name }}">Last Name</label><br>
+<input id="{{ id_last_name }}" name="last_name" type="text" value="{{ user.last_name or '' }}" placeholder="e.g. Smith"><br><br>
+
+{% if show_driver_fields and sponsorship %}
+<label for="{{ profile_field_prefix }}point_balance">Current Points</label><br>
+<input
+  id="{{ profile_field_prefix }}point_balance"
+  type="number"
+  value="{{ sponsorship.point_balance }}"
+  disabled
+><br><br>
+{% endif %}
+
+<button type="submit">{{ submit_label }}</button>
+{% if include_cancel %}
+  <button type="button" data-edit-cancel>{{ cancel_label }}</button>
+{% endif %}

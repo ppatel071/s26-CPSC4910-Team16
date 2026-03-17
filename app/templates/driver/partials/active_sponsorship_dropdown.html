@@ -1,0 +1,21 @@
+{% if driver_sponsorships %}
+<form method="POST" action="{{ url_for('driver.set_active_sponsorship') }}" style="margin: 12px 0;">
+    <label style="text-align: center;" for="driver_sponsorship_id"><strong>Active Sponsorship:</strong></label>
+    <select id="driver_sponsorship_id" name="driver_sponsorship_id" onchange="this.form.submit()">
+        {% for sponsorship in driver_sponsorships %}
+            <option
+                value="{{ sponsorship.driver_sponsorship_id }}"
+                {% if active_sponsorship and sponsorship.driver_sponsorship_id == active_sponsorship.driver_sponsorship_id %}selected{% endif %}
+            >
+                {{ sponsorship.organization.name if sponsorship.organization else ("Organization #" ~ sponsorship.organization_id) }}
+            </option>
+        {% endfor %}
+    </select>
+    <input type="hidden" name="next" value="{{ request.path }}">
+    <noscript>
+        <button type="submit">Update</button>
+    </noscript>
+</form>
+{% else %}
+<p style="text-align: center;"><strong >Active Sponsorship:</strong> None</p>
+{% endif %}

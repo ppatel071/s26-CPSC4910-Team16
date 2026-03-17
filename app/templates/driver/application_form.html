@@ -6,6 +6,20 @@
 <hr>
 
 <form method="POST" action="{{ url_for('driver.submit_application') }}">
+    <p>
+        <label>Sponsor Organization:</label><br>
+        <select name="organization_id" required>
+            <option value="">Select an organization</option>
+            {% for org in available_organizations %}
+                <option
+                    value="{{ org.organization_id }}"
+                    {% if selected_organization_id == org.organization_id %}selected{% endif %}
+                >
+                    {{ org.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </p>
 
     <p>
         <label>Full Name:</label><br>
@@ -30,5 +44,9 @@
     <button type="submit">Submit Application</button>
 
 </form>
+
+{% if not available_organizations %}
+    <p>No sponsor organizations are currently available for application.</p>
+{% endif %}
 
 {% endblock %}

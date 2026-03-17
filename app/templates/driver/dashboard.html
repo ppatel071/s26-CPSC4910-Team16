@@ -24,7 +24,7 @@
     padding: 25px;
     margin-bottom: 25px;
     border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .section-title {
@@ -61,12 +61,6 @@
     color: #4a90e2;
 }
 
-.form-inline {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
 .search-bar {
     display: flex;
     gap: 10px;
@@ -99,7 +93,7 @@ button {
 }
 
 button:hover {
-    background: #357ABD;
+    background: #357abd;
 }
 
 .sponsor-box {
@@ -118,23 +112,23 @@ button:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
 }
 </style>
 
 <div class="dashboard-container">
-
     <div class="dashboard-title">
         <h1>Driver Dashboard</h1>
     </div>
 
-    <!-- Account Settings -->
+    {% include "driver/partials/active_sponsorship_dropdown.html" %}
+
     <div class="account-btn">
         <a href="{{ url_for('driver.account_settings') }}">
             <button>Account Settings</button>
         </a>
     </div>
 
-    <!-- Notifications -->
     <div class="section-card">
         <div class="section-title">Notifications</div>
 
@@ -145,50 +139,31 @@ button:hover {
                         <span class="badge-new">NEW</span>
                     {% endif %}
                     <strong>{{ n.message }}</strong>
-                    <div style="margin-top:6px; font-size:13px; color:#666;">
+                    <div style="margin-top: 6px; font-size: 13px; color: #666;">
                         {{ n.create_time.strftime('%B %d, %Y at %I:%M %p') }}
                     </div>
                 </div>
             {% endfor %}
         {% else %}
-            <p style="color:#777;">No notifications yet.</p>
+            <p style="color: #777;">No notifications yet.</p>
         {% endif %}
     </div>
 
-    <!-- Apply -->
-    <div class="section-card">
-        <div class="section-title">Apply to Sponsor Program</div>
-        <a href="{{ url_for('driver.application_form') }}">
-            <button>Fill Out Application Form</button>
-        </a>
-    </div>
-
-    <!-- Total Points -->
     <div class="section-card">
         <div class="section-title">Total Points</div>
         <div class="points-display">
-            {{ current_user.driver.point_bal }}
+            {{ active_sponsorship.point_balance if active_sponsorship else 0 }}
         </div>
     </div>
 
-    <!-- Redeem -->
-    <div class="section-card">
-        <div class="section-title">Redeem Points</div>
-        <form method="POST" action="{{ url_for('driver.redeem_points') }}" class="form-inline">
-            <input type="number" name="points" min="1" required>
-            <button type="submit">Redeem</button>
-        </form>
-    </div>
-
-    <!-- Point Notifications -->
     <div class="section-card">
         <div class="section-title">Point Notifications</div>
         <p>
             Status:
             {% if current_user.driver.point_change_alert %}
-                <strong style="color:green;">Enabled</strong>
+                <strong style="color: green;">Enabled</strong>
             {% else %}
-                <strong style="color:red;">Disabled</strong>
+                <strong style="color: red;">Disabled</strong>
             {% endif %}
         </p>
         <form method="POST" action="{{ url_for('driver.toggle_point_alert') }}">
@@ -196,7 +171,6 @@ button:hover {
         </form>
     </div>
 
-    <!-- Point History -->
     <div class="section-card">
         <div class="section-title">Point History</div>
         <table>
@@ -206,26 +180,25 @@ button:hover {
                 <th>Reason</th>
             </tr>
             {% for t in transactions %}
-            <tr>
-                <td>{{ t.create_time }}</td>
-                <td>{{ t.point_change }}</td>
-                <td>{{ t.reason }}</td>
-            </tr>
+                <tr>
+                    <td>{{ t.create_time }}</td>
+                    <td>{{ t.point_change }}</td>
+                    <td>{{ t.reason }}</td>
+                </tr>
             {% endfor %}
         </table>
     </div>
 
-    <!-- Orders -->
     <div class="section-card">
         <div class="section-title">My Orders</div>
 
         <form method="GET" class="search-bar">
-            <input type="text" name="search" placeholder="Search by Order ID">
+            <input type="text" name="search" placeholder="Search by Order ID" value="{{ search_query }}">
             <select name="status">
                 <option value="">All Status</option>
-                <option value="PENDING">Pending</option>
-                <option value="APPROVED">Approved</option>
-                <option value="CANCELLED">Cancelled</option>
+                <option value="PENDING" {% if status_filter == 'PENDING' %}selected{% endif %}>Pending</option>
+                <option value="COMPLETED" {% if status_filter == 'COMPLETED' %}selected{% endif %}>Completed</option>
+                <option value="CANCELLED" {% if status_filter == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
             </select>
             <button type="submit">Filter</button>
         </form>
@@ -238,79 +211,71 @@ button:hover {
                 <th>Action</th>
             </tr>
             {% for order in orders %}
-            <tr>
-                <td>{{ order.order_id }}</td>
-                <td>{{ order.points }}</td>
-                <td>{{ order.order_status }}</td>
-                <td>
-                    {% if order.order_status.value != "CANCELLED" %}
-                    <form method="POST" action="{{ url_for('driver.cancel_order', order_id=order.order_id) }}">
-                        <button type="submit">Cancel</button>
-                    </form>
-                    {% endif %}
-                </td>
-            </tr>
+                <tr>
+                    <td>{{ order.order_id }}</td>
+                    <td>{{ order.points }}</td>
+                    <td>{{ order.order_status.value }}</td>
+                    <td>
+                        {% if order.order_status.value != "CANCELLED" %}
+                            <form method="POST" action="{{ url_for('driver.cancel_order', order_id=order.order_id) }}">
+                                <button type="submit">Cancel</button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
             {% endfor %}
         </table>
     </div>
 
-    <!-- Sponsor Contact Info -->
     <div class="section-card">
         <div class="section-title">My Sponsor Contact Information</div>
 
-        {% if current_user.driver.organization %}
+        {% if active_sponsorship and active_sponsorship.organization %}
             <div class="sponsor-box">
-                <p><strong>Name:</strong> {{ current_user.driver.organization.name }}</p>
-                <p><strong>Email:</strong> {{ current_user.driver.organization.contact_email or "Not provided" }}</p>
-                <p><strong>Phone:</strong> {{ current_user.driver.organization.contact_phone or "Not provided" }}</p>
-                <p><strong>Address:</strong> {{ current_user.driver.organization.address or "Not provided" }}</p>
+                <p><strong>Name:</strong> {{ active_sponsorship.organization.name }}</p>
+                <p><strong>Email:</strong> {{ active_sponsorship.organization.contact_email or "Not provided" }}</p>
+                <p><strong>Phone:</strong> {{ active_sponsorship.organization.contact_phone or "Not provided" }}</p>
+                <p><strong>Address:</strong> {{ active_sponsorship.organization.address or "Not provided" }}</p>
             </div>
         {% else %}
             <p>You are not currently assigned to a sponsor organization.</p>
         {% endif %}
     </div>
 
-    <!-- Available Organizations -->
+    <div class="section-card">
+        <div class="section-title">Pending Applications</div>
+
+        {% if pending_applications %}
+            {% for application in pending_applications %}
+                <div class="org-card">
+                    <div>
+                        <strong>{{ application.organization.name if application.organization else ('Organization #' ~ application.organization_id) }}</strong>
+                        <div>Submitted {{ application.create_time }}</div>
+                    </div>
+                    <div>{{ application.status.value }}</div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No pending sponsor applications.</p>
+        {% endif %}
+    </div>
+
     <div class="section-card">
         <div class="section-title">Available Sponsor Organizations</div>
 
-        {% for org in organizations %}
-            {% if current_user.driver.organization is none or
-                  org.organization_id != current_user.driver.organization_id %}
+        {% if available_organizations %}
+            {% for org in available_organizations %}
                 <div class="org-card">
                     <strong>{{ org.name }}</strong>
-                    <form method="POST"
-                          action="{{ url_for('driver.apply_to_organization', organization_id=org.organization_id) }}">
+                    <form method="POST" action="{{ url_for('driver.apply_to_organization', organization_id=org.organization_id) }}">
                         <button type="submit">Apply</button>
                     </form>
                 </div>
-            {% endif %}
-        {% endfor %}
-    </div>
-
-    <!-- Request Sponsor Change -->
-    <div class="section-card">
-        <div class="section-title">Request Sponsor Change</div>
-
-        {% if current_user.driver.organization %}
-            <p><strong>Current Organization:</strong>
-               {{ current_user.driver.organization.name }}</p>
+            {% endfor %}
+        {% else %}
+            <p>No additional sponsor organizations are currently available.</p>
         {% endif %}
-
-        {% for org in organizations %}
-            {% if current_user.driver.organization is none or
-                  org.organization_id != current_user.driver.organization_id %}
-                <div class="org-card">
-                    <strong>{{ org.name }}</strong>
-                    <form method="POST"
-                          action="{{ url_for('driver.request_sponsor_change', organization_id=org.organization_id) }}">
-                        <button type="submit">Request Change</button>
-                    </form>
-                </div>
-            {% endif %}
-        {% endfor %}
     </div>
-
 </div>
 
 {% endblock %}

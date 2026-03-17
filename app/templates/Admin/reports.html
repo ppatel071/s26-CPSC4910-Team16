@@ -8,11 +8,15 @@
   <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
 </p>
 
+<hr>
+
 <h2>Sales by Sponsor</h2>
 <p>
   <a class="button" href="{{ url_for('admin.sales_by_sponsor_report') }}">Summary</a>
   <a class="button" href="{{ url_for('admin.sales_by_sponsor_report', detail=1) }}">Detailed</a>
 </p>
+
+<hr>
 
 <h2>Sales by Driver</h2>
 <p>
@@ -20,10 +24,14 @@
   <a class="button" href="{{ url_for('admin.sales_by_driver_report', detail=1) }}">Detailed</a>
 </p>
 
+<hr>
+
     <h2>Driver Purchases Summary</h2>
 <p>
   <a class="button" href="{{ url_for('admin.driver_purchases_summary') }}">Run Summary</a>
 </p>
+
+<hr>
 
 <h2 id="sponsors">Sponsors</h2>
 <p>
@@ -32,10 +40,10 @@
 {% if sponsors %}
   <ul>
     {% for sponsor in sponsors %}
-      <li>
+      <li style="margin-bottom: 10px">
         <strong>{{ sponsor.name }}</strong>
         (ID: {{ sponsor.organization_id }})
-        - <a href="{{ url_for('admin.edit_sponsor', organization_id=sponsor.organization_id) }}">Edit</a>
+        - <a class="button" href="{{ url_for('admin.edit_sponsor', organization_id=sponsor.organization_id) }}">Edit</a>
       </li>
     {% endfor %}
   </ul>

@@ -13,6 +13,9 @@ if TYPE_CHECKING:
 class Notification(db.Model):
     __tablename__ = 'notifications'
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
     notification_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     driver_id: Mapped[int] = mapped_column(ForeignKey('drivers.driver_id', ondelete='CASCADE'), nullable=False)
     issued_by_user_id: Mapped[int | None] = mapped_column(ForeignKey('users.user_id', ondelete='SET NULL'))
@@ -26,6 +29,9 @@ class Notification(db.Model):
 
 class AboutPage(db.Model):
     __tablename__ = 'about_page'
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
     team_num: Mapped[int] = mapped_column(primary_key=True)
     sprint_num: Mapped[int] = mapped_column(nullable=False)

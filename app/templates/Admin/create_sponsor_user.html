@@ -16,7 +16,7 @@
 
   <p>
     <label for="email">Email</label><br>
-    <input id="email" name="email" type="text" value="{{ email or '' }}" placeholder="e.g. jsmith123@gmail.com" required>
+    <input id="email" name="email" type="email" value="{{ email or '' }}" placeholder="e.g. jsmith123@gmail.com" required>
   </p>
 
   <p>
@@ -30,7 +30,7 @@
   </p>
 
   <p>
-    <button class="button" type="submit">Create Sponsor</button>
+    <button type="submit">Create Sponsor</button> <br> <br>
     <a class="button" href="{{ url_for('admin.sponsor_users_list') }}">Back to Sponsor Users</a>
   </p>
 </form>

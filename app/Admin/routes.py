@@ -19,6 +19,11 @@ from app.Admin.services import (
     admin_update_own_profile,
     get_all_sponsor_users,
     create_sponsor_account,
+    get_users_for_removal_page,
+    deactivate_driver_user,
+    deactivate_admin_user,
+    deactivate_sponsor_user,
+    get_all_system_users,
 )
 
 
@@ -297,3 +302,67 @@ def create_sponsor_user():
             )
 
     return render_template('Admin/create_sponsor_user.html')
+
+
+@admin_bp.route('/users/remove')
+@login_required
+@admin_required
+def remove_users_page():
+    admin_users, sponsor_users, driver_users = get_users_for_removal_page()
+    breadcrumbs = admin_breadcrumbs(("Remove Users", None))
+    message = request.args.get('message')
+    error = request.args.get('error')
+
+    return render_template(
+        'Admin/remove_users.html',
+        admin_users=admin_users,
+        sponsor_users=sponsor_users,
+        driver_users=driver_users,
+        message=message,
+        error=error,
+        breadcrumbs=breadcrumbs,
+    )
+
+
+@admin_bp.route('/users/drivers/<int:user_id>/deactivate', methods=['POST'])
+@login_required
+@admin_required
+def deactivate_driver(user_id):
+    try:
+        deactivate_driver_user(user_id)
+        return redirect(url_for('admin.remove_users_page', message='Driver user deactivated'))
+    except ValueError as e:
+        return redirect(url_for('admin.remove_users_page', error=str(e)))
+
+
+@admin_bp.route('/users/admins/<int:user_id>/deactivate', methods=['POST'])
+@login_required
+@admin_required
+def deactivate_admin(user_id):
+    if current_user.user_id == user_id:
+        return redirect(url_for('admin.remove_users_page', error='You cannot deactivate your own admin account'))
+    try:
+        deactivate_admin_user(user_id)
+        return redirect(url_for('admin.remove_users_page', message='Admin user deactivated'))
+    except ValueError as e:
+        return redirect(url_for('admin.remove_users_page', error=str(e)))
+
+
+@admin_bp.route('/users/sponsors/<int:user_id>/deactivate', methods=['POST'])
+@login_required
+@admin_required
+def deactivate_sponsor(user_id):
+    try:
+        deactivate_sponsor_user(user_id)
+        return redirect(url_for('admin.remove_users_page', message='Sponsor user deactivated'))
+    except ValueError as e:
+        return redirect(url_for('admin.remove_users_page', error=str(e)))
+
+
+@admin_bp.route('/system-users')
+@login_required
+@admin_required
+def system_users():
+    users = get_all_system_users()
+    breadcrumbs = admin_breadcrumbs(("System Users", None))
+    return render_template('Admin/system_users.html', users=users, RoleType=RoleType, breadcrumbs=breadcrumbs)

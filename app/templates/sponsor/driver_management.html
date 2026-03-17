@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+
+{% block title %}Driver Management{% endblock %}
+
+{% block content %}
+<h1>Driver Management</h1>
+
+<div style="margin-bottom: 12px;">
+  <label for="driver-search">Search by name or email:</label>
+  <input id="driver-search" type="text" placeholder="Search drivers">
+
+  <label for="status-filter" style="margin-left: 12px;">Status:</label>
+  <select id="status-filter">
+    <option value="ACTIVE" selected>Active</option>
+    <option value="DROPPED">Dropped</option>
+    <option value="ALL">All</option>
+  </select>
+</div>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width: 100%;">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Status</th>
+      <th>Point Balance</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="driver-table-body">
+    {% for sponsorship in drivers %}
+      {% set driver_user = sponsorship.driver.user %}
+      {% set display_name = (driver_user.first_name ~ ' ' ~ driver_user.last_name).strip() %}
+      {% if not display_name %}
+        {% set display_name = driver_user.username %}
+      {% endif %}
+      <tr
+        class="driver-row"
+        data-sponsorship-id="{{ sponsorship.driver_sponsorship_id }}"
+        data-status="{{ sponsorship.status.value }}"
+        data-search="{{ (display_name ~ ' ' ~ (driver_user.email or '') ~ ' ' ~ driver_user.username)|lower }}"
+      >
+        <td>{{ display_name }}</td>
+        <td>{{ driver_user.email or 'N/A' }}</td>
+        <td>{{ sponsorship.status.value.title() }}</td>
+        <td>{{ sponsorship.point_balance }}</td>
+        <td>
+          {% if sponsorship.status.value == 'ACTIVE' %}
+            <button type="button" class="button edit-btn" data-sponsorship-id="{{ sponsorship.driver_sponsorship_id }}">
+              Edit
+            </button>
+            <button
+              type="button"
+              class="button drop-btn"
+              data-sponsorship-id="{{ sponsorship.driver_sponsorship_id }}"
+              data-driver-name="{{ display_name }}"
+            >
+              Drop
+            </button>
+          {% elif sponsorship.status.value == 'DROPPED' %}
+            <button
+              type="button"
+              class="button restore-btn"
+              data-sponsorship-id="{{ sponsorship.driver_sponsorship_id }}"
+              data-driver-name="{{ display_name }}"
+            >
+              Restore
+            </button>
+          {% endif %}
+        </td>
+      </tr>
+      <tr
+        class="edit-row"
+        id="edit-row-{{ sponsorship.driver_sponsorship_id }}"
+        data-status="{{ sponsorship.status.value }}"
+        data-editing-for="{{ sponsorship.driver_sponsorship_id }}"
+        {% if editing_id != sponsorship.driver_sponsorship_id %}style="display: none;"{% endif %}
+      >
+        <td colspan="5">
+          <strong>Edit Driver: {{ display_name }}</strong>
+          <form
+            method="POST"
+            action="{{ url_for('sponsor.driver_management') }}"
+            class="driver-edit-form"
+            data-edit-form="true"
+          >
+            <input type="hidden" name="action" value="update">
+            <input type="hidden" name="driver_sponsorship_id" value="{{ sponsorship.driver_sponsorship_id }}">
+            {% with
+              user=driver_user,
+              profile_field_prefix='driver_' ~ sponsorship.driver_sponsorship_id ~ '_',
+              show_driver_fields=true,
+              sponsorship=sponsorship,
+              submit_label='Save',
+              include_cancel=true,
+              cancel_label='Cancel'
+            %}
+              {% include "partials/profile_form.html" %}
+            {% endwith %}
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p id="empty-drivers-message" style="display: none; margin-top: 12px;">No drivers match your current filter.</p>
+
+<form id="status-action-form" method="POST" action="{{ url_for('sponsor.driver_management') }}" style="display: none;">
+  <input type="hidden" name="action" id="status-action-input">
+  <input type="hidden" name="driver_sponsorship_id" id="status-action-sponsorship-id">
+</form>
+
+<dialog id="confirm-action-modal">
+  <p id="confirm-action-message"></p>
+  <div>
+    <button type="button" id="confirm-action-yes">Confirm</button>
+    <button type="button" id="confirm-action-no">Cancel</button>
+  </div>
+</dialog>
+
+<dialog id="unsaved-modal">
+  <p>You have unsaved edits. What do you want to do?</p>
+  <div>
+    <button type="button" id="unsaved-save">Save</button>
+    <button type="button" id="unsaved-discard">Discard</button>
+    <button type="button" id="unsaved-cancel">Cancel</button>
+  </div>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+(() => {
+  const searchInput = document.getElementById("driver-search");
+  const statusFilter = document.getElementById("status-filter");
+  const tableBody = document.getElementById("driver-table-body");
+  const emptyMessage = document.getElementById("empty-drivers-message");
+
+  const actionForm = document.getElementById("status-action-form");
+  const actionInput = document.getElementById("status-action-input");
+  const actionSponsorshipInput = document.getElementById("status-action-sponsorship-id");
+  const confirmModal = document.getElementById("confirm-action-modal");
+  const confirmMessage = document.getElementById("confirm-action-message");
+  const confirmYesBtn = document.getElementById("confirm-action-yes");
+  const confirmNoBtn = document.getElementById("confirm-action-no");
+
+  const unsavedModal = document.getElementById("unsaved-modal");
+  const unsavedSaveBtn = document.getElementById("unsaved-save");
+  const unsavedDiscardBtn = document.getElementById("unsaved-discard");
+  const unsavedCancelBtn = document.getElementById("unsaved-cancel");
+
+  const driverRows = Array.from(tableBody.querySelectorAll(".driver-row"));
+  let activeEditForm = null;
+  let pendingAction = null;
+  let bypassUnsavedPrompt = false;
+  let previousStatusFilter = statusFilter.value;
+
+  function isFormDirty(form) {
+    if (!form) return false;
+    return form.dataset.initialSnapshot !== snapshotForm(form);
+  }
+
+  function snapshotForm(form) {
+    const data = new FormData(form);
+    const serialized = [];
+    for (const pair of data.entries()) {
+      serialized.push(pair[0] + "=" + pair[1]);
+    }
+    return serialized.join("&");
+  }
+
+  function setFormSnapshots() {
+    const forms = document.querySelectorAll(".driver-edit-form");
+    forms.forEach((form) => {
+      form.dataset.initialSnapshot = snapshotForm(form);
+    });
+  }
+
+  function applyFilters() {
+    const term = (searchInput.value || "").trim().toLowerCase();
+    const status = statusFilter.value;
+    let visibleCount = 0;
+
+    driverRows.forEach((row) => {
+      const rowStatus = row.dataset.status;
+      const rowSearch = row.dataset.search || "";
+      const statusMatch = status === "ALL" || rowStatus === status;
+      const searchMatch = !term || rowSearch.includes(term);
+      const visible = statusMatch && searchMatch;
+
+      row.style.display = visible ? "" : "none";
+
+      const editRow = document.getElementById("edit-row-" + row.dataset.sponsorshipId);
+      if (!visible && editRow) {
+        editRow.style.display = "none";
+      }
+
+      if (visible) {
+        visibleCount += 1;
+      }
+    });
+
+    emptyMessage.style.display = visibleCount === 0 ? "" : "none";
+  }
+  
+  function closeAllEditRows() {
+    document.querySelectorAll(".edit-row").forEach((row) => {
+      row.style.display = "none";
+    });
+    activeEditForm = null;
+  }
+
+  function openEditRow(sponsorshipId) {
+    closeAllEditRows();
+    const row = document.getElementById("edit-row-" + sponsorshipId);
+    if (row) {
+      row.style.display = "";
+      activeEditForm = row.querySelector(".driver-edit-form");
+    }
+  }
+
+  function withUnsavedGuard(nextStep) {
+    if (!isFormDirty(activeEditForm)) {
+      nextStep();
+      return;
+    }
+    pendingAction = nextStep;
+    unsavedModal.showModal();
+  }
+
+  function submitStatusAction(action, sponsorshipId) {
+    actionInput.value = action;
+    actionSponsorshipInput.value = sponsorshipId;
+    bypassUnsavedPrompt = true;
+    actionForm.submit();
+  }
+
+  searchInput.addEventListener("input", applyFilters);
+  statusFilter.addEventListener("change", () => {
+    const requestedFilter = statusFilter.value;
+    withUnsavedGuard(() => {
+      previousStatusFilter = requestedFilter;
+      applyFilters();
+    });
+    if (isFormDirty(activeEditForm)) {
+      statusFilter.value = previousStatusFilter;
+    }
+  });
+
+  tableBody.addEventListener("click", (event) => {
+    const editBtn = event.target.closest(".edit-btn");
+    if (editBtn) {
+      const sponsorshipId = editBtn.dataset.sponsorshipId;
+      withUnsavedGuard(() => openEditRow(sponsorshipId));
+      return;
+    }
+
+    const dropBtn = event.target.closest(".drop-btn");
+    if (dropBtn) {
+      const sponsorshipId = dropBtn.dataset.sponsorshipId;
+      const driverName = dropBtn.dataset.driverName || "this driver";
+      withUnsavedGuard(() => {
+        confirmMessage.textContent = `Drop ${driverName}? This will set status to Dropped.`;
+        confirmModal.showModal();
+        confirmYesBtn.onclick = () => {
+          confirmModal.close();
+          submitStatusAction("drop", sponsorshipId);
+        };
+      });
+      return;
+    }
+
+    const restoreBtn = event.target.closest(".restore-btn");
+    if (restoreBtn) {
+      const sponsorshipId = restoreBtn.dataset.sponsorshipId;
+      const driverName = restoreBtn.dataset.driverName || "this driver";
+      withUnsavedGuard(() => {
+        confirmMessage.textContent = `Restore ${driverName} to Active status?`;
+        confirmModal.showModal();
+        confirmYesBtn.onclick = () => {
+          confirmModal.close();
+          submitStatusAction("restore", sponsorshipId);
+        };
+      });
+      return;
+    }
+
+    const cancelBtn = event.target.closest("[data-edit-cancel]");
+    if (cancelBtn) {
+      const form = cancelBtn.closest(".driver-edit-form");
+      if (isFormDirty(form)) {
+        pendingAction = () => {
+          form.reset();
+          form.dataset.initialSnapshot = snapshotForm(form);
+          closeAllEditRows();
+        };
+        unsavedModal.showModal();
+      } else {
+        closeAllEditRows();
+      }
+    }
+  });
+
+  confirmNoBtn.addEventListener("click", () => {
+    confirmModal.close();
+  });
+
+  unsavedSaveBtn.addEventListener("click", () => {
+    if (activeEditForm) {
+      pendingAction = null;
+      unsavedModal.close();
+      bypassUnsavedPrompt = true;
+      activeEditForm.submit();
+    }
+  });
+
+  unsavedDiscardBtn.addEventListener("click", () => {
+    unsavedModal.close();
+    if (activeEditForm) {
+      activeEditForm.reset();
+      activeEditForm.dataset.initialSnapshot = snapshotForm(activeEditForm);
+    }
+    if (pendingAction) {
+      const action = pendingAction;
+      pendingAction = null;
+      action();
+    }
+  });
+
+  unsavedCancelBtn.addEventListener("click", () => {
+    pendingAction = null;
+    unsavedModal.close();
+  });
+
+  window.addEventListener("beforeunload", (event) => {
+    if (bypassUnsavedPrompt) return;
+    if (isFormDirty(activeEditForm)) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+  });
+
+  document.addEventListener("click", (event) => {
+    if (bypassUnsavedPrompt) return;
+    if (!isFormDirty(activeEditForm)) return;
+
+    const target = event.target;
+    const isInsideEditForm = activeEditForm && activeEditForm.contains(target);
+    const isUnsavedModalAction = unsavedModal.contains(target);
+    if (isInsideEditForm || isUnsavedModalAction) {
+      return;
+    }
+
+    const link = target.closest("a");
+    if (link) {
+      event.preventDefault();
+      pendingAction = () => {
+        bypassUnsavedPrompt = true;
+        window.location.href = link.href;
+      };
+      unsavedModal.showModal();
+    }
+  });
+  document.querySelectorAll(".driver-edit-form").forEach((form) => {
+    form.addEventListener("submit", () => {
+      bypassUnsavedPrompt = true;
+    });
+  });
+  setFormSnapshots();
+  const openEditRowElement = Array.from(document.querySelectorAll(".edit-row")).find(
+    (row) => row.style.display !== "none"
+  );
+  if (openEditRowElement) {
+    activeEditForm = openEditRowElement.querySelector(".driver-edit-form");
+  }
+  applyFilters();
+})();
+</script>
+{% endblock %}

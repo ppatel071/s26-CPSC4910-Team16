@@ -1,9 +1,10 @@
 # Business logic for the auth routes
 import re
-from app.models import User, RoleType, Driver, DriverStatus, PasswordChange, PasswordChangeType
+from app.models import User, RoleType, Driver, PasswordChange, PasswordChangeType
 from app.extensions import db
 from werkzeug.security import check_password_hash, generate_password_hash
 from typing import Tuple
+from redmail import gmail
 
 
 def validate_complexity(password: str, confpass: str | None = None) -> Tuple[bool, str]:
@@ -36,6 +37,8 @@ def check_unique(username: str, email: str) -> Tuple[bool, str]:
 def authenticate(username: str, password: str) -> User | None:
     user = User.query.filter_by(username=username).first()
     if not user:
+        return None
+    if not user.is_active:
         return None
     if check_password_hash(user.password, password):
         return user
@@ -76,8 +79,6 @@ def register_user(username: str, password: str, role: RoleType, email: str,
     if role == RoleType.DRIVER:
         driver = Driver(
             user_id=user.user_id,
-            point_bal=0,
-            account_status=DriverStatus.PENDING
         )
 
         db.session.add(driver)
@@ -85,7 +86,20 @@ def register_user(username: str, password: str, role: RoleType, email: str,
     return user
 
 
-def reset_user_password(user : User, current_password: str, new_password: str):
+def send_reset_email(user_email: str):
+    email = (
+        db.session.query(
+            User.email
+        )
+        .filter((User.username == user_email) | (User.email == user_email))
+        .first()
+    )
+
+    if not email:
+        raise ValueError('Email not found')
+
+
+def reset_user_password(user: User, current_password: str, new_password: str):
     if not check_password_hash(user.password, current_password):
         raise ValueError('Current password is incorrect')
 

@@ -1,4 +1,5 @@
 from decimal import Decimal, InvalidOperation
+from typing import Tuple, List
 from app.extensions import db
 from app.models import (
     SponsorOrganization,
@@ -6,12 +7,70 @@ from app.models import (
     User,
     RoleType,
     Driver,
+    DriverSponsorship,
     DriverStatus,
     DriverApplication,
-    DriverApplicationStatus
+    DriverApplicationStatus,
+    Notification,
+    NotificationCategory
 )
 from app.auth.services import register_user
-from typing import Tuple, List
+
+
+def normalize_profile_fields(
+    username: str,
+    email: str | None,
+    first_name: str,
+    last_name: str
+) -> tuple[str, str | None, str, str]:
+    clean_username = (username or '').strip()
+    clean_email = (email or '').strip().lower()
+    clean_first = (first_name or '').strip()
+    clean_last = (last_name or '').strip()
+
+    if clean_email == '':
+        clean_email = None
+
+    return clean_username, clean_email, clean_first, clean_last
+
+
+def validate_and_apply_user_profile_updates(
+    user: User,
+    username: str,
+    email: str | None,
+    first_name: str,
+    last_name: str
+) -> User:
+    clean_username, clean_email, clean_first, clean_last = normalize_profile_fields(
+        username,
+        email,
+        first_name,
+        last_name
+    )
+
+    if not clean_username:
+        raise ValueError('Username is required.')
+
+    existing_username = User.query.filter(
+        User.username == clean_username,
+        User.user_id != user.user_id
+    ).first()
+    if existing_username:
+        raise ValueError('Username is already in use.')
+
+    if clean_email:
+        existing_email = User.query.filter(
+            User.email == clean_email,
+            User.user_id != user.user_id
+        ).first()
+        if existing_email:
+            raise ValueError('Email is already in use.')
+
+    user.username = clean_username
+    user.email = clean_email
+    user.first_name = clean_first
+    user.last_name = clean_last
+    return user
 
 
 def update_sponsor_organization(
@@ -91,7 +150,99 @@ def get_driver_applications(org_id: int) -> Tuple[List[DriverApplication] | None
 def approve_driver_for_sponsor(driver: Driver, organization_id: int):
     if not driver:
         raise ValueError('Driver does not exist')
-    driver.organization_id = organization_id
-    driver.account_status = DriverStatus.ACTIVE
+    sponsorship = DriverSponsorship.query.filter_by(
+        driver_id=driver.driver_id,
+        organization_id=organization_id,
+    ).first()
 
-    return driver
+    if sponsorship is None:
+        sponsorship = DriverSponsorship(
+            driver_id=driver.driver_id,
+            organization_id=organization_id,
+            status=DriverStatus.ACTIVE
+        )
+        db.session.add(sponsorship)
+
+    sponsorship.status = DriverStatus.ACTIVE
+    return sponsorship
+
+
+def get_organization_drivers(organization_id: int) -> List[DriverSponsorship]:
+    return (
+        DriverSponsorship.query
+        .join(DriverSponsorship.driver)
+        .join(Driver.user)
+        .filter(DriverSponsorship.organization_id == organization_id)
+        .order_by(User.first_name.asc(), User.last_name.asc(), User.username.asc())
+        .all()
+    )
+
+
+def get_organization_driver_sponsorship(
+    organization_id: int,
+    driver_sponsorship_id: int
+) -> DriverSponsorship:
+    sponsorship = (
+        DriverSponsorship.query
+        .join(DriverSponsorship.driver)
+        .join(Driver.user)
+        .filter(
+            DriverSponsorship.driver_sponsorship_id == driver_sponsorship_id,
+            DriverSponsorship.organization_id == organization_id
+        )
+        .first()
+    )
+    if not sponsorship:
+        raise ValueError('Driver was not found for your organization.')
+    return sponsorship
+
+
+def update_driver_profile_for_sponsor(
+    organization_id: int,
+    driver_sponsorship_id: int,
+    username: str,
+    email: str | None,
+    first_name: str,
+    last_name: str
+) -> DriverSponsorship:
+    sponsorship = get_organization_driver_sponsorship(organization_id, driver_sponsorship_id)
+    validate_and_apply_user_profile_updates(
+        sponsorship.driver.user,
+        username,
+        email,
+        first_name,
+        last_name
+    )
+    db.session.commit()
+    return sponsorship
+
+
+def set_driver_status_for_sponsor(
+    organization_id: int,
+    driver_sponsorship_id: int,
+    new_status: DriverStatus,
+    acting_user
+) -> DriverSponsorship:
+    sponsorship = get_organization_driver_sponsorship(organization_id, driver_sponsorship_id)
+    sponsorship.status = new_status
+
+    if new_status == DriverStatus.DROPPED:
+        driver_user = sponsorship.driver.user
+        actor_name = acting_user.username if acting_user else 'A sponsor user'
+        message = (
+            f'{actor_name} dropped you from sponsor organization '
+            f'"{sponsorship.organization.name}".'
+        )
+        db.session.add(
+            Notification(
+                driver_id=sponsorship.driver_id,
+                issued_by_user_id=acting_user.user_id if acting_user else None,
+                category=NotificationCategory.DRIVER_DROPPED,
+                message=message
+            )
+        )
+        if driver_user:
+            db.session.add(driver_user)
+
+    db.session.commit()
+    return sponsorship

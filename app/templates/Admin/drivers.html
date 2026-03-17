@@ -12,6 +12,7 @@
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
     <tr>
+      <th>#</th>
       <th>Username</th>
       <th>Email</th>
       <th>First Name</th>
@@ -22,16 +23,17 @@
   <tbody>
     {% for user in drivers %}
       <tr>
+        <td>{{ loop.index }}</td>
         <td>{{ user.username }}</td>
         <td>{{ user.email or '' }}</td>
         <td>{{ user.first_name }}</td>
         <td>{{ user.last_name }}</td>
         <td>
           <form method="POST" action="{{ url_for('admin.edit_driver', user_id=user.user_id) }}">
-            <input name="username" type="text" value="{{ user.username }}" placeholder="e.g. jsmith" required>
-            <input name="email" type="text" value="{{ user.email or '' }}" placeholder="e.g. jsmith123@gmail.com">
-            <input name="first_name" type="text" value="{{ user.first_name }}" placeholder="e.g. John" required>
-            <input name="last_name" type="text" value="{{ user.last_name }}" placeholder="e.g. Smith" required>
+            <input style="margin-bottom: 5px;" name="username" type="text" value="{{ user.username }}" placeholder="e.g. jsmith" required>
+            <input style="margin-bottom: 5px;" name="email" type="email" value="{{ user.email or '' }}" placeholder="e.g. jsmith123@gmail.com">
+            <input style="margin-bottom: 5px;" name="first_name" type="text" value="{{ user.first_name }}" placeholder="e.g. John" required>
+            <input style="margin-bottom: 5px;" name="last_name" type="text" value="{{ user.last_name }}" placeholder="e.g. Smith" required>
             <button type="submit">Save</button>
           </form>
         </td>

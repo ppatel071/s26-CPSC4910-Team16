@@ -14,10 +14,17 @@ if TYPE_CHECKING:
 class DriverApplication(db.Model):
     __tablename__ = 'driver_applications'
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
     application_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     driver_id: Mapped[int] = mapped_column(ForeignKey('drivers.driver_id', ondelete='CASCADE'), nullable=False)
     organization_id: Mapped[int] = mapped_column(ForeignKey('sponsor_organization.organization_id', ondelete='RESTRICT'), nullable=False)
     status: Mapped[DriverApplicationStatus] = mapped_column(Enum(DriverApplicationStatus), nullable=False)
+    full_name: Mapped[str | None] = mapped_column(String(255))
+    phone_number: Mapped[str | None] = mapped_column(String(50))
+    address: Mapped[str | None] = mapped_column(String(255))
+    experience: Mapped[str | None] = mapped_column(Text)
     reason: Mapped[str | None] = mapped_column(Text)
     decision_date: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     decided_by_user_id: Mapped[int | None] = mapped_column(ForeignKey('users.user_id', ondelete='SET NULL'))
@@ -30,6 +37,9 @@ class DriverApplication(db.Model):
 
 class PointTransaction(db.Model):
     __tablename__ = 'point_transactions'
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
     transaction_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     driver_id: Mapped[int] = mapped_column(ForeignKey('drivers.driver_id', ondelete='CASCADE'), nullable=False)
@@ -47,6 +57,9 @@ class PointTransaction(db.Model):
 class Order(db.Model):
     __tablename__ = 'orders'
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
     order_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     driver_id: Mapped[int] = mapped_column(ForeignKey('drivers.driver_id', ondelete='CASCADE'), nullable=False)
     organization_id: Mapped[int] = mapped_column(ForeignKey('sponsor_organization.organization_id', ondelete='RESTRICT'), nullable=False)
@@ -63,6 +76,9 @@ class Order(db.Model):
 
 class OrderItem(db.Model):
     __tablename__ = 'order_items'
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
     item_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     order_id: Mapped[int] = mapped_column(ForeignKey('orders.order_id', ondelete='CASCADE'), nullable=False)
