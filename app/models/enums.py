@@ -33,6 +33,7 @@ class OrderStatus(enum.Enum):
 
 
 class NotificationCategory(enum.Enum):
+    APPLICATION = 'APPLICATION'
     DRIVER_DROPPED = 'DRIVER_DROPPED'
     POINT_CHANGE = 'POINT_CHANGE'
     ORDER_PLACED = 'ORDER_PLACED'

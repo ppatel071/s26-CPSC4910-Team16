@@ -10,6 +10,7 @@
     <thead>
       <tr>
         <th>Driver</th>
+        <th>Applicant Info</th>
         <th>Submitted</th>
         <th>Status</th>
         <th>Reason</th>
@@ -25,6 +26,12 @@
             {% else %}
               Driver #{{ application.driver_id }}
             {% endif %}
+          </td>
+          <td>
+            <div>{{ application.full_name or '-' }}</div>
+            <div>{{ application.phone_number or '-' }}</div>
+            <div>{{ application.address or '-' }}</div>
+            <div>{{ application.experience or '-' }}</div>
           </td>
           <td>{{ application.create_time }}</td>
           <td>{{ application.status.value }}</td>
@@ -61,6 +68,7 @@
       <tr>
         <th>Application ID</th>
         <th>Driver</th>
+        <th>Applicant Info</th>
         <th>Submitted</th>
         <th>Status</th>
         <th>Reason</th>
@@ -78,6 +86,12 @@
             {% else %}
               Driver #{{ application.driver_id }}
             {% endif %}
+          </td>
+          <td>
+            <div>{{ application.full_name or '-' }}</div>
+            <div>{{ application.phone_number or '-' }}</div>
+            <div>{{ application.address or '-' }}</div>
+            <div>{{ application.experience or '-' }}</div>
           </td>
           <td>{{ application.create_time }}</td>
           <td>{{ application.status.value }}</td>

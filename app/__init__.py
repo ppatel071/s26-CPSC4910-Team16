@@ -22,6 +22,31 @@ def _ensure_user_is_active_column():
     db.session.commit()
 
 
+def _ensure_driver_application_columns():
+    inspector = inspect(db.engine)
+    tables = inspector.get_table_names()
+    if 'driver_applications' not in tables:
+        return
+
+    columns = {column['name'] for column in inspector.get_columns('driver_applications')}
+    statements = []
+    if 'full_name' not in columns:
+        statements.append('ALTER TABLE driver_applications ADD COLUMN full_name VARCHAR(255)')
+    if 'phone_number' not in columns:
+        statements.append('ALTER TABLE driver_applications ADD COLUMN phone_number VARCHAR(50)')
+    if 'address' not in columns:
+        statements.append('ALTER TABLE driver_applications ADD COLUMN address VARCHAR(255)')
+    if 'experience' not in columns:
+        statements.append('ALTER TABLE driver_applications ADD COLUMN experience TEXT')
+
+    if not statements:
+        return
+
+    for statement in statements:
+        db.session.execute(text(statement))
+    db.session.commit()
+
+
 def create_app():
     app = Flask(__name__)
 
@@ -40,5 +65,6 @@ def create_app():
     with app.app_context():
         db.create_all()
         _ensure_user_is_active_column()
+        _ensure_driver_application_columns()
 
     return app

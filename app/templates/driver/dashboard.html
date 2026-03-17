@@ -1,128 +1,281 @@
 {% extends "base.html" %}
 
 {% block content %}
+
 <style>
-    div.a {
-        text-align: center;
-    }
+.dashboard-container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px;
+}
+
+.dashboard-title {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.account-btn {
+    text-align: right;
+    margin-bottom: 20px;
+}
+
+.section-card {
+    background: white;
+    padding: 25px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.section-title {
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.notification-card {
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    background: #f4f8ff;
+    border-left: 5px solid #4a90e2;
+}
+
+.notification-card.read {
+    background: #f5f5f5;
+    border-left: 5px solid #ccc;
+}
+
+.badge-new {
+    background: #4a90e2;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    float: right;
+}
+
+.points-display {
+    font-size: 32px;
+    font-weight: bold;
+    color: #4a90e2;
+}
+
+.search-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table th {
+    background: #f0f4f8;
+    padding: 10px;
+    text-align: left;
+}
+
+table td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+button {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #4a90e2;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #357abd;
+}
+
+.sponsor-box {
+    background: #fafafa;
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #eee;
+}
+
+.org-card {
+    padding: 15px;
+    border-radius: 10px;
+    background: #f9fbff;
+    border: 1px solid #e3ecff;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
 </style>
 
-<div class="a">
-    <h1>Driver Dashboard</h1>
-</div>
-{% include "driver/partials/active_sponsorship_dropdown.html" %}
-<hr>
+<div class="dashboard-container">
+    <div class="dashboard-title">
+        <h1>Driver Dashboard</h1>
+    </div>
 
-<h2>Total Points</h2>
-<p><strong>Current Points:</strong> {{ active_sponsorship.point_balance if active_sponsorship else 0 }}</p>
+    {% include "driver/partials/active_sponsorship_dropdown.html" %}
 
-<hr>
+    <div class="account-btn">
+        <a href="{{ url_for('driver.account_settings') }}">
+            <button>Account Settings</button>
+        </a>
+    </div>
 
-<h2>Redeem Points</h2>
+    <div class="section-card">
+        <div class="section-title">Notifications</div>
 
-<form method="POST" action="{{ url_for('driver.redeem_points') }}">
-    <input type="number" name="points" min="1" placeholder="Enter points to redeem" required>
-    <button type="submit">Redeem</button>
-</form>
+        {% if current_user.driver.notifications %}
+            {% for n in current_user.driver.notifications %}
+                <div class="notification-card {% if n.is_read %}read{% endif %}">
+                    {% if not n.is_read %}
+                        <span class="badge-new">NEW</span>
+                    {% endif %}
+                    <strong>{{ n.message }}</strong>
+                    <div style="margin-top: 6px; font-size: 13px; color: #666;">
+                        {{ n.create_time.strftime('%B %d, %Y at %I:%M %p') }}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p style="color: #777;">No notifications yet.</p>
+        {% endif %}
+    </div>
 
-<hr>
+    <div class="section-card">
+        <div class="section-title">Total Points</div>
+        <div class="points-display">
+            {{ active_sponsorship.point_balance if active_sponsorship else 0 }}
+        </div>
+    </div>
 
-<h2>Point Notifications</h2>
-
-<p>
-    Status:
-    {% if current_user.driver.point_change_alert %}
-        <strong>Enabled</strong>
-    {% else %}
-        <strong>Disabled</strong>
-    {% endif %}
-</p>
-
-<form method="POST" action="{{ url_for('driver.toggle_point_alert') }}">
-    <button type="submit">Toggle Notifications</button>
-</form>
-
-<hr>
-
-<h2>Point History</h2>
-
-<table border="1" cellpadding="6" cellspacing="0">
-    <tr>
-        <th>Date</th>
-        <th>Points Changed</th>
-        <th>Reason</th>
-    </tr>
-
-    {% for t in transactions %}
-    <tr>
-        <td>{{ t.create_time }}</td>
-        <td>{{ t.point_change }}</td>
-        <td>{{ t.reason }}</td>
-    </tr>
-    {% endfor %}
-</table>
-
-<hr>
-
-<h2>My Orders</h2>
-
-<table border="1" cellpadding="6" cellspacing="0">
-    <tr>
-        <th>Order ID</th>
-        <th>Points Used</th>
-        <th>Status</th>
-        <th>Action</th>
-    </tr>
-
-    {% for order in orders %}
-    <tr>
-        <td>{{ order.order_id }}</td>
-        <td>{{ order.points }}</td>
-        <td>{{ order.order_status }}</td>
-        <td>
-            {% if order.order_status.value != "CANCELLED" %}
-            <form method="POST"
-                  action="{{ url_for('driver.cancel_order', order_id=order.order_id) }}">
-                <button type="submit">Cancel</button>
-            </form>
+    <div class="section-card">
+        <div class="section-title">Point Notifications</div>
+        <p>
+            Status:
+            {% if current_user.driver.point_change_alert %}
+                <strong style="color: green;">Enabled</strong>
+            {% else %}
+                <strong style="color: red;">Disabled</strong>
             {% endif %}
-        </td>
-    </tr>
-    {% endfor %}
-</table>
-
-<hr>
-
-<h2>My Sponsor Contact Information</h2>
-
-{% if active_sponsorship and active_sponsorship.organization %}
-
-<div style="border:1px solid #ccc; padding:15px; width:400px;">
-    <p><strong>Sponsor Name:</strong> {{ active_sponsorship.organization.name }}</p>
-    <p><strong>Contact Email:</strong> {{ active_sponsorship.organization.contact_email or "Not provided" }}</p>
-    <p><strong>Contact Phone:</strong> {{ active_sponsorship.organization.contact_phone or "Not provided" }}</p>
-    <p><strong>Address:</strong> {{ active_sponsorship.organization.address or "Not provided" }}</p>
-</div>
-
-{% else %}
-<p>You are not currently assigned to a sponsor organization.</p>
-{% endif %}
-
-<hr>
-
-<h2>Available Sponsor Organizations</h2>
-
-{% for org in available_organizations %}
-    <div style="margin-bottom:10px;">
-        <strong>{{ org.name }}</strong>
-
-        <form method="POST"
-                action="{{ url_for('driver.apply_to_organization', organization_id=org.organization_id) }}">
-            <button type="submit">Apply</button>
+        </p>
+        <form method="POST" action="{{ url_for('driver.toggle_point_alert') }}">
+            <button type="submit">Toggle Notifications</button>
         </form>
     </div>
-{% endfor %}
 
-<hr>
+    <div class="section-card">
+        <div class="section-title">Point History</div>
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Points Changed</th>
+                <th>Reason</th>
+            </tr>
+            {% for t in transactions %}
+                <tr>
+                    <td>{{ t.create_time }}</td>
+                    <td>{{ t.point_change }}</td>
+                    <td>{{ t.reason }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="section-card">
+        <div class="section-title">My Orders</div>
+
+        <form method="GET" class="search-bar">
+            <input type="text" name="search" placeholder="Search by Order ID" value="{{ search_query }}">
+            <select name="status">
+                <option value="">All Status</option>
+                <option value="PENDING" {% if status_filter == 'PENDING' %}selected{% endif %}>Pending</option>
+                <option value="COMPLETED" {% if status_filter == 'COMPLETED' %}selected{% endif %}>Completed</option>
+                <option value="CANCELLED" {% if status_filter == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+            </select>
+            <button type="submit">Filter</button>
+        </form>
+
+        <table>
+            <tr>
+                <th>Order ID</th>
+                <th>Points Used</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+            {% for order in orders %}
+                <tr>
+                    <td>{{ order.order_id }}</td>
+                    <td>{{ order.points }}</td>
+                    <td>{{ order.order_status.value }}</td>
+                    <td>
+                        {% if order.order_status.value != "CANCELLED" %}
+                            <form method="POST" action="{{ url_for('driver.cancel_order', order_id=order.order_id) }}">
+                                <button type="submit">Cancel</button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="section-card">
+        <div class="section-title">My Sponsor Contact Information</div>
+
+        {% if active_sponsorship and active_sponsorship.organization %}
+            <div class="sponsor-box">
+                <p><strong>Name:</strong> {{ active_sponsorship.organization.name }}</p>
+                <p><strong>Email:</strong> {{ active_sponsorship.organization.contact_email or "Not provided" }}</p>
+                <p><strong>Phone:</strong> {{ active_sponsorship.organization.contact_phone or "Not provided" }}</p>
+                <p><strong>Address:</strong> {{ active_sponsorship.organization.address or "Not provided" }}</p>
+            </div>
+        {% else %}
+            <p>You are not currently assigned to a sponsor organization.</p>
+        {% endif %}
+    </div>
+
+    <div class="section-card">
+        <div class="section-title">Pending Applications</div>
+
+        {% if pending_applications %}
+            {% for application in pending_applications %}
+                <div class="org-card">
+                    <div>
+                        <strong>{{ application.organization.name if application.organization else ('Organization #' ~ application.organization_id) }}</strong>
+                        <div>Submitted {{ application.create_time }}</div>
+                    </div>
+                    <div>{{ application.status.value }}</div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No pending sponsor applications.</p>
+        {% endif %}
+    </div>
+
+    <div class="section-card">
+        <div class="section-title">Available Sponsor Organizations</div>
+
+        {% if available_organizations %}
+            {% for org in available_organizations %}
+                <div class="org-card">
+                    <strong>{{ org.name }}</strong>
+                    <form method="POST" action="{{ url_for('driver.apply_to_organization', organization_id=org.organization_id) }}">
+                        <button type="submit">Apply</button>
+                    </form>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No additional sponsor organizations are currently available.</p>
+        {% endif %}
+    </div>
+</div>
 
 {% endblock %}
