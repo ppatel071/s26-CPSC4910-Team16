@@ -289,7 +289,7 @@ def get_users_for_removal_page():
             User.user_id.label('user_id'),
             User.username.label('username'),
             User.email.label('email'),
-            User.is_active.label('is_active'),
+            User.is_user_active.label('is_user_active'),
             SponsorOrganization.name.label('sponsor_name'),
         )
         .select_from(SponsorUser)
@@ -315,10 +315,10 @@ def deactivate_driver_user(user_id: int):
         raise ValueError('Driver user not found')
     if user.role_type != RoleType.DRIVER:
         raise ValueError('Selected user is not a driver')
-    if not user.is_active:
+    if not user.is_user_active:
         raise ValueError('Driver user is already deactivated')
 
-    user.is_active = False
+    user.is_user_active = False
     db.session.commit()
     return user
 
@@ -329,10 +329,10 @@ def deactivate_admin_user(user_id: int):
         raise ValueError('Admin user not found')
     if user.role_type != RoleType.ADMIN:
         raise ValueError('Selected user is not an admin')
-    if not user.is_active:
+    if not user.is_user_active:
         raise ValueError('Admin user is already deactivated')
 
-    user.is_active = False
+    user.is_user_active = False
     db.session.commit()
     return user
 
@@ -343,10 +343,10 @@ def deactivate_sponsor_user(user_id: int):
         raise ValueError('Sponsor user not found')
     if user.role_type != RoleType.SPONSOR:
         raise ValueError('Selected user is not a sponsor user')
-    if not user.is_active:
+    if not user.is_user_active:
         raise ValueError('Sponsor user is already deactivated')
 
-    user.is_active = False
+    user.is_user_active = False
     db.session.commit()
     return user
 

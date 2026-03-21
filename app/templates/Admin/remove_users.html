@@ -49,18 +49,18 @@
         <td>{{ user.username }}</td>
         <td>{{ user.email or '' }}</td>
         <td>
-          {% if user.is_active %}
+          {% if user.is_user_active %}
             <span class="status-active">Active</span>
           {% else %}
             <span class="status-deactivated">Deactivated Admin User</span>
           {% endif %}
         </td>
         <td>
-          {% if user.is_active and user.user_id != current_user.user_id %}
+          {% if user.is_user_active and user.user_id != current_user.user_id %}
             <form method="POST" action="{{ url_for('admin.deactivate_admin', user_id=user.user_id) }}">
               <button type="submit" onclick="return confirm('Deactivate this admin user?');">Remove Admin User</button>
             </form>
-          {% elif user.is_active and user.user_id == current_user.user_id %}
+          {% elif user.is_user_active and user.user_id == current_user.user_id %}
             Current account
           {% else %}
             Already deactivated
@@ -94,14 +94,14 @@
         <td>{{ row.email or '' }}</td>
         <td>{{ row.sponsor_name }}</td>
         <td>
-          {% if row.is_active %}
+          {% if row.is_user_active %}
             <span class="status-active">Active</span>
           {% else %}
             <span class="status-deactivated">Deactivated Sponsor User</span>
           {% endif %}
         </td>
         <td>
-          {% if row.is_active %}
+          {% if row.is_user_active %}
             <form method="POST" action="{{ url_for('admin.deactivate_sponsor', user_id=row.user_id) }}">
               <button type="submit" onclick="return confirm('Deactivate this sponsor user?');">Remove Sponsor User</button>
             </form>
@@ -136,14 +136,14 @@
         <td>{{ user.username }}</td>
         <td>{{ user.email or '' }}</td>
         <td>
-          {% if user.is_active %}
+          {% if user.is_user_active %}
             <span class="status-active">Active</span>
           {% else %}
             <span class="status-deactivated">Deactivated Driver User</span>
           {% endif %}
         </td>
         <td>
-          {% if user.is_active %}
+          {% if user.is_user_active %}
             <form method="POST" action="{{ url_for('admin.deactivate_driver', user_id=user.user_id) }}">
               <button type="submit" onclick="return confirm('Deactivate this driver user?');">Remove Driver User</button>
             </form>

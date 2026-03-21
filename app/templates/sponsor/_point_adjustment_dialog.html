@@ -1,0 +1,72 @@
+<dialog
+  id="point-dialog-{{ sponsorship.driver_sponsorship_id }}"
+  class="point-adjust-dialog"
+  data-point-dialog="{{ sponsorship.driver_sponsorship_id }}"
+  data-driver-name="{{ display_name }}"
+  data-current-balance="{{ sponsorship.point_balance }}"
+>
+  <form
+    method="POST"
+    action="{{ url_for('sponsor.update_driver_points', driver_sponsorship_id=sponsorship.driver_sponsorship_id) }}"
+    class="point-adjust-form"
+    data-point-form="{{ sponsorship.driver_sponsorship_id }}"
+    data-driver-name="{{ display_name }}"
+    data-current-balance="{{ sponsorship.point_balance }}"
+    data-mode="add"
+    novalidate
+  >
+    <strong data-form-title="true">Adjust Points for {{ display_name }}</strong>
+
+    <div style="margin-top: 12px;">
+      <label for="point-change-{{ sponsorship.driver_sponsorship_id }}">Point change</label>
+      <input
+        id="point-change-{{ sponsorship.driver_sponsorship_id }}"
+        name="point_change"
+        type="number"
+        step="1"
+        required
+        value="{% if point_form_state and point_form_state.driver_sponsorship_id == sponsorship.driver_sponsorship_id %}{{ point_form_state.point_change }}{% endif %}"
+        data-point-change-input="true"
+      >
+      <div style="margin-top: 8px;" data-add-presets="true">
+        <button type="button" class="button preset-btn" data-preset-value="50">+50</button>
+        <button type="button" class="button preset-btn" data-preset-value="100">+100</button>
+        <button type="button" class="button preset-btn" data-preset-value="250">+250</button>
+      </div>
+      <div style="margin-top: 8px; display: none;" data-deduct-presets="true">
+        <button type="button" class="button preset-btn" data-preset-value="-50">-50</button>
+        <button type="button" class="button preset-btn" data-preset-value="-100">-100</button>
+        <button type="button" class="button preset-btn" data-preset-value="-250">-250</button>
+      </div>
+    </div>
+
+    <p
+      style="margin-top: 10px; font-size: 0.95em;"
+      data-point-preview="true"
+      aria-live="polite"
+    ></p>
+
+    <div style="margin-top: 12px;">
+      <label for="point-reason-{{ sponsorship.driver_sponsorship_id }}">Reason</label>
+      <textarea
+        id="point-reason-{{ sponsorship.driver_sponsorship_id }}"
+        name="reason"
+        rows="3"
+        maxlength="255"
+        required
+        placeholder="Explain why the points are being adjusted."
+      >{% if point_form_state and point_form_state.driver_sponsorship_id == sponsorship.driver_sponsorship_id %}{{ point_form_state.reason }}{% endif %}</textarea>
+    </div>
+
+    <p
+      style="margin-top: 8px; color: red; display: none;"
+      data-form-error="true"
+      aria-live="polite"
+    ></p>
+
+    <div style="margin-top: 12px;">
+      <button type="submit" class="button">Save</button>
+      <button type="button" class="button point-cancel-btn">Cancel</button>
+    </div>
+  </form>
+</dialog>

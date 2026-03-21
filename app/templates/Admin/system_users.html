@@ -40,9 +40,9 @@
         <td>{{ user.email or '' }}</td>
         <td>{{ user.role_type.value }}</td>
         <td>
-          {% if user.role_type == RoleType.DRIVER and not user.is_active %}
+          {% if user.role_type == RoleType.DRIVER and not user.is_user_active %}
             <span class="status-deactivated">Deactivated Driver User</span>
-          {% elif user.is_active %}
+          {% elif user.is_user_active %}
             <span class="status-active">Active</span>
           {% else %}
             <span class="status-locked">Locked User</span>

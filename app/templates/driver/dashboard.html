@@ -132,8 +132,22 @@ button:hover {
     <div class="section-card">
         <div class="section-title">Notifications</div>
 
-        {% if current_user.driver.notifications %}
-            {% for n in current_user.driver.notifications %}
+        {% set visible_notifications = namespace(items=[]) %}
+        {% for n in current_user.driver.notifications|sort(attribute='create_time', reverse=true) %}
+            {% if (
+                n.category.value != 'POINT_CHANGE'
+                and n.category.value != 'ORDER_PLACED'
+            ) or (
+                n.category.value == 'POINT_CHANGE' and current_user.driver.point_change_alert
+            ) or (
+                n.category.value == 'ORDER_PLACED' and current_user.driver.order_alert
+            ) %}
+                {% set visible_notifications.items = visible_notifications.items + [n] %}
+            {% endif %}
+        {% endfor %}
+
+        {% if visible_notifications.items %}
+            {% for n in visible_notifications.items %}
                 <div class="notification-card {% if n.is_read %}read{% endif %}">
                     {% if not n.is_read %}
                         <span class="badge-new">NEW</span>

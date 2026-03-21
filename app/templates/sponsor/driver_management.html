@@ -46,6 +46,22 @@
         <td>{{ sponsorship.point_balance }}</td>
         <td>
           {% if sponsorship.status.value == 'ACTIVE' %}
+            <button
+              type="button"
+              class="button point-action-btn"
+              data-dialog-mode="add"
+              data-sponsorship-id="{{ sponsorship.driver_sponsorship_id }}"
+            >
+              Add Points
+            </button>
+            <button
+              type="button"
+              class="button point-action-btn"
+              data-dialog-mode="deduct"
+              data-sponsorship-id="{{ sponsorship.driver_sponsorship_id }}"
+            >
+              Deduct Points
+            </button>
             <button type="button" class="button edit-btn" data-sponsorship-id="{{ sponsorship.driver_sponsorship_id }}">
               Edit
             </button>
@@ -104,6 +120,15 @@
   </tbody>
 </table>
 
+{% for sponsorship in drivers %}
+  {% set driver_user = sponsorship.driver.user %}
+  {% set display_name = (driver_user.first_name ~ ' ' ~ driver_user.last_name).strip() %}
+  {% if not display_name %}
+    {% set display_name = driver_user.username %}
+  {% endif %}
+  {% include "sponsor/_point_adjustment_dialog.html" %}
+{% endfor %}
+
 <p id="empty-drivers-message" style="display: none; margin-top: 12px;">No drivers match your current filter.</p>
 
 <form id="status-action-form" method="POST" action="{{ url_for('sponsor.driver_management') }}" style="display: none;">
@@ -152,6 +177,7 @@
   const unsavedCancelBtn = document.getElementById("unsaved-cancel");
 
   const driverRows = Array.from(tableBody.querySelectorAll(".driver-row"));
+  const pointDialogs = Array.from(document.querySelectorAll(".point-adjust-dialog"));
   let activeEditForm = null;
   let pendingAction = null;
   let bypassUnsavedPrompt = false;
@@ -237,6 +263,120 @@
     actionForm.submit();
   }
 
+  function getPointDialog(sponsorshipId) {
+    return document.getElementById("point-dialog-" + sponsorshipId);
+  }
+
+  function setPointFormMode(form, mode) {
+    const title = form.querySelector("[data-form-title='true']");
+    const input = form.querySelector("[data-point-change-input='true']");
+    const addPresets = form.querySelector("[data-add-presets='true']");
+    const deductPresets = form.querySelector("[data-deduct-presets='true']");
+    if (!title || !input) return;
+
+    form.dataset.mode = mode;
+    const driverName = form.dataset.driverName;
+    title.textContent = (mode === "deduct" ? "Deduct Points from " : "Add Points for ") + driverName;
+    input.placeholder = mode === "deduct" ? "-50" : "+50";
+    if (addPresets) {
+      addPresets.style.display = mode === "add" ? "" : "none";
+    }
+    if (deductPresets) {
+      deductPresets.style.display = mode === "deduct" ? "" : "none";
+    }
+
+    if (!input.value) {
+      input.value = mode === "deduct" ? "-50" : "50";
+      return;
+    }
+
+    const parsedValue = parseInt(input.value, 10);
+    if (Number.isNaN(parsedValue)) {
+      return;
+    }
+
+    const absoluteValue = Math.abs(parsedValue);
+    input.value = mode === "deduct" ? String(absoluteValue * -1) : String(absoluteValue);
+  }
+
+  function updatePointPreview(form) {
+    const preview = form.querySelector("[data-point-preview='true']");
+    const input = form.querySelector("[data-point-change-input='true']");
+    if (!preview || !input) return;
+
+    const rawValue = input.value.trim();
+    if (!rawValue) {
+      preview.textContent = "";
+      return;
+    }
+
+    const pointChange = parseInt(rawValue, 10);
+    if (Number.isNaN(pointChange)) {
+      preview.textContent = "Enter a whole number for the point change.";
+      return;
+    }
+
+    const currentBalance = parseInt(form.dataset.currentBalance, 10) || 0;
+    const nextBalance = currentBalance + pointChange;
+    preview.textContent =
+      "This action will change " +
+      form.dataset.driverName +
+      "'s points from " +
+      currentBalance +
+      " to " +
+      nextBalance +
+      ".";
+  }
+
+  function validatePointForm(form) {
+    const error = form.querySelector("[data-form-error='true']");
+    const input = form.querySelector("[data-point-change-input='true']");
+    const reason = form.querySelector("textarea[name='reason']");
+    if (!error || !input || !reason) return true;
+
+    error.textContent = "";
+    error.style.display = "none";
+
+    const rawValue = input.value.trim();
+    const pointChange = parseInt(rawValue, 10);
+    const currentBalance = parseInt(form.dataset.currentBalance, 10) || 0;
+    const reasonLength = reason.value.trim().length;
+    const mode = form.dataset.mode || "add";
+
+    if (!rawValue || Number.isNaN(pointChange)) {
+      error.textContent = "Enter a whole number for the point change.";
+    } else if (pointChange === 0) {
+      error.textContent = "Point change cannot be zero.";
+    } else if (mode === "add" && pointChange < 0) {
+      error.textContent = "Add mode requires a positive point change.";
+    } else if (mode === "deduct" && pointChange > 0) {
+      error.textContent = "Deduct mode requires a negative point change.";
+    } else if (currentBalance + pointChange < 0) {
+      error.textContent = "This deduction would make the driver balance negative.";
+    } else if (reasonLength < 3) {
+      error.textContent = "Reason must be at least 3 characters long.";
+    }
+
+    if (error.textContent) {
+      error.style.display = "";
+      return false;
+    }
+
+    return true;
+  }
+
+  function openPointDialog(sponsorshipId, mode) {
+    const dialog = getPointDialog(sponsorshipId);
+    if (!dialog) return;
+
+    const form = dialog.querySelector(".point-adjust-form");
+    if (!form) return;
+
+    setPointFormMode(form, mode);
+    updatePointPreview(form);
+    dialog.showModal();
+  }
+
   searchInput.addEventListener("input", applyFilters);
   statusFilter.addEventListener("change", () => {
     const requestedFilter = statusFilter.value;
@@ -250,6 +390,14 @@
   });
 
   tableBody.addEventListener("click", (event) => {
+    const pointActionBtn = event.target.closest(".point-action-btn");
+    if (pointActionBtn) {
+      const sponsorshipId = pointActionBtn.dataset.sponsorshipId;
+      const mode = pointActionBtn.dataset.dialogMode || "add";
+      withUnsavedGuard(() => openPointDialog(sponsorshipId, mode));
+      return;
+    }
+
     const editBtn = event.target.closest(".edit-btn");
     if (editBtn) {
       const sponsorshipId = editBtn.dataset.sponsorshipId;
@@ -368,6 +516,43 @@
       bypassUnsavedPrompt = true;
     });
   });
+  pointDialogs.forEach((dialog) => {
+    const form = dialog.querySelector(".point-adjust-form");
+    const input = form?.querySelector("[data-point-change-input='true']");
+    const reason = form?.querySelector("textarea[name='reason']");
+    const cancelBtn = form?.querySelector(".point-cancel-btn");
+
+    if (!form || !input || !reason || !cancelBtn) return;
+
+    form.querySelectorAll(".preset-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        input.value = button.dataset.presetValue || "";
+        updatePointPreview(form);
+      });
+    });
+
+    input.addEventListener("input", () => {
+      updatePointPreview(form);
+      validatePointForm(form);
+    });
+    reason.addEventListener("input", () => {
+      validatePointForm(form);
+    });
+
+    form.addEventListener("submit", (event) => {
+      if (!validatePointForm(form)) {
+        event.preventDefault();
+        return;
+      }
+      bypassUnsavedPrompt = true;
+    });
+
+    cancelBtn.addEventListener("click", () => {
+      dialog.close();
+    });
+
+    updatePointPreview(form);
+  });
   setFormSnapshots();
   const openEditRowElement = Array.from(document.querySelectorAll(".edit-row")).find(
     (row) => row.style.display !== "none"
@@ -375,6 +560,19 @@
   if (openEditRowElement) {
     activeEditForm = openEditRowElement.querySelector(".driver-edit-form");
   }
+  {% if point_form_state and point_form_state.driver_sponsorship_id %}
+  const initialPointDialog = getPointDialog("{{ point_form_state.driver_sponsorship_id }}");
+  if (initialPointDialog) {
+    const initialForm = initialPointDialog.querySelector(".point-adjust-form");
+    if (initialForm) {
+      const initialValue = initialForm.querySelector("[data-point-change-input='true']")?.value || "";
+      setPointFormMode(initialForm, initialValue.trim().startsWith("-") ? "deduct" : "add");
+      updatePointPreview(initialForm);
+      validatePointForm(initialForm);
+      initialPointDialog.showModal();
+    }
+  }
+  {% endif %}
   applyFilters();
 })();
 </script>

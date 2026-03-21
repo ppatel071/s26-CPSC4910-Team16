@@ -6,10 +6,16 @@ from flask_login import current_user, login_required
 
 from app.extensions import db
 from app.models import DriverApplication, SponsorOrganization, SponsorUser, User
-from app.models.enums import DriverApplicationStatus, DriverStatus, NotificationCategory, RoleType
+from app.models.enums import (
+    DriverApplicationStatus,
+    DriverStatus,
+    NotificationCategory,
+    RoleType,
+)
 from app.models.system import Notification
 from app.sponsor import sponsor_bp
 from app.sponsor.services import (
+    adjust_driver_points_for_sponsor,
     approve_driver_for_sponsor,
     create_sponsor_user,
     get_driver_applications,
@@ -36,6 +42,23 @@ def sponsor_breadcrumbs(*crumbs):
     return base + list(crumbs)
 
 
+def render_driver_management_page(
+    org_id: int,
+    *,
+    editing_id: int | None = None,
+    error: str | None = None,
+    point_form_state: dict | None = None,
+):
+    return render_template(
+        "sponsor/driver_management.html",
+        drivers=get_organization_drivers(org_id),
+        editing_id=editing_id,
+        error=error,
+        point_form_state=point_form_state,
+        breadcrumbs=sponsor_breadcrumbs(("Driver Management", None)),
+    )
+
+
 @sponsor_bp.route("/dashboard")
 @login_required
 @sponsor_required
@@ -43,7 +66,9 @@ def dashboard():
     s_user: SponsorUser = current_user.sponsor_user
     sponsor_users = s_user.organization.sponsor_users
     users = [s.user for s in sponsor_users if s.sponsor_id != s_user.sponsor_id]
-    pending_applications, _ = get_driver_applications(current_user.sponsor_user.organization_id)
+    pending_applications, _ = get_driver_applications(
+        current_user.sponsor_user.organization_id
+    )
     pending_applications = pending_applications or []
 
     return render_template(
@@ -66,7 +91,9 @@ def organization():
         point_value = request.form.get("point_value", "")
         try:
             org = update_sponsor_organization(org, name, point_value)
-            return render_template("sponsor/organization.html", organization=org, breadcrumbs=breadcrumbs)
+            return render_template(
+                "sponsor/organization.html", organization=org, breadcrumbs=breadcrumbs
+            )
         except ValueError as e:
             return render_template(
                 "sponsor/organization.html",
@@ -75,7 +102,9 @@ def organization():
                 breadcrumbs=breadcrumbs,
             )
 
-    return render_template("sponsor/organization.html", organization=org, breadcrumbs=breadcrumbs)
+    return render_template(
+        "sponsor/organization.html", organization=org, breadcrumbs=breadcrumbs
+    )
 
 
 @sponsor_bp.route("/profile/edit", methods=["GET", "POST"])
@@ -93,7 +122,9 @@ def profile_edit():
         last_name = request.form.get("last_name", "").strip()
 
         try:
-            validate_and_apply_user_profile_updates(user, username, email, first_name, last_name)
+            validate_and_apply_user_profile_updates(
+                user, username, email, first_name, last_name
+            )
             db.session.commit()
             return redirect(url_for("sponsor.profile_edit"))
         except ValueError as e:
@@ -104,7 +135,9 @@ def profile_edit():
                 breadcrumbs=breadcrumbs,
             )
 
-    return render_template("sponsor/profile_edit.html", user=user, breadcrumbs=breadcrumbs)
+    return render_template(
+        "sponsor/profile_edit.html", user=user, breadcrumbs=breadcrumbs
+    )
 
 
 @sponsor_bp.route("/create", methods=["GET", "POST"])
@@ -131,7 +164,9 @@ def create_user():
         organization = current_user.sponsor_user.organization
 
         try:
-            create_sponsor_user(username, password, email, first_name, last_name, organization)
+            create_sponsor_user(
+                username, password, email, first_name, last_name, organization
+            )
         except ValueError as e:
             return render_template(
                 "sponsor/create_user.html",
@@ -142,7 +177,9 @@ def create_user():
 
         return redirect(url_for("auth.home"))
 
-    return render_template("sponsor/create_user.html", fields=fields, breadcrumbs=breadcrumbs)
+    return render_template(
+        "sponsor/create_user.html", fields=fields, breadcrumbs=breadcrumbs
+    )
 
 
 @sponsor_bp.route("/applications")
@@ -183,7 +220,9 @@ def decide_application(application_id: int):
 
     decision_enum = DriverApplicationStatus[decision]
     if decision_enum == DriverApplicationStatus.APPROVED:
-        approve_driver_for_sponsor(application.driver, current_user.sponsor_user.organization_id)
+        approve_driver_for_sponsor(
+            application.driver, current_user.sponsor_user.organization_id
+        )
         message = "Your sponsor application has been approved."
     else:
         message = "Your sponsor application has been rejected."
@@ -238,45 +277,72 @@ def driver_management():
                 )
                 return redirect(url_for("sponsor.driver_management"))
             except ValueError as e:
-                return render_template(
-                    "sponsor/driver_management.html",
-                    drivers=get_organization_drivers(org_id),
-                    editing_id=editing_id,
-                    error=str(e),
-                    breadcrumbs=sponsor_breadcrumbs(("Driver Management", None)),
+                return render_driver_management_page(
+                    org_id, editing_id=editing_id, error=str(e)
                 )
 
         if action == "drop":
             try:
-                set_driver_status_for_sponsor(org_id, sponsorship_id, DriverStatus.DROPPED, current_user)
+                set_driver_status_for_sponsor(
+                    org_id, sponsorship_id, DriverStatus.DROPPED, current_user
+                )
                 return redirect(url_for("sponsor.driver_management"))
             except ValueError as e:
-                return render_template(
-                    "sponsor/driver_management.html",
-                    drivers=get_organization_drivers(org_id),
-                    editing_id=None,
-                    error=str(e),
-                    breadcrumbs=sponsor_breadcrumbs(("Driver Management", None)),
-                )
+                return render_driver_management_page(org_id, error=str(e))
 
         if action == "restore":
             try:
-                set_driver_status_for_sponsor(org_id, sponsorship_id, DriverStatus.ACTIVE, current_user)
+                set_driver_status_for_sponsor(
+                    org_id, sponsorship_id, DriverStatus.ACTIVE, current_user
+                )
                 return redirect(url_for("sponsor.driver_management"))
             except ValueError as e:
-                return render_template(
-                    "sponsor/driver_management.html",
-                    drivers=get_organization_drivers(org_id),
-                    editing_id=None,
-                    error=str(e),
-                    breadcrumbs=sponsor_breadcrumbs(("Driver Management", None)),
-                )
+                return render_driver_management_page(org_id, error=str(e))
 
         abort(400)
 
-    return render_template(
-        "sponsor/driver_management.html",
-        drivers=get_organization_drivers(org_id),
-        editing_id=editing_id,
-        breadcrumbs=sponsor_breadcrumbs(("Driver Management", None)),
-    )
+    return render_driver_management_page(org_id, editing_id=editing_id)
+
+
+@sponsor_bp.route("/drivers/<int:driver_sponsorship_id>/points", methods=["POST"])
+@login_required
+@sponsor_required
+def update_driver_points(driver_sponsorship_id: int):
+    assert isinstance(current_user, User)
+    assert isinstance(current_user.sponsor_user, SponsorUser)
+    org_id = current_user.sponsor_user.organization_id
+    reason = (request.form.get("reason") or "").strip()
+    raw_point_change = (request.form.get("point_change") or "").strip()
+
+    try:
+        point_change = int(raw_point_change)
+    except ValueError:
+        return render_driver_management_page(
+            org_id,
+            error="Point change must be a whole number.",
+            point_form_state={
+                "driver_sponsorship_id": driver_sponsorship_id,
+                "point_change": raw_point_change,
+                "reason": reason,
+            },
+        )
+
+    try:
+        adjust_driver_points_for_sponsor(
+            org_id,
+            driver_sponsorship_id,
+            point_change,
+            reason,
+            current_user,
+        )
+        return redirect(url_for("sponsor.driver_management"))
+    except ValueError as e:
+        return render_driver_management_page(
+            org_id,
+            error=str(e),
+            point_form_state={
+                "driver_sponsorship_id": driver_sponsorship_id,
+                "point_change": raw_point_change,
+                "reason": reason,
+            },
+        )
