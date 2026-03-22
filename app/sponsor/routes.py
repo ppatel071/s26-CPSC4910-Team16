@@ -18,6 +18,8 @@ from app.sponsor.services import (
     adjust_driver_points_for_sponsor,
     approve_driver_for_sponsor,
     create_sponsor_user,
+    get_driver_point_transactions_for_sponsor,
+    get_organization_driver_sponsorship,
     get_driver_applications,
     get_organization_drivers,
     set_driver_status_for_sponsor,
@@ -45,17 +47,44 @@ def sponsor_breadcrumbs(*crumbs):
 def render_driver_management_page(
     org_id: int,
     *,
-    editing_id: int | None = None,
     error: str | None = None,
     point_form_state: dict | None = None,
 ):
     return render_template(
         "sponsor/driver_management.html",
         drivers=get_organization_drivers(org_id),
-        editing_id=editing_id,
         error=error,
         point_form_state=point_form_state,
         breadcrumbs=sponsor_breadcrumbs(("Driver Management", None)),
+    )
+
+
+def render_driver_edit_page(
+    org_id: int,
+    driver_sponsorship_id: int,
+    *,
+    error: str | None = None,
+    form_values: dict | None = None,
+):
+    sponsorship = get_organization_driver_sponsorship(org_id, driver_sponsorship_id)
+    driver_user = sponsorship.driver.user
+    display_name = f"{driver_user.first_name or ''} {driver_user.last_name or ''}".strip()
+    if not display_name:
+        display_name = driver_user.username
+
+    return render_template(
+        "sponsor/driver_edit.html",
+        sponsorship=sponsorship,
+        point_transactions=get_driver_point_transactions_for_sponsor(
+            org_id, driver_sponsorship_id
+        ),
+        form_values=form_values,
+        driver_display_name=display_name,
+        error=error,
+        breadcrumbs=sponsor_breadcrumbs(
+            ("Driver Management", url_for("sponsor.driver_management")),
+            (f"Edit {display_name}", None),
+        ),
     )
 
 
@@ -251,35 +280,13 @@ def decide_application(application_id: int):
 @sponsor_required
 def driver_management():
     org_id = current_user.sponsor_user.organization_id
-    editing_id = request.args.get("editing_id", type=int)
 
     if request.method == "POST":
         action = (request.form.get("action") or "").strip().lower()
         sponsorship_id = request.form.get("driver_sponsorship_id", type=int)
-        editing_id = sponsorship_id
 
         if not sponsorship_id:
             return redirect(url_for("sponsor.driver_management"))
-
-        if action == "update":
-            username = (request.form.get("username") or "").strip()
-            email = (request.form.get("email") or "").strip() or None
-            first_name = (request.form.get("first_name") or "").strip()
-            last_name = (request.form.get("last_name") or "").strip()
-            try:
-                update_driver_profile_for_sponsor(
-                    org_id,
-                    sponsorship_id,
-                    username,
-                    email,
-                    first_name,
-                    last_name,
-                )
-                return redirect(url_for("sponsor.driver_management"))
-            except ValueError as e:
-                return render_driver_management_page(
-                    org_id, editing_id=editing_id, error=str(e)
-                )
 
         if action == "drop":
             try:
@@ -301,7 +308,45 @@ def driver_management():
 
         abort(400)
 
-    return render_driver_management_page(org_id, editing_id=editing_id)
+    return render_driver_management_page(org_id)
+
+
+@sponsor_bp.route("/drivers/<int:driver_sponsorship_id>/edit", methods=["GET", "POST"])
+@login_required
+@sponsor_required
+def edit_driver(driver_sponsorship_id: int):
+    org_id = current_user.sponsor_user.organization_id
+
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        email = (request.form.get("email") or "").strip() or None
+        first_name = (request.form.get("first_name") or "").strip()
+        last_name = (request.form.get("last_name") or "").strip()
+
+        try:
+            update_driver_profile_for_sponsor(
+                org_id,
+                driver_sponsorship_id,
+                username,
+                email,
+                first_name,
+                last_name,
+            )
+            return redirect(url_for("sponsor.driver_management"))
+        except ValueError as e:
+            return render_driver_edit_page(
+                org_id,
+                driver_sponsorship_id,
+                error=str(e),
+                form_values={
+                    "username": username,
+                    "email": email or "",
+                    "first_name": first_name,
+                    "last_name": last_name,
+                },
+            )
+
+    return render_driver_edit_page(org_id, driver_sponsorship_id, form_values={})
 
 
 @sponsor_bp.route("/drivers/<int:driver_sponsorship_id>/points", methods=["POST"])

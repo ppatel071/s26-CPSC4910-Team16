@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Driver{% endblock %}
+
+{% block content %}
+<h1>Edit Driver</h1>
+
+<p>
+  <strong>Driver:</strong> {{ driver_display_name }}<br>
+  <strong>Status:</strong> {{ sponsorship.status.value.title() }}<br>
+  <strong>Current Points:</strong> {{ sponsorship.point_balance }}
+</p>
+
+<form method="POST" action="{{ url_for('sponsor.edit_driver', driver_sponsorship_id=sponsorship.driver_sponsorship_id) }}" id="driver-edit-form">
+  {% with
+    user=sponsorship.driver.user,
+    form_values=form_values,
+    profile_field_prefix='driver_edit_',
+    show_driver_fields=true,
+    sponsorship=sponsorship,
+    submit_label='Save',
+    include_cancel=true,
+    cancel_label='Cancel',
+    cancel_href=url_for('sponsor.driver_management')
+  %}
+    {% include "partials/profile_form.html" %}
+  {% endwith %}
+</form>
+
+<h2>Point Change History</h2>
+
+{% if point_transactions %}
+  <table border="1" cellpadding="6" cellspacing="0" style="width: 100%;">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Changed By</th>
+        <th>Point Change</th>
+        <th>Reason</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for transaction in point_transactions %}
+        <tr>
+          <td>{{ transaction.create_time }}</td>
+          <td>{{ transaction.performed_by_user.username }}</td>
+          <td>{{ transaction.point_change }}</td>
+          <td>{{ transaction.reason }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No point changes have been recorded for this driver yet.</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+(() => {
+  const form = document.getElementById("driver-edit-form");
+  if (!form) return;
+
+  let bypassUnsavedPrompt = false;
+
+  function snapshotForm(currentForm) {
+    const data = new FormData(currentForm);
+    const serialized = [];
+    for (const pair of data.entries()) {
+      serialized.push(pair[0] + "=" + pair[1]);
+    }
+    return serialized.join("&");
+  }
+
+  const initialSnapshot = snapshotForm(form);
+
+  function isFormDirty() {
+    return snapshotForm(form) !== initialSnapshot;
+  }
+
+  form.addEventListener("submit", () => {
+    bypassUnsavedPrompt = true;
+  });
+
+  window.addEventListener("beforeunload", (event) => {
+    if (bypassUnsavedPrompt || !isFormDirty()) {
+      return;
+    }
+    event.preventDefault();
+    event.returnValue = "";
+  });
+})();
+</script>
+{% endblock %}

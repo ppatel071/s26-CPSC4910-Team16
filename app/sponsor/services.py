@@ -206,6 +206,23 @@ def update_driver_profile_for_sponsor(
     return sponsorship
 
 
+def get_driver_point_transactions_for_sponsor(
+    organization_id: int, driver_sponsorship_id: int
+) -> List[PointTransaction]:
+    sponsorship = get_organization_driver_sponsorship(
+        organization_id, driver_sponsorship_id
+    )
+    return (
+        PointTransaction.query.options(joinedload(PointTransaction.performed_by_user))
+        .filter(
+            PointTransaction.organization_id == organization_id,
+            PointTransaction.driver_id == sponsorship.driver_id,
+        )
+        .order_by(PointTransaction.create_time.desc())
+        .all()
+    )
+
+
 def set_driver_status_for_sponsor(
     organization_id: int,
     driver_sponsorship_id: int,

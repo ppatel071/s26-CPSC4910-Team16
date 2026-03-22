@@ -62,9 +62,12 @@
             >
               Deduct Points
             </button>
-            <button type="button" class="button edit-btn" data-sponsorship-id="{{ sponsorship.driver_sponsorship_id }}">
+            <a
+              class="button"
+              href="{{ url_for('sponsor.edit_driver', driver_sponsorship_id=sponsorship.driver_sponsorship_id) }}"
+            >
               Edit
-            </button>
+            </a>
             <button
               type="button"
               class="button drop-btn"
@@ -83,37 +86,6 @@
               Restore
             </button>
           {% endif %}
-        </td>
-      </tr>
-      <tr
-        class="edit-row"
-        id="edit-row-{{ sponsorship.driver_sponsorship_id }}"
-        data-status="{{ sponsorship.status.value }}"
-        data-editing-for="{{ sponsorship.driver_sponsorship_id }}"
-        {% if editing_id != sponsorship.driver_sponsorship_id %}style="display: none;"{% endif %}
-      >
-        <td colspan="5">
-          <strong>Edit Driver: {{ display_name }}</strong>
-          <form
-            method="POST"
-            action="{{ url_for('sponsor.driver_management') }}"
-            class="driver-edit-form"
-            data-edit-form="true"
-          >
-            <input type="hidden" name="action" value="update">
-            <input type="hidden" name="driver_sponsorship_id" value="{{ sponsorship.driver_sponsorship_id }}">
-            {% with
-              user=driver_user,
-              profile_field_prefix='driver_' ~ sponsorship.driver_sponsorship_id ~ '_',
-              show_driver_fields=true,
-              sponsorship=sponsorship,
-              submit_label='Save',
-              include_cancel=true,
-              cancel_label='Cancel'
-            %}
-              {% include "partials/profile_form.html" %}
-            {% endwith %}
-          </form>
         </td>
       </tr>
     {% endfor %}
@@ -144,14 +116,6 @@
   </div>
 </dialog>
 
-<dialog id="unsaved-modal">
-  <p>You have unsaved edits. What do you want to do?</p>
-  <div>
-    <button type="button" id="unsaved-save">Save</button>
-    <button type="button" id="unsaved-discard">Discard</button>
-    <button type="button" id="unsaved-cancel">Cancel</button>
-  </div>
-</dialog>
 {% endblock %}
 
 {% block scripts %}
@@ -171,38 +135,9 @@
   const confirmYesBtn = document.getElementById("confirm-action-yes");
   const confirmNoBtn = document.getElementById("confirm-action-no");
 
-  const unsavedModal = document.getElementById("unsaved-modal");
-  const unsavedSaveBtn = document.getElementById("unsaved-save");
-  const unsavedDiscardBtn = document.getElementById("unsaved-discard");
-  const unsavedCancelBtn = document.getElementById("unsaved-cancel");
-
   const driverRows = Array.from(tableBody.querySelectorAll(".driver-row"));
   const pointDialogs = Array.from(document.querySelectorAll(".point-adjust-dialog"));
-  let activeEditForm = null;
-  let pendingAction = null;
   let bypassUnsavedPrompt = false;
-  let previousStatusFilter = statusFilter.value;
-
-  function isFormDirty(form) {
-    if (!form) return false;
-    return form.dataset.initialSnapshot !== snapshotForm(form);
-  }
-
-  function snapshotForm(form) {
-    const data = new FormData(form);
-    const serialized = [];
-    for (const pair of data.entries()) {
-      serialized.push(pair[0] + "=" + pair[1]);
-    }
-    return serialized.join("&");
-  }
-
-  function setFormSnapshots() {
-    const forms = document.querySelectorAll(".driver-edit-form");
-    forms.forEach((form) => {
-      form.dataset.initialSnapshot = snapshotForm(form);
-    });
-  }
 
   function applyFilters() {
     const term = (searchInput.value || "").trim().toLowerCase();
@@ -218,42 +153,12 @@
 
       row.style.display = visible ? "" : "none";
 
-      const editRow = document.getElementById("edit-row-" + row.dataset.sponsorshipId);
-      if (!visible && editRow) {
-        editRow.style.display = "none";
-      }
-
       if (visible) {
         visibleCount += 1;
       }
     });
 
     emptyMessage.style.display = visibleCount === 0 ? "" : "none";
-  }
-  
-  function closeAllEditRows() {
-    document.querySelectorAll(".edit-row").forEach((row) => {
-      row.style.display = "none";
-    });
-    activeEditForm = null;
-  }
-
-  function openEditRow(sponsorshipId) {
-    closeAllEditRows();
-    const row = document.getElementById("edit-row-" + sponsorshipId);
-    if (row) {
-      row.style.display = "";
-      activeEditForm = row.querySelector(".driver-edit-form");
-    }
-  }
-
-  function withUnsavedGuard(nextStep) {
-    if (!isFormDirty(activeEditForm)) {
-      nextStep();
-      return;
-    }
-    pendingAction = nextStep;
-    unsavedModal.showModal();
   }
 
   function submitStatusAction(action, sponsorshipId) {
@@ -378,30 +283,14 @@
   }
 
   searchInput.addEventListener("input", applyFilters);
-  statusFilter.addEventListener("change", () => {
-    const requestedFilter = statusFilter.value;
-    withUnsavedGuard(() => {
-      previousStatusFilter = requestedFilter;
-      applyFilters();
-    });
-    if (isFormDirty(activeEditForm)) {
-      statusFilter.value = previousStatusFilter;
-    }
-  });
+  statusFilter.addEventListener("change", applyFilters);
 
   tableBody.addEventListener("click", (event) => {
     const pointActionBtn = event.target.closest(".point-action-btn");
     if (pointActionBtn) {
       const sponsorshipId = pointActionBtn.dataset.sponsorshipId;
       const mode = pointActionBtn.dataset.dialogMode || "add";
-      withUnsavedGuard(() => openPointDialog(sponsorshipId, mode));
-      return;
-    }
-
-    const editBtn = event.target.closest(".edit-btn");
-    if (editBtn) {
-      const sponsorshipId = editBtn.dataset.sponsorshipId;
-      withUnsavedGuard(() => openEditRow(sponsorshipId));
+      openPointDialog(sponsorshipId, mode);
       return;
     }
 
@@ -409,14 +298,12 @@
     if (dropBtn) {
       const sponsorshipId = dropBtn.dataset.sponsorshipId;
       const driverName = dropBtn.dataset.driverName || "this driver";
-      withUnsavedGuard(() => {
-        confirmMessage.textContent = `Drop ${driverName}? This will set status to Dropped.`;
-        confirmModal.showModal();
-        confirmYesBtn.onclick = () => {
-          confirmModal.close();
-          submitStatusAction("drop", sponsorshipId);
-        };
-      });
+      confirmMessage.textContent = `Drop ${driverName}? This will set status to Dropped.`;
+      confirmModal.showModal();
+      confirmYesBtn.onclick = () => {
+        confirmModal.close();
+        submitStatusAction("drop", sponsorshipId);
+      };
       return;
     }
 
@@ -424,97 +311,17 @@
     if (restoreBtn) {
       const sponsorshipId = restoreBtn.dataset.sponsorshipId;
       const driverName = restoreBtn.dataset.driverName || "this driver";
-      withUnsavedGuard(() => {
-        confirmMessage.textContent = `Restore ${driverName} to Active status?`;
-        confirmModal.showModal();
-        confirmYesBtn.onclick = () => {
-          confirmModal.close();
-          submitStatusAction("restore", sponsorshipId);
-        };
-      });
-      return;
-    }
-
-    const cancelBtn = event.target.closest("[data-edit-cancel]");
-    if (cancelBtn) {
-      const form = cancelBtn.closest(".driver-edit-form");
-      if (isFormDirty(form)) {
-        pendingAction = () => {
-          form.reset();
-          form.dataset.initialSnapshot = snapshotForm(form);
-          closeAllEditRows();
-        };
-        unsavedModal.showModal();
-      } else {
-        closeAllEditRows();
-      }
+      confirmMessage.textContent = `Restore ${driverName} to Active status?`;
+      confirmModal.showModal();
+      confirmYesBtn.onclick = () => {
+        confirmModal.close();
+        submitStatusAction("restore", sponsorshipId);
+      };
     }
   });
 
   confirmNoBtn.addEventListener("click", () => {
     confirmModal.close();
-  });
-
-  unsavedSaveBtn.addEventListener("click", () => {
-    if (activeEditForm) {
-      pendingAction = null;
-      unsavedModal.close();
-      bypassUnsavedPrompt = true;
-      activeEditForm.submit();
-    }
-  });
-
-  unsavedDiscardBtn.addEventListener("click", () => {
-    unsavedModal.close();
-    if (activeEditForm) {
-      activeEditForm.reset();
-      activeEditForm.dataset.initialSnapshot = snapshotForm(activeEditForm);
-    }
-    if (pendingAction) {
-      const action = pendingAction;
-      pendingAction = null;
-      action();
-    }
-  });
-
-  unsavedCancelBtn.addEventListener("click", () => {
-    pendingAction = null;
-    unsavedModal.close();
-  });
-
-  window.addEventListener("beforeunload", (event) => {
-    if (bypassUnsavedPrompt) return;
-    if (isFormDirty(activeEditForm)) {
-      event.preventDefault();
-      event.returnValue = "";
-    }
-  });
-
-  document.addEventListener("click", (event) => {
-    if (bypassUnsavedPrompt) return;
-    if (!isFormDirty(activeEditForm)) return;
-
-    const target = event.target;
-    const isInsideEditForm = activeEditForm && activeEditForm.contains(target);
-    const isUnsavedModalAction = unsavedModal.contains(target);
-    if (isInsideEditForm || isUnsavedModalAction) {
-      return;
-    }
-
-    const link = target.closest("a");
-    if (link) {
-      event.preventDefault();
-      pendingAction = () => {
-        bypassUnsavedPrompt = true;
-        window.location.href = link.href;
-      };
-      unsavedModal.showModal();
-    }
-  });
-  document.querySelectorAll(".driver-edit-form").forEach((form) => {
-    form.addEventListener("submit", () => {
-      bypassUnsavedPrompt = true;
-    });
   });
   pointDialogs.forEach((dialog) => {
     const form = dialog.querySelector(".point-adjust-form");
@@ -553,13 +360,6 @@
 
     updatePointPreview(form);
   });
-  setFormSnapshots();
-  const openEditRowElement = Array.from(document.querySelectorAll(".edit-row")).find(
-    (row) => row.style.display !== "none"
-  );
-  if (openEditRowElement) {
-    activeEditForm = openEditRowElement.querySelector(".driver-edit-form");
-  }
   {% if point_form_state and point_form_state.driver_sponsorship_id %}
   const initialPointDialog = getPointDialog("{{ point_form_state.driver_sponsorship_id }}");
   if (initialPointDialog) {
