@@ -16,13 +16,20 @@ from app.models.system import Notification
 from app.sponsor import sponsor_bp
 from app.sponsor.services import (
     adjust_driver_points_for_sponsor,
+    add_catalog_item_for_organization,
     approve_driver_for_sponsor,
+    browse_catalog_products,
     create_sponsor_user,
+    get_catalog_products_for_organization,
     get_driver_point_transactions_for_sponsor,
     get_organization_driver_sponsorship,
+    get_organization_catalog_items,
+    get_catalog_categories,
     get_driver_applications,
     get_organization_drivers,
+    remove_catalog_item_for_organization,
     set_driver_status_for_sponsor,
+    CATALOG_PAGE_SIZE,
     update_driver_profile_for_sponsor,
     update_sponsor_organization,
     validate_and_apply_user_profile_updates,
@@ -84,6 +91,98 @@ def render_driver_edit_page(
         breadcrumbs=sponsor_breadcrumbs(
             ("Driver Management", url_for("sponsor.driver_management")),
             (f"Edit {display_name}", None),
+        ),
+    )
+
+
+def render_catalog_management_page(
+    org_id: int,
+    *,
+    error: str | None = None,
+):
+    try:
+        catalog_items = get_catalog_products_for_organization(org_id)
+    except Exception:
+        return render_template(
+            "sponsor/catalog_management.html",
+            catalog_items=[],
+            error=error
+            or "The product catalog service is unavailable right now. Please try again.",
+            breadcrumbs=sponsor_breadcrumbs(("Catalog Management", None)),
+        )
+
+    return render_template(
+        "sponsor/catalog_management.html",
+        catalog_items=catalog_items,
+        error=error,
+        breadcrumbs=sponsor_breadcrumbs(("Catalog Management", None)),
+    )
+
+
+def render_catalog_browser_page(
+    org_id: int,
+    *,
+    query: str = "",
+    category: str = "",
+    page: int = 1,
+    error: str | None = None,
+):
+    page_size = CATALOG_PAGE_SIZE
+
+    try:
+        categories = get_catalog_categories()
+        product_list = browse_catalog_products(
+            query=query,
+            category=category,
+            page=page,
+            page_size=page_size,
+        )
+        catalog_items = get_organization_catalog_items(org_id)
+    except Exception:
+        return render_template(
+            "sponsor/catalog_browse.html",
+            catalog_external_ids=set(),
+            catalog_ids_by_external_id={},
+            categories=[],
+            products=[],
+            current_query=query,
+            current_category=category,
+            current_page=max(page, 1),
+            total_pages=1,
+            error=error
+            or "The product catalog service is unavailable right now. Please try again.",
+            breadcrumbs=sponsor_breadcrumbs(
+                ("Catalog Management", url_for("sponsor.catalog_management")),
+                ("Browse Products", None),
+            ),
+        )
+
+    total_pages = max(1, (product_list.total + page_size - 1) // page_size)
+    safe_page = min(max(page, 1), total_pages)
+    if safe_page != page:
+        product_list = browse_catalog_products(
+            query=query,
+            category=category,
+            page=safe_page,
+            page_size=page_size,
+        )
+
+    return render_template(
+        "sponsor/catalog_browse.html",
+        catalog_external_ids={item.external_id for item in catalog_items},
+        catalog_ids_by_external_id={
+            item.external_id: item.catalog_id for item in catalog_items
+        },
+        categories=categories,
+        products=product_list.products,
+        current_query=query,
+        current_category=category,
+        current_page=safe_page,
+        total_pages=total_pages,
+        error=error,
+        breadcrumbs=sponsor_breadcrumbs(
+            ("Catalog Management", url_for("sponsor.catalog_management")),
+            ("Browse Products", None),
         ),
     )
 
@@ -225,6 +324,94 @@ def get_applications():
         pending_applications=pending_applications,
         historic_applications=historic_applications,
         breadcrumbs=breadcrumbs,
+    )
+
+
+@sponsor_bp.route("/catalog", methods=["GET", "POST"])
+@login_required
+@sponsor_required
+def catalog_management():
+    org_id = current_user.sponsor_user.organization_id
+
+    if request.method == "POST":
+        action = (request.form.get("action") or "").strip().lower()
+        catalog_id = request.form.get("catalog_id", type=int)
+
+        try:
+            if action == "remove":
+                if not catalog_id:
+                    raise ValueError("A catalog item must be selected before it can be removed.")
+                remove_catalog_item_for_organization(org_id, catalog_id)
+            else:
+                abort(400)
+
+            return redirect(url_for("sponsor.catalog_management"))
+        except ValueError as e:
+            return render_catalog_management_page(org_id, error=str(e))
+        except Exception:
+            return render_catalog_management_page(
+                org_id,
+                error="The product catalog service is unavailable right now. Please try again.",
+            )
+
+    return render_catalog_management_page(org_id)
+
+
+@sponsor_bp.route("/catalog/browse", methods=["GET", "POST"])
+@login_required
+@sponsor_required
+def catalog_browse():
+    org_id = current_user.sponsor_user.organization_id
+
+    if request.method == "POST":
+        action = (request.form.get("action") or "").strip().lower()
+        external_id = request.form.get("external_id", type=int)
+        catalog_id = request.form.get("catalog_id", type=int)
+        query = (request.form.get("query") or "").strip()
+        category = (request.form.get("category") or "").strip()
+        page = request.form.get("page", type=int) or 1
+
+        try:
+            if action == "add":
+                if not external_id:
+                    raise ValueError("A product must be selected before it can be added.")
+                add_catalog_item_for_organization(org_id, external_id)
+            elif action == "remove":
+                if not catalog_id:
+                    raise ValueError("A catalog item must be selected before it can be removed.")
+                remove_catalog_item_for_organization(org_id, catalog_id)
+            else:
+                abort(400)
+            return redirect(
+                url_for(
+                    "sponsor.catalog_browse",
+                    query=query,
+                    category=category,
+                    page=page,
+                )
+            )
+        except ValueError as e:
+            return render_catalog_browser_page(
+                org_id,
+                query=query,
+                category=category,
+                page=page,
+                error=str(e),
+            )
+        except Exception:
+            return render_catalog_browser_page(
+                org_id,
+                query=query,
+                category=category,
+                page=page,
+                error="The product catalog service is unavailable right now. Please try again.",
+            )
+
+    return render_catalog_browser_page(
+        org_id,
+        query=(request.args.get("query") or "").strip(),
+        category=(request.args.get("category") or "").strip(),
+        page=request.args.get("page", type=int) or 1,
     )
 
 

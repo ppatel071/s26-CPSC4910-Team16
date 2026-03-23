@@ -1,0 +1,142 @@
+.catalog-shell {
+  display: grid;
+  gap: 20px;
+  animation: catalog-fade-slide-in 220ms ease-out;
+}
+
+.catalog-hero {
+  border-radius: 18px;
+  padding: 24px;
+}
+
+.catalog-hero.catalog-hero-blue {
+  background: linear-gradient(135deg, #f4fbff 0%, #e2f2fb 100%);
+  border: 1px solid #9fd0ea;
+}
+
+.catalog-hero.catalog-hero-amber {
+  background: linear-gradient(135deg, #fff8ef 0%, #ffeacc 100%);
+  border: 1px solid #efc27d;
+}
+
+.catalog-hero h1,
+.catalog-panel h2 {
+  margin-top: 0;
+}
+
+.catalog-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.catalog-panel {
+  background: #fff;
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.catalog-panel.catalog-panel-blue {
+  border: 1px solid #c8dbe7;
+  box-shadow: 0 10px 24px rgba(87, 172, 220, 0.08);
+}
+
+.catalog-panel.catalog-panel-amber {
+  border: 1px solid #edd9be;
+  box-shadow: 0 10px 24px rgba(176, 118, 31, 0.08);
+}
+
+.catalog-meta {
+  color: #4e6471;
+  font-size: 0.92em;
+}
+
+.catalog-status-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e8f6eb;
+  color: #215b2d;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.catalog-empty {
+  padding: 18px;
+  border: 1px dashed #b8cfdb;
+  border-radius: 14px;
+  background: #f8fcfe;
+}
+
+.catalog-filters {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+.catalog-filters input,
+.catalog-filters select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.catalog-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #d9e6ee;
+  border-radius: 16px;
+  padding: 14px;
+  background: #fbfdfe;
+}
+
+.catalog-card-image {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: 14px;
+  background: #eef6fa;
+}
+
+.catalog-card-price {
+  font-size: 1.15em;
+  font-weight: 700;
+}
+
+.catalog-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.catalog-inline-form {
+  display: inline-block;
+}
+
+.catalog-pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+@keyframes catalog-fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

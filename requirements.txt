@@ -4,3 +4,5 @@ Flask-SQLAlchemy
 pymysql
 flask-login
 redmail
+pydantic
+requests

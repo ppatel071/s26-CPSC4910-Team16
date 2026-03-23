@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Products{% endblock %}
+
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="/static/catalog.css">
+{% endblock %}
+
+{% block content %}
+<div class="catalog-shell">
+  <section class="catalog-hero catalog-hero-amber">
+    <h1>Browse Products</h1>
+    <div class="catalog-actions">
+      <a class="button" href="{{ url_for('sponsor.catalog_management') }}">View Current Catalog</a>
+      <a class="button" href="{{ url_for('sponsor.dashboard') }}">Back to Dashboard</a>
+    </div>
+  </section>
+
+  <section class="catalog-panel catalog-panel-amber">
+    <form method="GET" action="{{ url_for('sponsor.catalog_browse') }}" class="catalog-filters">
+      <div>
+        <label for="catalog-query">Search</label><br>
+        <input id="catalog-query" type="text" name="query" value="{{ current_query }}" placeholder="Search by product name">
+      </div>
+      <div>
+        <label for="catalog-category">Category</label><br>
+        <select id="catalog-category" name="category">
+          <option value="">All Categories</option>
+          {% for category in categories %}
+            <option value="{{ category.slug }}" {% if current_category == category.slug %}selected{% endif %}>
+              {{ category.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <button type="submit">Apply Filters</button>
+        <a class="button" href="{{ url_for('sponsor.catalog_browse') }}">Clear</a>
+      </div>
+    </form>
+
+    {% if products %}
+      <div class="catalog-grid">
+        {% for product in products %}
+          <article class="catalog-card">
+            <img class="catalog-card-image" src="{{ product.thumbnail }}" alt="{{ product.title }}">
+            <div>
+              <strong>{{ product.title }}</strong><br>
+              <span class="catalog-meta">{{ product.category }}</span>
+            </div>
+            <div>{{ product.description }}</div>
+            <div class="catalog-card-price">${{ "%.2f"|format(product.price) }}</div>
+            <div>
+              <span class="catalog-status-pill">{{ product.availabilityStatus }}</span>
+              <span class="catalog-meta">Stock: {{ product.stock }}</span>
+            </div>
+            <div class="catalog-card-actions">
+              {% if product.id in catalog_external_ids %}
+                <span class="catalog-meta">Already in your catalog</span>
+                <form method="POST" action="{{ url_for('sponsor.catalog_browse') }}" class="catalog-inline-form">
+                  <input type="hidden" name="action" value="remove">
+                  <input type="hidden" name="catalog_id" value="{{ catalog_ids_by_external_id[product.id] }}">
+                  <input type="hidden" name="query" value="{{ current_query }}">
+                  <input type="hidden" name="category" value="{{ current_category }}">
+                  <input type="hidden" name="page" value="{{ current_page }}">
+                  <button type="submit">Remove</button>
+                </form>
+              {% else %}
+                <form method="POST" action="{{ url_for('sponsor.catalog_browse') }}" class="catalog-inline-form">
+                  <input type="hidden" name="action" value="add">
+                  <input type="hidden" name="external_id" value="{{ product.id }}">
+                  <input type="hidden" name="query" value="{{ current_query }}">
+                  <input type="hidden" name="category" value="{{ current_category }}">
+                  <input type="hidden" name="page" value="{{ current_page }}">
+                  <button type="submit">Add to Catalog</button>
+                </form>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p>No products matched the current filters.</p>
+    {% endif %}
+
+    <div class="catalog-pagination">
+      {% if current_page > 1 %}
+        <a
+          class="button"
+          href="{{ url_for('sponsor.catalog_browse', query=current_query, category=current_category, page=current_page - 1) }}"
+        >
+          Previous
+        </a>
+      {% endif %}
+      <span>Page {{ current_page }} of {{ total_pages }}</span>
+      {% if current_page < total_pages %}
+        <a
+          class="button"
+          href="{{ url_for('sponsor.catalog_browse', query=current_query, category=current_category, page=current_page + 1) }}"
+        >
+          Next
+        </a>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Catalog Management{% endblock %}
+
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="/static/catalog.css">
+{% endblock %}
+
+{% block content %}
+<div class="catalog-shell">
+  <section class="catalog-hero catalog-hero-blue">
+    <h1>Catalog Management</h1>
+    <div class="catalog-actions">
+      <a class="button" href="{{ url_for('sponsor.catalog_browse') }}">Browse Products</a>
+      <a class="button" href="{{ url_for('sponsor.dashboard') }}">Back to Dashboard</a>
+    </div>
+  </section>
+
+  <section class="catalog-panel catalog-panel-blue">
+    <h2>Current Catalog</h2>
+    {% if catalog_items %}
+      <div class="catalog-grid">
+        {% for item, product in catalog_items %}
+          <article class="catalog-card">
+            {% if product and product.thumbnail %}
+              <img class="catalog-card-image" src="{{ product.thumbnail }}" alt="{{ product.title }}">
+            {% else %}
+              <div class="catalog-card-image" aria-hidden="true"></div>
+            {% endif %}
+            <div>
+              <strong>{{ product.title if product else item.product_name }}</strong><br>
+              <span class="catalog-meta">
+                {% if product %}
+                  {{ product.category }}
+                {% else %}
+                  Stored catalog item
+                {% endif %}
+              </span>
+            </div>
+            <div>{{ product.description if product else 'Live product data is currently unavailable.' }}</div>
+            <div class="catalog-card-price">
+              {% if product %}
+                ${{ "%.2f"|format(product.price) }}
+              {% else %}
+                Price unavailable
+              {% endif %}
+            </div>
+            <div>
+              {% if product %}
+                <span class="catalog-status-pill">{{ product.availabilityStatus }}</span>
+                <span class="catalog-meta">Stock: {{ product.stock }}</span><br>
+                <span class="catalog-meta">External ID: {{ item.external_id }}</span>
+              {% else %}
+                <span class="catalog-meta">Live product data is currently unavailable.</span><br>
+                <span class="catalog-meta">External ID: {{ item.external_id }}</span>
+              {% endif %}
+            </div>
+            <div class="catalog-card-actions">
+              <form method="POST" action="{{ url_for('sponsor.catalog_management') }}" class="catalog-inline-form">
+                <input type="hidden" name="action" value="remove">
+                <input type="hidden" name="catalog_id" value="{{ item.catalog_id }}">
+                <button type="submit">Remove</button>
+              </form>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="catalog-empty">
+        <p>Your organization catalog is empty.</p>
+        <p><a class="button" href="{{ url_for('sponsor.catalog_browse') }}">Browse Products</a></p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
