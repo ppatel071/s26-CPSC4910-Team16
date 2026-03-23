@@ -49,10 +49,12 @@
         <td>{{ user.username }}</td>
         <td>{{ user.email or '' }}</td>
         <td>
-          {% if user.is_user_active %}
-            <span class="status-active">Active</span>
-          {% else %}
+          {% if not user.is_user_active %}
             <span class="status-deactivated">Deactivated Admin User</span>
+          {% elif user.is_login_locked %}
+            <span class="status-locked">Locked for Failed Logins</span>
+          {% else %}
+            <span class="status-active">Active</span>
           {% endif %}
         </td>
         <td>
@@ -94,10 +96,12 @@
         <td>{{ row.email or '' }}</td>
         <td>{{ row.sponsor_name }}</td>
         <td>
-          {% if row.is_user_active %}
-            <span class="status-active">Active</span>
-          {% else %}
+          {% if not row.is_user_active %}
             <span class="status-deactivated">Deactivated Sponsor User</span>
+          {% elif row.is_login_locked %}
+            <span class="status-locked">Locked for Failed Logins</span>
+          {% else %}
+            <span class="status-active">Active</span>
           {% endif %}
         </td>
         <td>
@@ -136,10 +140,12 @@
         <td>{{ user.username }}</td>
         <td>{{ user.email or '' }}</td>
         <td>
-          {% if user.is_user_active %}
-            <span class="status-active">Active</span>
-          {% else %}
+          {% if not user.is_user_active %}
             <span class="status-deactivated">Deactivated Driver User</span>
+          {% elif user.is_login_locked %}
+            <span class="status-locked">Locked for Failed Logins</span>
+          {% else %}
+            <span class="status-active">Active</span>
           {% endif %}
         </td>
         <td>

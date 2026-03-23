@@ -28,6 +28,9 @@ class User(db.Model, UserMixin):
     first_name: Mapped[str] = mapped_column(String(255))
     last_name: Mapped[str] = mapped_column(String(255))
     is_user_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    failed_login_attempts: Mapped[int] = mapped_column(nullable=False, default=0)
+    is_login_locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    locked_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     sponsor_user: Mapped[Optional['SponsorUser']] = relationship(back_populates='user', uselist=False)
     driver: Mapped[Optional['Driver']] = relationship(back_populates='user', uselist=False)

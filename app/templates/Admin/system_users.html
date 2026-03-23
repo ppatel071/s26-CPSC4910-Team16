@@ -22,6 +22,13 @@
 {% block content %}
 <h1>System Users</h1>
 
+{% if message %}
+  <p style="color: green;">{{ message }}</p>
+{% endif %}
+{% if error %}
+  <p style="color: red;">{{ error }}</p>
+{% endif %}
+
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
     <tr>
@@ -29,7 +36,10 @@
       <th>Username</th>
       <th>Email</th>
       <th>Role</th>
+      <th>Failed Attempts</th>
       <th>Status Label</th>
+      <th>Action</th>
+      <th>Password</th>
     </tr>
   </thead>
   <tbody>
@@ -39,13 +49,32 @@
         <td>{{ user.username }}</td>
         <td>{{ user.email or '' }}</td>
         <td>{{ user.role_type.value }}</td>
+        <td>{{ user.failed_login_attempts }}</td>
         <td>
-          {% if user.role_type == RoleType.DRIVER and not user.is_user_active %}
-            <span class="status-deactivated">Deactivated Driver User</span>
-          {% elif user.is_user_active %}
-            <span class="status-active">Active</span>
+          {% if not user.is_user_active %}
+            <span class="status-deactivated">Deactivated User</span>
+          {% elif user.is_login_locked %}
+            <span class="status-locked">Locked for Failed Logins</span>
           {% else %}
-            <span class="status-locked">Locked User</span>
+            <span class="status-active">Active</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if user.is_user_active and user.is_login_locked %}
+            <form method="POST" action="{{ url_for('admin.unlock_locked_user', user_id=user.user_id) }}">
+              <button type="submit" onclick="return confirm('Unlock this user account?');">Unlock User</button>
+            </form>
+          {% elif not user.is_user_active %}
+            Deactivated
+          {% else %}
+            Active
+          {% endif %}
+        </td>
+        <td>
+          {% if not user.is_user_active or user.is_login_locked %}
+            Unavailable
+          {% else %}
+            <a class="button" href="{{ url_for('admin.reset_user_password_as_admin', user_id=user.user_id) }}">Reset Password</a>
           {% endif %}
         </td>
       </tr>
@@ -54,6 +83,7 @@
 </table>
 
 <p>
+  <a class="button" href="{{ url_for('admin.password_reset_audit_log') }}">Password Reset Audit Log</a>
   <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
 </p>
 {% endblock %}

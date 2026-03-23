@@ -1,10 +1,11 @@
 import datetime as dt
 from sqlalchemy import func
 from app.extensions import db
-from app.auth.services import register_user
-from app.models import SponsorOrganization, SponsorUser, User, Order, LoginAttempt
+from app.auth.services import register_user, validate_complexity
+from app.models import SponsorOrganization, SponsorUser, User, Order, LoginAttempt, PasswordChange
 from app.sponsor.services import update_sponsor_organization
-from app.models.enums import RoleType
+from app.models.enums import RoleType, PasswordChangeType
+from werkzeug.security import generate_password_hash
 
 
 def get_all_sponsors():
@@ -290,6 +291,7 @@ def get_users_for_removal_page():
             User.username.label('username'),
             User.email.label('email'),
             User.is_user_active.label('is_user_active'),
+            User.is_login_locked.label('is_login_locked'),
             SponsorOrganization.name.label('sponsor_name'),
         )
         .select_from(SponsorUser)
@@ -351,9 +353,66 @@ def deactivate_sponsor_user(user_id: int):
     return user
 
 
+def unlock_user_login(user_id: int):
+    user = User.query.get(user_id)
+    if user is None:
+        raise ValueError('User not found')
+    if not user.is_user_active:
+        raise ValueError('Deactivated users cannot be unlocked from login lock here')
+    if not user.is_login_locked:
+        raise ValueError('User is not locked for failed login attempts')
+
+    user.is_login_locked = False
+    user.failed_login_attempts = 0
+    user.locked_at = None
+    db.session.commit()
+    return user
+
+
 def get_all_system_users():
     return (
         db.session.query(User)
         .order_by(User.role_type.asc(), User.username.asc())
         .all()
     )
+
+
+def get_admin_password_reset_audit_entries():
+    return (
+        db.session.query(
+            PasswordChange.pass_id.label('pass_id'),
+            PasswordChange.change_time.label('change_time'),
+            User.user_id.label('user_id'),
+            User.username.label('username'),
+            User.email.label('email'),
+            User.role_type.label('role_type'),
+        )
+        .join(User, PasswordChange.user_id == User.user_id)
+        .filter(PasswordChange.change_type == PasswordChangeType.ADMIN_RESET)
+        .order_by(PasswordChange.change_time.desc(), PasswordChange.pass_id.desc())
+        .all()
+    )
+
+
+def admin_reset_user_password(user_id: int, new_password: str, confirm_password: str):
+    user = User.query.get(user_id)
+    if user is None:
+        raise ValueError('User not found')
+
+    valid, msg = validate_complexity(new_password, confirm_password)
+    if not valid:
+        raise ValueError(msg)
+
+    user.password = generate_password_hash(new_password)
+    user.failed_login_attempts = 0
+    user.is_login_locked = False
+    user.locked_at = None
+
+    db.session.add(
+        PasswordChange(
+            user_id=user.user_id,
+            change_type=PasswordChangeType.ADMIN_RESET,
+        )
+    )
+    db.session.commit()
+    return user

@@ -24,6 +24,9 @@ from app.Admin.services import (
     deactivate_admin_user,
     deactivate_sponsor_user,
     get_all_system_users,
+    unlock_user_login,
+    get_admin_password_reset_audit_entries,
+    admin_reset_user_password,
 )
 
 
@@ -365,4 +368,74 @@ def deactivate_sponsor(user_id):
 def system_users():
     users = get_all_system_users()
     breadcrumbs = admin_breadcrumbs(("System Users", None))
-    return render_template('Admin/system_users.html', users=users, RoleType=RoleType, breadcrumbs=breadcrumbs)
+    message = request.args.get('message')
+    error = request.args.get('error')
+    return render_template(
+        'Admin/system_users.html',
+        users=users,
+        RoleType=RoleType,
+        breadcrumbs=breadcrumbs,
+        message=message,
+        error=error,
+    )
+
+
+@admin_bp.route('/audit-log/password-resets')
+@login_required
+@admin_required
+def password_reset_audit_log():
+    entries = get_admin_password_reset_audit_entries()
+    breadcrumbs = admin_breadcrumbs(("Password Reset Audit Log", None))
+    return render_template(
+        'Admin/password_reset_audit_log.html',
+        entries=entries,
+        breadcrumbs=breadcrumbs,
+    )
+
+
+@admin_bp.route('/users/<int:user_id>/password-reset', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def reset_user_password_as_admin(user_id):
+    user = User.query.get_or_404(user_id)
+    breadcrumbs = admin_breadcrumbs(
+        ("System Users", url_for("admin.system_users")),
+        ("Reset User Password", None),
+    )
+
+    if request.method == 'POST':
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+
+        try:
+            admin_reset_user_password(user.user_id, new_password, confirm_password)
+            return redirect(
+                url_for(
+                    'admin.system_users',
+                    message=f'Password updated for user {user.username}'
+                )
+            )
+        except ValueError as e:
+            return render_template(
+                'Admin/admin_reset_user_password.html',
+                user=user,
+                error=str(e),
+                breadcrumbs=breadcrumbs,
+            )
+
+    return render_template(
+        'Admin/admin_reset_user_password.html',
+        user=user,
+        breadcrumbs=breadcrumbs,
+    )
+
+
+@admin_bp.route('/users/<int:user_id>/unlock', methods=['POST'])
+@login_required
+@admin_required
+def unlock_locked_user(user_id):
+    try:
+        unlock_user_login(user_id)
+        return redirect(url_for('admin.system_users', message='User login lock removed'))
+    except ValueError as e:
+        return redirect(url_for('admin.system_users', error=str(e)))

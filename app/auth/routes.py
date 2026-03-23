@@ -32,13 +32,13 @@ def login():
         username = request.form.get('username', '')
         password = request.form.get('password', '')
 
-        user = authenticate(username, password)
+        user, error = authenticate(username, password)
 
         if user:
             login_user(user)
             return redirect(url_for('auth.home'))
 
-        return render_template('login.html', error='Invalid username or password')
+        return render_template('login.html', error=error)
 
     return render_template('login.html')
 

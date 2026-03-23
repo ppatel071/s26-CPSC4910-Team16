@@ -1,10 +1,30 @@
 # Business logic for the auth routes
+import datetime as dt
 import re
-from app.models import User, RoleType, Driver, PasswordChange, PasswordChangeType
+from app.models import User, RoleType, Driver, PasswordChange, PasswordChangeType, LoginAttempt
 from app.extensions import db
 from werkzeug.security import check_password_hash, generate_password_hash
 from typing import Tuple
 from redmail import gmail
+
+MAX_FAILED_LOGIN_ATTEMPTS = 5
+
+
+def build_lockout_message() -> str:
+    return (
+        f'Your account has been locked after {MAX_FAILED_LOGIN_ATTEMPTS} failed login attempts. '
+        'Please contact an admin to unlock it.'
+    )
+
+
+def _record_login_attempt(user: User | None, username: str, success: bool) -> None:
+    db.session.add(
+        LoginAttempt(
+            user_id=user.user_id if user else None,
+            username_attempted=username,
+            success=success,
+        )
+    )
 
 
 def validate_complexity(password: str, confpass: str | None = None) -> Tuple[bool, str]:
@@ -34,15 +54,38 @@ def check_unique(username: str, email: str) -> Tuple[bool, str]:
     return True, ''
 
 
-def authenticate(username: str, password: str) -> User | None:
-    user = User.query.filter_by(username=username).first()
+def authenticate(username: str, password: str) -> Tuple[User | None, str]:
+    clean_username = (username or '').strip()
+    user = User.query.filter_by(username=clean_username).first()
     if not user:
-        return None
+        _record_login_attempt(None, clean_username, False)
+        db.session.commit()
+        return None, 'Invalid username or password'
     if not user.is_user_active:
-        return None
+        _record_login_attempt(user, clean_username, False)
+        db.session.commit()
+        return None, 'Your account has been deactivated. Please contact an admin.'
+    if user.is_login_locked:
+        _record_login_attempt(user, clean_username, False)
+        db.session.commit()
+        return None, build_lockout_message()
     if check_password_hash(user.password, password):
-        return user
-    return None
+        user.failed_login_attempts = 0
+        _record_login_attempt(user, clean_username, True)
+        db.session.commit()
+        return user, ''
+
+    user.failed_login_attempts += 1
+    error = 'Invalid username or password'
+
+    if user.failed_login_attempts >= MAX_FAILED_LOGIN_ATTEMPTS:
+        user.is_login_locked = True
+        user.locked_at = dt.datetime.now(tz=dt.timezone.utc)
+        error = build_lockout_message()
+
+    _record_login_attempt(user, clean_username, False)
+    db.session.commit()
+    return None, error
 
 
 def register_user(username: str, password: str, role: RoleType, email: str,
