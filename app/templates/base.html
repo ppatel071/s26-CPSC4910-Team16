@@ -9,7 +9,7 @@
     {% endblock %}
   </head>
   <body>
-    <nav class="breadcrumbs" style="background-color: #57acdc; border-color: #57acdc;">
+    <nav class="breadcrumbs">
       {% if breadcrumbs %}
         {% for name, link in breadcrumbs %}
 
@@ -23,7 +23,7 @@
       {% endif %}
     </nav>
 
-    <div style="padding-bottom: 5px; margin-bottom: 10px; width:100%; background-color: #57acdc; border: #57acdc">
+    <div class="section-card">
       <button class="button" onclick="ChangeFontSize(12)">Shrink Text Size</button>
       <button class="button" onclick="ChangeFontSize(16)">Default Text Size</button>
       <button class="button" onclick="ChangeFontSize(20)">Enlarge Text Size</button>

@@ -3,49 +3,98 @@
 {% block title %}Sponsor Dashboard{% endblock %}
 
 {% block content %}
-<h1 style="text-align: center;">Sponsor Dashboard</h1>
 
-<hr>
+<style>
+  .dashboard-container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px;
+  }
 
-<h2>Organization</h2>
-<p><a class="button" href="{{ url_for('sponsor.organization') }}">My Organization</a></p>
+  .dashboard-title {
+    text-align: center;
+    margin-bottom: 10px;
+  }
 
-<hr>
+  .section-card {
+    background: white;
+    padding: 25px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
 
-<h2>Sponsor Users</h2>
-<p>
-  <a class="button" href="{{ url_for('sponsor.profile_edit') }}">Edit My Profile</a>
-  <a class="button" href="{{ url_for('sponsor.create_user') }}">Add Sponsor User</a>
-</p>
+  .section-title {
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 600;
+    color:black;
+  }
 
-<hr>
+  button {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #4a90e2;
+    color: white;
+    cursor: pointer;
+  }
 
-<h2>Drivers</h2>
-<p>
-  <a class="button" href="{{ url_for('sponsor.get_applications') }}">Driver Applications ({{ num_applications }})</a>
-  <a class="button" href="{{ url_for('sponsor.driver_management') }}">Driver Management</a>
-</p>
+  button:hover {
+    background: #357abd;
+  }
+</style>
 
-<hr>
+<div class="dashboard-container">
 
-<h2>Catalog</h2>
-<p><a class="button" href="{{ url_for('sponsor.catalog_management') }}">Manage Catalog</a></p>
+  <div class="dashboard-title">
+    <h1>Sponsor Dashboard</h1>
+  </div>
 
-<hr>
+  <div class="section-card">
+    <div class="section-title"><h2>Organization</h2></div>
+    <p><a class="button" href="{{ url_for('sponsor.organization') }}">My Organization</a></p>
+  </div>
 
-<h2>Users</h2>
-{% if users %}
-  <ul>
-    {% for user in users %}
-      <li>
-        <strong>{{ user.username }}</strong>
-        {% if user.email %}
-          - {{ user.email }}
-        {% endif %}
-      </li>
-    {% endfor %}
-  </ul>
-{% else %}
-  <p>No users found.</p>
-{% endif %}
-{% endblock %}
+
+  <div class="section-card">
+    <div class="section-title"><h2>Sponsor Users</h2></div>
+    <p>
+      <a class="button" href="{{ url_for('sponsor.profile_edit') }}">Edit My Profile</a>
+      <a class="button" href="{{ url_for('sponsor.create_user') }}">Add Sponsor User</a>
+    </p>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title"><h2>Drivers</h2></div>
+    <p>
+      <a class="button" href="{{ url_for('sponsor.get_applications') }}">Driver Applications ({{ num_applications }})</a>
+      <a class="button" href="{{ url_for('sponsor.driver_management') }}">Driver Management</a>
+    </p>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title"><h2>Catalog</h2></div>
+    <p><a class="button" href="{{ url_for('sponsor.catalog_management') }}">Manage Catalog</a></p>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title"><h2>Users</h2></div>
+    {% if users %}
+      <ul>
+        {% for user in users %}
+          <li>
+            <strong>{{ user.username }}</strong>
+            {% if user.email %}
+              - {{ user.email }}
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No users found.</p>
+    {% endif %}
+    {% endblock %}
+  </div>
+
+</div>

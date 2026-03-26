@@ -31,6 +31,7 @@
     margin-bottom: 15px;
     font-size: 20px;
     font-weight: 600;
+    color:black;
 }
 
 .notification-card {
@@ -76,6 +77,7 @@ table th {
     background: #f0f4f8;
     padding: 10px;
     text-align: left;
+    color: black;
 }
 
 table td {
@@ -101,6 +103,7 @@ button:hover {
     padding: 15px;
     border-radius: 10px;
     border: 1px solid #eee;
+    color: black;
 }
 
 .org-card {
@@ -113,6 +116,7 @@ button:hover {
     justify-content: space-between;
     align-items: center;
     gap: 12px;
+    color: black;
 }
 </style>
 
@@ -252,7 +256,7 @@ button:hover {
                 <p><strong>Address:</strong> {{ active_sponsorship.organization.address or "Not provided" }}</p>
             </div>
         {% else %}
-            <p>You are not currently assigned to a sponsor organization.</p>
+            <p style="color: #777;">You are not currently assigned to a sponsor organization.</p>
         {% endif %}
     </div>
 
@@ -270,7 +274,7 @@ button:hover {
                 </div>
             {% endfor %}
         {% else %}
-            <p>No pending sponsor applications.</p>
+            <p style="color: #777;">No pending sponsor applications.</p>
         {% endif %}
     </div>
 
@@ -287,7 +291,7 @@ button:hover {
                 </div>
             {% endfor %}
         {% else %}
-            <p>No additional sponsor organizations are currently available.</p>
+            <p style="color: #777;">No additional sponsor organizations are currently available.</p>
         {% endif %}
     </div>
 </div>

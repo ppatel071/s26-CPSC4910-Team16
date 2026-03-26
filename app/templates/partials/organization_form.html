@@ -1,79 +1,109 @@
+<style>
+  .section-card {
+    background: white;
+    padding: 25px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .section-title {
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 600;
+    color:black;
+  }
+
+  .dashboard-container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px;
+  }
+</style>
+
 {% if organization %}
+<div class="dashboard-container">
 
-<h2>Organization</h2>
+  <div class="section-card">
 
-<form method="POST"
-      action=""
-      onsubmit="return confirm('Save changes?');">
+    <div class="section-title"><h2>Organization</h2></div>
 
-<input type="hidden"
-       name="organization_id"
-       value="{{ organization.organization_id }}">
+    <form method="POST"
+          action=""
+          onsubmit="return confirm('Save changes?');">
 
-<p>
+    <input type="hidden"
+          name="organization_id"
+          value="{{ organization.organization_id }}">
 
-<strong>Name:</strong>
+    <p>
 
-<span class="display">
-  {{ organization.name }}
-</span>
+    <strong>Name:</strong>
 
-<input
-  class="edit"
-  type="text"
-  name="name"
-  value="{{ organization.name }}"
-  placeholder="e.g. Organization Name"
-  required
-  style="display:none;">
+    <span class="display">
+      {{ organization.name }}
+    </span>
 
-</p>
+    <input
+      class="edit"
+      type="text"
+      name="name"
+      value="{{ organization.name }}"
+      placeholder="e.g. Organization Name"
+      required
+      style="display:none;">
 
-<p>
-<strong>Point Value:</strong>
+    </p>
 
-<span class="display">
-  ${{ organization.point_value }} per point
-</span>
+    <p>
+    <strong>Point Value:</strong>
 
-<input
-  class="edit"
-  type="number"
-  name="point_value"
-  step="0.0001"
-  min="0.0001"
-  value="{{ organization.point_value }}"
-  placeholder="e.g. 0.0001"
-  required
-  style="display:none;">
-</p>
+    <span class="display">
+      ${{ organization.point_value }} per point
+    </span>
 
-<p>
-<strong>Created:</strong>
-{{ organization.create_time }}
-</p>
+    <input
+      class="edit"
+      type="number"
+      name="point_value"
+      step="0.0001"
+      min="0.0001"
+      value="{{ organization.point_value }}"
+      placeholder="e.g. 0.0001"
+      required
+      style="display:none;">
+    </p>
 
-<br>
-<button type="button"
-        id="editButton"
-        onclick="startEdit()">
-        Edit Organization
-</button>
+    <p>
+    <strong>Created:</strong>
+    {{ organization.create_time }}
+    </p>
 
-<button type="submit"
-        id="saveButton"
-        style="display:none;">
-        Save Changes
-</button>
+    <br>
+    <button type="button"
+            id="editButton"
+            onclick="startEdit()">
+            Edit Organization
+    </button>
 
-<button type="button"
-        id="cancelButton"
-        onclick="cancelEdit()"
-        style="display:none;">
-        Cancel
-</button>
+    <button type="submit"
+            id="saveButton"
+            style="display:none;">
+            Save Changes
+    </button>
 
-</form>
+    <button type="button"
+            id="cancelButton"
+            onclick="cancelEdit()"
+            style="display:none;">
+            Cancel
+    </button>
+
+    </form>
+
+  </div>
+
+</div>
 
 {% block scripts %}
 <script>

@@ -1,3 +1,31 @@
+<style>
+  .dashboard-container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px;
+  }
+
+  .dashboard-title {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .section-card {
+    background: white;
+    padding: 25px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .section-title {
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 600;
+    color:black;
+  }
+</style>
+
 {# Reusable profile form fields for user-like entities. #}
 {% set profile_field_prefix = profile_field_prefix|default('') %}
 {% set submit_label = submit_label|default('Save') %}
@@ -10,23 +38,31 @@
 {% set id_last_name = profile_field_prefix ~ 'last_name' %}
 {% set form_values = form_values|default({}) %}
 
-<label for="{{ id_username }}">Username</label><br>
-<input id="{{ id_username }}" name="username" type="text" required value="{{ form_values.get('username', user.username or '') }}" placeholder="e.g. jsmith123"><br><br>
+<div class="dashboard-container">
+  <div class="section-card">
 
-<label for="{{ id_email }}">Email</label><br>
-<input id="{{ id_email }}" name="email" type="email" value="{{ form_values.get('email', user.email or '') }}" placeholder="e.g. jsmith@gmail.com"><br><br>
+    <div class="section-title"><h2>Profile Details</h2></div>
 
-<label for="{{ id_first_name }}">First Name</label><br>
-<input id="{{ id_first_name }}" name="first_name" type="text" value="{{ form_values.get('first_name', user.first_name or '') }}" placeholder="e.g. John"><br><br>
+    <label for="{{ id_username }}">Username</label><br>
+    <input id="{{ id_username }}" name="username" type="text" required value="{{ form_values.get('username', user.username or '') }}" placeholder="e.g. jsmith123"><br><br>
 
-<label for="{{ id_last_name }}">Last Name</label><br>
-<input id="{{ id_last_name }}" name="last_name" type="text" value="{{ form_values.get('last_name', user.last_name or '') }}" placeholder="e.g. Smith"><br><br>
+    <label for="{{ id_email }}">Email</label><br>
+    <input id="{{ id_email }}" name="email" type="email" value="{{ form_values.get('email', user.email or '') }}" placeholder="e.g. jsmith@gmail.com"><br><br>
 
-<button type="submit">{{ submit_label }}</button>
-{% if include_cancel %}
-  {% if cancel_href %}
-    <a class="button" href="{{ cancel_href }}">{{ cancel_label }}</a>
-  {% else %}
-    <button type="button" data-edit-cancel>{{ cancel_label }}</button>
-  {% endif %}
-{% endif %}
+    <label for="{{ id_first_name }}">First Name</label><br>
+    <input id="{{ id_first_name }}" name="first_name" type="text" value="{{ form_values.get('first_name', user.first_name or '') }}" placeholder="e.g. John"><br><br>
+
+    <label for="{{ id_last_name }}">Last Name</label><br>
+    <input id="{{ id_last_name }}" name="last_name" type="text" value="{{ form_values.get('last_name', user.last_name or '') }}" placeholder="e.g. Smith"><br><br>
+
+    <button type="submit">{{ submit_label }}</button>
+    {% if include_cancel %}
+      {% if cancel_href %}
+        <a class="button" href="{{ cancel_href }}">{{ cancel_label }}</a>
+      {% else %}
+        <button type="button" data-edit-cancel>{{ cancel_label }}</button>
+      {% endif %}
+    {% endif %}
+
+  </div>
+</div>
