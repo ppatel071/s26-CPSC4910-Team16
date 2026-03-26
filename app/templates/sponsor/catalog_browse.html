@@ -10,7 +10,7 @@
 {% block content %}
 <div class="catalog-shell">
   <section class="catalog-hero catalog-hero-amber">
-    <h1>Browse Products</h1>
+    <h1 style="color: black;">Browse Products</h1>
     <div class="catalog-actions">
       <a class="button" href="{{ url_for('sponsor.catalog_management') }}">View Current Catalog</a>
       <a class="button" href="{{ url_for('sponsor.dashboard') }}">Back to Dashboard</a>
@@ -20,11 +20,11 @@
   <section class="catalog-panel catalog-panel-amber">
     <form method="GET" action="{{ url_for('sponsor.catalog_browse') }}" class="catalog-filters">
       <div>
-        <label for="catalog-query">Search</label><br>
+        <label style="color: black;" for="catalog-query">Search</label><br>
         <input id="catalog-query" type="text" name="query" value="{{ current_query }}" placeholder="Search by product name">
       </div>
       <div>
-        <label for="catalog-category">Category</label><br>
+        <label style="color: black;" for="catalog-category">Category</label><br>
         <select id="catalog-category" name="category">
           <option value="">All Categories</option>
           {% for category in categories %}
@@ -46,11 +46,11 @@
           <article class="catalog-card">
             <img class="catalog-card-image" src="{{ product.thumbnail }}" alt="{{ product.title }}">
             <div>
-              <strong>{{ product.title }}</strong><br>
-              <span class="catalog-meta">{{ product.category }}</span>
+              <strong style="color: black;">{{ product.title }}</strong><br>
+              <span style="color: black;" class="catalog-meta">{{ product.category }}</span>
             </div>
-            <div>{{ product.description }}</div>
-            <div class="catalog-card-price">${{ "%.2f"|format(product.price) }}</div>
+            <div style="color: black;">{{ product.description }}</div>
+            <div style="color: black;" class="catalog-card-price">${{ "%.2f"|format(product.price) }}</div>
             <div>
               <span class="catalog-status-pill">{{ product.availabilityStatus }}</span>
               <span class="catalog-meta">Stock: {{ product.stock }}</span>
