@@ -21,6 +21,18 @@
   margin-bottom: 15px;
 }
 
+.dashboard-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.dashboard-actions form {
+  margin: 0;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -42,17 +54,22 @@ table tr:hover {
   background: #f9fbff;
 }
 
-button {
+button,
+.button-link {
+  display: inline-block;
   padding: 8px 14px;
   border: none;
   border-radius: 6px;
   background: #4a90e2;
   color: white;
   cursor: pointer;
+  text-decoration: none;
 }
 
-button:hover {
+button:hover,
+.button-link:hover {
   background: #357ABD;
+  color: white;
 }
 
 .notification {
@@ -65,25 +82,20 @@ button:hover {
 .notification.unread {
   border-left: 4px solid #4a90e2;
 }
-
-.status-eligible {
-  color: green;
-  font-weight: 600;
-}
-
-.status-not {
-  color: red;
-  font-weight: 600;
-}
 </style>
 
 <div class="dashboard-container">
 
   <div class="dashboard-title"><h1 style="text-align: center;">Driver Dashboard</h1></div>
 
-  <a href="{{ url_for('driver.account_settings') }}">
-    <button>Account Settings</button>
-  </a>
+  <div class="dashboard-actions">
+    <a class="button-link" href="{{ url_for('driver.account_settings') }}">Account Settings</a>
+    {% if active_sponsorship %}
+      <a class="button-link" href="{{ url_for('driver.catalog') }}">View Reward Catalog</a>
+    {% endif %}
+  </div>
+
+  {% include "driver/partials/active_sponsorship_dropdown.html" %}
 
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
@@ -91,23 +103,58 @@ button:hover {
     {% endfor %}
   {% endwith %}
 
-  <!-- Points -->
-  <div class="section-card">
-    <h2>Your Points</h2>
-    {% if sponsorship %}
+  {% if active_sponsorship %}
+    <div class="section-card">
+      <h2>Your Points</h2>
       <p>
         <strong>Sponsor:</strong> {{ organization.name }}<br>
-        <strong>Point Balance:</strong> {{ sponsorship.point_balance }}
+        <strong>Point Balance:</strong> {{ active_sponsorship.point_balance }}
         {% if point_value %}
           (1 point = ${{ "%.4f"|format(point_value|float) }})
         {% endif %}
       </p>
-    {% else %}
-      <p>You are not currently affiliated with an active sponsor.</p>
-    {% endif %}
-  </div>
+    </div>
 
-  <!-- Notification Preferences -->
+    <div class="section-card">
+      <h2>Sponsor Point Rules</h2>
+      {% if sponsor_rules %}
+        <p>{{ sponsor_rules }}</p>
+      {% else %}
+        <p>Your sponsor has not published point rules yet.</p>
+      {% endif %}
+    </div>
+
+    <div class="section-card">
+      <h2>Point History</h2>
+      {% if transactions %}
+        <table>
+          <tr>
+            <th>Date</th>
+            <th>Sponsor</th>
+            <th>Points Changed</th>
+            <th>Reason</th>
+          </tr>
+          {% for transaction in transactions %}
+            <tr>
+              <td>{{ transaction.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td>{{ transaction.organization.name if transaction.organization else 'N/A' }}</td>
+              <td>
+                {% if transaction.point_change > 0 %}
+                  <span style="color: green;">+{{ transaction.point_change }}</span>
+                {% else %}
+                  <span style="color: red;">{{ transaction.point_change }}</span>
+                {% endif %}
+              </td>
+              <td>{{ transaction.reason }}</td>
+            </tr>
+          {% endfor %}
+        </table>
+      {% else %}
+        <p>No point history yet.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+
   <div class="section-card">
     <h2>Notification Preferences</h2>
     <table>
@@ -143,144 +190,23 @@ button:hover {
     </table>
   </div>
 
-  <!-- Notifications -->
   <div class="section-card">
     <h2>Notifications</h2>
-    {% for n in notifications %}
-      <div class="notification {{ 'unread' if not n.is_read else '' }}">
-        <strong>[{{ n.category.value }}]</strong> {{ n.message }}
-        <div><small>{{ n.create_time.strftime('%Y-%m-%d %H:%M') }}</small></div>
+    {% for notification in notifications %}
+      <div class="notification {{ 'unread' if not notification.is_read else '' }}">
+        <strong>[{{ notification.category.value }}]</strong> {{ notification.message }}
+        <div><small>{{ notification.create_time.strftime('%Y-%m-%d %H:%M') }}</small></div>
       </div>
     {% else %}
       <p>No notifications yet.</p>
     {% endfor %}
   </div>
 
-  <!-- Sponsor Rules -->
-  <div class="section-card">
-    <h2>Sponsor Point Rules</h2>
-    {% if organization %}
-      {% if sponsor_rules %}
-        <p>{{ sponsor_rules }}</p>
-      {% else %}
-        <p>Your sponsor has not published point rules yet.</p>
-      {% endif %}
-    {% else %}
-      <p>No sponsor assigned.</p>
-    {% endif %}
-  </div>
-
-  <!-- Point History -->
-  <div class="section-card">
-    <h2>Point History</h2>
-    {% if transactions %}
-      <table>
-        <tr>
-          <th>Date</th>
-          <th>Sponsor</th>
-          <th>Points Changed</th>
-          <th>Reason</th>
-        </tr>
-        {% for t in transactions %}
-          <tr>
-            <td>{{ t.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
-            <td>{{ t.organization.name if t.organization else 'N/A' }}</td>
-            <td>
-              {% if t.point_change > 0 %}
-                <span style="color: green;">+{{ t.point_change }}</span>
-              {% else %}
-                <span style="color: red;">{{ t.point_change }}</span>
-              {% endif %}
-            </td>
-            <td>{{ t.reason }}</td>
-          </tr>
-        {% endfor %}
-      </table>
-    {% else %}
-      <p>No point history yet.</p>
-    {% endif %}
-  </div>
-
-  <!-- 4048 / 18133 REQUIRED TABLE -->
-  <div class="section-card">
-    <h2>Sponsor Reward Catalog</h2>
-
-    {% if organization %}
-      {% if catalog_items %}
-        <table>
-          <tr>
-            <th>Product</th>
-            <th>Description</th>
-            <th>Points Required</th>
-            <th>Your Points</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-
-          {% for item in catalog_items %}
-          <tr>
-            <td>{{ item.product_name }}</td>
-
-            <td>
-              {% if item.product_name == "Gas Card" %}
-                $50 Fuel Reimbursement
-              {% elif item.product_name == "Amazon Gift Card" %}
-                Online Shopping Credit
-              {% elif item.product_name == "Training Stipend" %}
-                Professional Development Credit
-              {% elif item.product_name == "Meal Voucher" %}
-                Sponsor Dining Credit
-              {% else %}
-                Sponsor-Approved Reward
-              {% endif %}
-            </td>
-
-            <td>{{ item.points_required }}</td>
-
-            <td>
-              {% if sponsorship %}
-                {{ sponsorship.point_balance }}
-              {% else %}
-                0
-              {% endif %}
-            </td>
-
-            <td>
-              {% if sponsorship and sponsorship.point_balance >= item.points_required %}
-                <span class="status-eligible">Eligible</span>
-              {% else %}
-                <span class="status-not">Not Eligible</span>
-              {% endif %}
-            </td>
-
-            <td>
-              {% if sponsorship and sponsorship.point_balance >= item.points_required %}
-                <form method="POST" action="{{ url_for('driver.redeem_points') }}">
-                  <input type="hidden" name="catalog_id" value="{{ item.catalog_id }}">
-                  <button type="submit">Redeem</button>
-                </form>
-              {% else %}
-                &mdash;
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </table>
-      {% else %}
-        <p>Your sponsor's catalog is currently empty.</p>
-      {% endif %}
-    {% else %}
-      <p>Join a sponsor to see available rewards.</p>
-    {% endif %}
-  </div>
-
-  <!-- Orders -->
   <div class="section-card">
     <h2>My Orders</h2>
 
     <form method="GET">
-      <input type="text" name="search" placeholder="Search by Order ID"
-             value="{{ request.args.get('search', '') }}">
+      <input type="text" name="search" placeholder="Search by Order ID" value="{{ request.args.get('search', '') }}">
       <select name="status">
         <option value="">All Statuses</option>
         <option value="PENDING" {{ 'selected' if request.args.get('status') == 'PENDING' }}>Pending</option>
@@ -295,6 +221,7 @@ button:hover {
         <tr>
           <th>Order ID</th>
           <th>Date</th>
+          <th>Sponsor</th>
           <th>Points Used</th>
           <th>Status</th>
           <th>Action</th>
@@ -303,12 +230,12 @@ button:hover {
           <tr>
             <td>{{ order.order_id }}</td>
             <td>{{ order.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ order.organization.name if order.organization else 'N/A' }}</td>
             <td>{{ order.points }}</td>
             <td>{{ order.order_status.value }}</td>
             <td>
               {% if order.order_status.value not in ('CANCELLED', 'COMPLETED') %}
-                <form method="POST"
-                      action="{{ url_for('driver.cancel_order', order_id=order.order_id) }}">
+                <form method="POST" action="{{ url_for('driver.cancel_order', order_id=order.order_id) }}">
                   <button type="submit">Cancel</button>
                 </form>
               {% else %}
@@ -323,15 +250,12 @@ button:hover {
     {% endif %}
   </div>
 
-  {% if not sponsorship %}
+  {% if available_organizations %}
     <div class="section-card">
       <h2>Apply to Sponsor Program</h2>
-      <a href="{{ url_for('driver.application_form') }}">
-        <button>Fill Out Application Form</button>
-      </a>
+      <a class="button-link" href="{{ url_for('driver.application_form') }}">Fill Out Application Form</a>
     </div>
   {% endif %}
-
 </div>
 
 {% endblock %}

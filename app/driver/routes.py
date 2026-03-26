@@ -1,86 +1,238 @@
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, session, abort
 from flask_login import login_required, current_user
+from sqlalchemy.orm import joinedload
+from typing import Tuple
+from functools import wraps
+from app.catalog_api.utils import get_catalog_products_for_organization
 from app.extensions import db
 from app.driver import driver_bp
-from app.models.users import User, DriverSponsorship
-from app.models.organization import SponsorOrganization
-from app.models.enums import OrderStatus, DriverStatus, NotificationCategory
-from app.models.system import Notification
-from app.models.driver_workflow import Order, OrderItem, DriverApplication
-from app.models.enums import DriverApplicationStatus
-from app.models.products import Product
+from app.models import (
+    Driver,
+    DriverApplication,
+    DriverSponsorship,
+    Order,
+    PointTransaction,
+    SponsorOrganization,
+    User,
+    Notification,
+    OrderItem,
+)
+from app.models.enums import (
+    DriverApplicationStatus,
+    OrderStatus,
+    DriverStatus,
+    NotificationCategory,
+    RoleType
+)
+
+ACTIVE_SPONSORSHIP_SESSION_KEY = "active_driver_sponsorship_id"
 
 
+# This is needed to ensure only drivers can access driver pages
+def driver_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if current_user.role_type != RoleType.DRIVER:
+            abort(403)
+        return f(*args, **kwargs)
 
-def _get_active_sponsorship(driver):
-    """Return the single ACTIVE DriverSponsorship for this driver, or None."""
-    if driver is None:
-        return None
-    return next(
-        (s for s in driver.sponsorships if s.status == DriverStatus.ACTIVE),
-        None
+    return wrapper
+
+
+# This is just a helper
+def _get_active_sponsorships_for_driver(driver_id: int) -> list[DriverSponsorship]:
+    return (
+        DriverSponsorship.query
+        .options(joinedload(DriverSponsorship.organization))
+        .filter_by(driver_id=driver_id, status=DriverStatus.ACTIVE)
+        .all()
     )
 
 
+# This is needed bc of RC#2 where a driver can belong to multiple sponsors
+def _resolve_active_sponsorship(
+    driver_id: int,
+) -> Tuple[list[DriverSponsorship], DriverSponsorship | None]:
+    sponsorships = _get_active_sponsorships_for_driver(driver_id)
+    if not sponsorships:
+        session.pop(ACTIVE_SPONSORSHIP_SESSION_KEY, None)
+        return sponsorships, None
+
+    requested_id = session.get(ACTIVE_SPONSORSHIP_SESSION_KEY)
+    active_sponsorship = next(
+        (s for s in sponsorships if s.driver_sponsorship_id == requested_id),
+        None,
+    )
+
+    if active_sponsorship is None:
+        sponsorships.sort(
+            key=lambda s: (
+                s.organization.name.lower() if s.organization else "",
+                s.driver_sponsorship_id,
+            )
+        )
+        active_sponsorship = sponsorships[0]
+        session[ACTIVE_SPONSORSHIP_SESSION_KEY] = active_sponsorship.driver_sponsorship_id
+
+    return sponsorships, active_sponsorship
+
+
+# This gets orgs that the driver is not apart of
+def _get_available_organizations(driver_id: int) -> list[SponsorOrganization]:
+    active_sponsorship_orgs = (
+        db.session.query(DriverSponsorship.organization_id)
+        .filter(
+            DriverSponsorship.driver_id == driver_id,
+            DriverSponsorship.status == DriverStatus.ACTIVE,
+        )
+    )
+    pending_application_orgs = (
+        db.session.query(DriverApplication.organization_id)
+        .filter(
+            DriverApplication.driver_id == driver_id,
+            DriverApplication.status == DriverApplicationStatus.PENDING,
+        )
+    )
+
+    return (
+        SponsorOrganization.query
+        .filter(~SponsorOrganization.organization_id.in_(active_sponsorship_orgs))
+        .filter(~SponsorOrganization.organization_id.in_(pending_application_orgs))
+        .order_by(SponsorOrganization.name.asc())
+        .all()
+    )
+
+
+# This injects sponsorship information into the templates automatically
+@driver_bp.context_processor
+def inject_driver_context():
+    driver = getattr(current_user, "driver", None) if current_user.is_authenticated else None
+    if not driver:
+        return {"driver_sponsorships": [], "active_sponsorship": None}
+
+    sponsorships, active_sponsorship = _resolve_active_sponsorship(driver.driver_id)
+    return {
+        "driver_sponsorships": sponsorships,
+        "active_sponsorship": active_sponsorship,
+    }
+
+
+def _get_active_sponsorship(driver: Driver) -> DriverSponsorship | None:
+    _, active_sponsorship = _resolve_active_sponsorship(driver.driver_id)
+    return active_sponsorship
+
+
+@driver_bp.route('/sponsorship/select', methods=['POST'])
+@login_required
+@driver_required
+def set_active_sponsorship():
+    driver = current_user.driver
+    selected_id = request.form.get('driver_sponsorship_id', type=int)
+    sponsorships, _ = _resolve_active_sponsorship(driver.driver_id)
+
+    if selected_id and any(s.driver_sponsorship_id == selected_id for s in sponsorships):
+        session[ACTIVE_SPONSORSHIP_SESSION_KEY] = selected_id
+
+    next_url = request.form.get('next') or url_for('driver.dashboard')
+    return redirect(next_url)
 
 
 @driver_bp.route('/dashboard')
 @login_required
+@driver_required
 def dashboard():
     driver = current_user.driver
-    sponsorship = _get_active_sponsorship(driver)
-    organization = sponsorship.organization if sponsorship else None
+    assert isinstance(driver, Driver)
 
-    # -- Point history with reason  (story 4035 / 18130) --------------------
-    transactions = driver.point_transactions if driver else []
-    # Filter to only this sponsor's transactions if we have an active sponsor
-    if sponsorship:
-        transactions = [
-            t for t in transactions
-            if t.organization_id == sponsorship.organization_id
-        ]
-    # Sort newest first
-    transactions = sorted(transactions, key=lambda t: t.create_time, reverse=True)
+    active_sponsorship = _get_active_sponsorship(driver)
+    available_organizations = _get_available_organizations(driver.driver_id)
+    transactions = []
+    organization = None
+    sponsor_rules = None
+    point_value = None
 
-    # -- Catalog products for the driver's sponsor  (story 4048 / 18133) ----
-    catalog_items = organization.catalog_items if organization else []
+    if active_sponsorship:
+        organization = active_sponsorship.organization
+        sponsor_rules = organization.rules if organization else None
+        point_value = organization.point_value if organization else None
 
-    # -- Sponsor rules  (story 4078 / 18136) ---------------------------------
-    sponsor_rules = organization.rules if organization else None
-    point_value = organization.point_value if organization else None
+        transactions = (
+            PointTransaction.query
+            .filter_by(
+                driver_id=driver.driver_id,
+                organization_id=active_sponsorship.organization_id,
+            )
+            .order_by(PointTransaction.create_time.desc())
+            .all()
+        )
 
-    # -- Orders with search / filter ----------------------------------------
-    search_query = request.args.get('search', '').strip()
-    status_filter = request.args.get('status', '').strip()
-    orders = driver.orders if driver else []
+    notifications_query = Notification.query.filter_by(driver_id=driver.driver_id)
 
-    if search_query:
-        orders = [o for o in orders if search_query.lower() in str(o.order_id).lower()]
-    if status_filter:
-        orders = [o for o in orders if o.order_status.value == status_filter]
-    orders = sorted(orders, key=lambda o: o.create_time, reverse=True)
+    if not driver.point_change_alert:
+        notifications_query = notifications_query.filter(
+            Notification.category != NotificationCategory.POINT_CHANGE
+        )
 
-    # -- Notifications (story 4036 / 18132) ----------------------------------
-    notifications = sorted(
-        driver.notifications if driver else [],
-        key=lambda n: n.create_time,
-        reverse=True
+    if not driver.order_alert:
+        notifications_query = notifications_query.filter(
+            Notification.category != NotificationCategory.ORDER_PLACED
+        )
+
+    notifications = (
+        notifications_query
+        .order_by(Notification.create_time.desc())
+        .all()
     )
 
-    # -- All orgs available to apply to -------------------------------------
-    organizations = SponsorOrganization.query.all()
+    search = request.args.get('search', '').strip()
+    status = request.args.get('status', '').strip()
+
+    orders_query = Order.query.filter_by(driver_id=driver.driver_id)
+
+    if search:
+        orders_query = orders_query.filter(Order.order_id == int(search)) if search.isdigit() else orders_query.filter(db.false())
+
+    if status:
+        try:
+            orders_query = orders_query.filter(Order.order_status == OrderStatus(status))
+        except ValueError:
+            orders_query = orders_query.filter(db.false())
+
+    orders = orders_query.order_by(Order.create_time.desc()).all()
 
     return render_template(
         'driver/dashboard.html',
-        sponsorship=sponsorship,
+        active_sponsorship=active_sponsorship,
+        available_organizations=available_organizations,
         organization=organization,
         transactions=transactions,
-        catalog_items=catalog_items,
         sponsor_rules=sponsor_rules,
         point_value=point_value,
         orders=orders,
         notifications=notifications,
-        organizations=organizations,
+    )
+
+
+@driver_bp.route('/catalog')
+@login_required
+@driver_required
+def catalog():
+    driver = current_user.driver
+    assert isinstance(driver, Driver)
+
+    active_sponsorship = _get_active_sponsorship(driver)
+    if not active_sponsorship or not active_sponsorship.organization:
+        flash('You must have an active sponsorship to view the reward catalog.', 'error')
+        return redirect(url_for('driver.dashboard'))
+
+    organization = active_sponsorship.organization
+    catalog_items = get_catalog_products_for_organization(organization.organization_id)
+
+    return render_template(
+        'driver/catalog.html',
+        active_sponsorship=active_sponsorship,
+        organization=organization,
+        catalog_items=catalog_items,
     )
 
 
@@ -90,8 +242,10 @@ def dashboard():
 
 @driver_bp.route('/account', methods=['GET', 'POST'])
 @login_required
+@driver_required
 def account_settings():
-    user: User = current_user
+    user = current_user
+    assert isinstance(user, User)
 
     if request.method == 'POST':
         user.first_name = request.form.get('first_name', '').strip()
@@ -110,13 +264,21 @@ def account_settings():
 
 @driver_bp.route('/application')
 @login_required
+@driver_required
 def application_form():
-    organizations = SponsorOrganization.query.all()
-    return render_template('driver/application_form.html', organizations=organizations)
+    driver = current_user.driver
+    assert isinstance(driver, Driver)
+
+    available_organizations = _get_available_organizations(driver.driver_id)
+    return render_template(
+        'driver/application_form.html',
+        available_organizations=available_organizations,
+    )
 
 
 @driver_bp.route('/application/submit', methods=['POST'])
 @login_required
+@driver_required
 def submit_application():
     driver = current_user.driver
     organization_id = request.form.get('organization_id', type=int)
@@ -158,6 +320,7 @@ def submit_application():
 
 @driver_bp.route('/redeem', methods=['POST'])
 @login_required
+@driver_required
 def redeem_points():
     driver = current_user.driver
     sponsorship = _get_active_sponsorship(driver)
@@ -210,18 +373,18 @@ def redeem_points():
     )
     db.session.add(order_item)
 
-    # Notify the driver if their alert preference is on  (story 4036 / 18132)
-    if driver.order_alert:
-        notification = Notification(
-            driver_id=driver.driver_id,
-            issued_by_user_id=current_user.user_id,
-            category=NotificationCategory.ORDER_PLACED,
-            message=(
-                f'Order placed: {item.product_name} for {cost} points. '
-                f'Order #{order.order_id} is now pending.'
-            ),
-        )
-        db.session.add(notification)
+    # Create notification no matter preference to preserve data
+    # Filtering based on preference is done during display
+    notification = Notification(
+        driver_id=driver.driver_id,
+        issued_by_user_id=current_user.user_id,
+        category=NotificationCategory.ORDER_PLACED,
+        message=(
+            f'Order placed: {item.product_name} for {cost} points. '
+            f'Order #{order.order_id} is now pending.'
+        ),
+    )
+    db.session.add(notification)
 
     db.session.commit()
     flash(f'Successfully redeemed {item.product_name} for {cost} points!', 'success')
@@ -234,6 +397,7 @@ def redeem_points():
 
 @driver_bp.route('/toggle-alert', methods=['POST'])
 @login_required
+@driver_required
 def toggle_point_alert():
     driver = current_user.driver
     alert_type = request.form.get('alert_type', 'point')
@@ -257,6 +421,7 @@ def toggle_point_alert():
 
 @driver_bp.route('/orders/<int:order_id>/cancel', methods=['POST'])
 @login_required
+@driver_required
 def cancel_order(order_id):
     driver = current_user.driver
     order = next((o for o in driver.orders if o.order_id == order_id), None)
