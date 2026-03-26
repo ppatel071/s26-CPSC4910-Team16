@@ -6,7 +6,6 @@
 <h1>All Admin Users</h1>
 <p>
   <a class="button" href="{{ url_for('admin.create_admin_user') }}">Add Admin User</a>
-  <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
 </p>
 
 {% if users %}
@@ -33,4 +32,9 @@
 {% else %}
 <p>No admin users found.</p>
 {% endif %}
+
+<p>
+  <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+</p>
+
 {% endblock %}

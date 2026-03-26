@@ -3,56 +3,103 @@
 {% block title %}Admin Dashboard{% endblock %}
 
 {% block content %}
-<h1 style="text-align: center;">Admin Dashboard</h1>
-<h2 style="text-align: center;">Welcome, {{ current_user.first_name or current_user.username }}.</h2>
 
-<hr>
+<style>
+  .dashboard-container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px;
+  }
 
-<h2>Users</h2>
-<p>
-  <a class="button" href="{{ url_for('admin.system_users') }}">System Users</a>
-  <a class="button" href="{{ url_for('admin.remove_users_page') }}">Remove Users</a>
-</p>
+  .dashboard-title {
+    text-align: center;
+    margin-bottom: 10px;
+  }
 
-<hr>
+  .section-card {
+    background: white;
+    padding: 25px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
 
-<h2>Admins</h2>
-<p>
-  <a class="button" href="{{ url_for('admin.profile') }}">View Admin Profile</a>
-  <a class="button" href="{{ url_for('admin.admin_logins') }}">View All Admin Users</a>
-  <a class="button" href="{{ url_for('admin.create_admin_user') }}">Add New Admin User</a>
-</p>
+  .section-title {
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 600;
+    color:black;
+  }
 
-<hr>
+  button {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #4a90e2;
+    color: white;
+    cursor: pointer;
+  }
 
-<h2>Sponsors</h2>
-<p>
-  <a class="button" href="{{ url_for('admin.reports') }}#sponsors">View Sponsors List</a>
-  <a class="button" href="{{ url_for('admin.sponsor_users_list') }}">View All Sponsor User Details</a>
-  <a class="button" href="{{ url_for('admin.create_sponsor_user') }}">Add New Sponsor User</a>
-</p>
+  button:hover {
+    background: #357abd;
+  }
+</style>
 
-<hr>
+<div class="dashboard-container">
 
-<h2>Drivers</h2>
-<p>
-  <a class="button" href="{{ url_for('admin.drivers_list') }}">Manage Drivers</a>
-</p>
+  <h1 style="text-align: center;">Admin Dashboard</h1>
+  <h2 style="text-align: center;">Welcome, {{ current_user.first_name or current_user.username }}.</h2>
 
-<hr>
 
-<h2>Reports</h2>
-<p>
-  <a class="button" href="{{ url_for('admin.reports') }}">View Sponsor Reports</a>
-  <a class="button" href="{{ url_for('admin.sales_by_sponsor_report') }}">Sales by Sponsors</a>
-  <a class="button" href="{{ url_for('admin.sales_by_driver_report') }}">Sales by Drivers</a>
-  <a class="button" href="{{ url_for('admin.driver_purchases_summary') }}">Driver Purchases Summary</a>
-</p>
+  <div class="section-card">
+    <div class="section-title"><h2>Users</h2></div>
+    <p>
+      <a class="button" href="{{ url_for('admin.system_users') }}">System Users</a>
+      <a class="button" href="{{ url_for('admin.remove_users_page') }}">Remove Users</a>
+    </p>
+  </div>
 
-<hr>
+  <div class="section-card">
+    <div class="section-title"><h2>Admins</h2></div>
+    <p>
+      <a class="button" href="{{ url_for('admin.profile') }}">View Admin Profile</a>
+      <a class="button" href="{{ url_for('admin.admin_logins') }}">View All Admin Users</a>
+      <a class="button" href="{{ url_for('admin.create_admin_user') }}">Add New Admin User</a>
+    </p>
+  </div>
 
-<h2>Audit Logs</h2>
-<p>
-  <a class="button" href="{{ url_for('admin.password_reset_audit_log') }}">Password Reset Audit Log</a>
-</p>
+  <div class="section-card">
+    <div class="section-title"><h2>Sponsors</h2></div>
+    <p>
+      <a class="button" href="{{ url_for('admin.reports') }}#sponsors">View Sponsors List</a>
+      <a class="button" href="{{ url_for('admin.sponsor_users_list') }}">View All Sponsor User Details</a>
+      <a class="button" href="{{ url_for('admin.create_sponsor_user') }}">Add New Sponsor User</a>
+    </p>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title"><h2>Drivers</h2></div>
+    <p>
+      <a class="button" href="{{ url_for('admin.drivers_list') }}">Manage Drivers</a>
+    </p>
+  </div>
+
+  <div class="section-card">
+  <div class="section-title"><h2>Reports</h2></div>
+    <p>
+      <a class="button" href="{{ url_for('admin.reports') }}">View Sponsor Reports</a>
+      <a class="button" href="{{ url_for('admin.sales_by_sponsor_report') }}">Sales by Sponsors</a>
+      <a class="button" href="{{ url_for('admin.sales_by_driver_report') }}">Sales by Drivers</a>
+      <a class="button" href="{{ url_for('admin.driver_purchases_summary') }}">Driver Purchases Summary</a>
+    </p>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title"><h2>Audit Logs</h2></div>
+    <p>
+      <a class="button" href="{{ url_for('admin.password_reset_audit_log') }}">Password Reset Audit Log</a>
+    </p>
+  </div>
+
+</div>
 {% endblock %}

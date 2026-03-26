@@ -3,27 +3,59 @@
 {% block title %}Edit Admin Profile{% endblock %}
 
 {% block content %}
-<h1>Edit Admin Profile</h1>
+<style>
+  .dashboard-container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px;
+  }
 
-{% if error %}
-<p style="color: red;"><strong>{{ error }}</strong></p>
-{% endif %}
+  .dashboard-title {
+    text-align: center;
+    margin-bottom: 10px;
+  }
 
-<form method="POST" action="" onsubmit="return confirm('Are you sure you want to save these changes?');">
-  <label for="username">Username</label><br>
-  <input id="username" name="username" type="text" required value="{{ user.username }}" placeholder="e.g. jsmith"><br><br>
+  .section-card {
+    background: white;
+    padding: 25px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
 
-  <label for="email">Email</label><br>
-  <input id="email" name="email" type="email" value="{{ user.email or '' }}" placeholder="e.g. jsmith123@gmail.com"><br><br>
+  .section-title {
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 600;
+    color:black;
+  }
+</style>
 
-  <label for="first_name">First Name</label><br>
-  <input id="first_name" name="first_name" type="text" required value="{{ user.first_name or '' }}" placeholder="e.g. John"><br><br>
+<div class="dashboard-container">
+  <div class="section-card">
+    <div class="section-title"><h1>Edit Admin Profile</h1></div>
 
-  <label for="last_name">Last Name</label><br>
-  <input id="last_name" name="last_name" type="text" required value="{{ user.last_name or '' }}" placeholder="e.g. Smith"><br><br>
+    {% if error %}
+    <p style="color: red;"><strong>{{ error }}</strong></p>
+    {% endif %}
 
-  <button type="submit">Save Changes</button>
-</form>
+    <form method="POST" action="" onsubmit="return confirm('Are you sure you want to save these changes?');">
+      <label for="username">Username</label><br>
+      <input id="username" name="username" type="text" required value="{{ user.username }}" placeholder="e.g. jsmith"><br><br>
+
+      <label for="email">Email</label><br>
+      <input id="email" name="email" type="email" value="{{ user.email or '' }}" placeholder="e.g. jsmith123@gmail.com"><br><br>
+
+      <label for="first_name">First Name</label><br>
+      <input id="first_name" name="first_name" type="text" required value="{{ user.first_name or '' }}" placeholder="e.g. John"><br><br>
+
+      <label for="last_name">Last Name</label><br>
+      <input id="last_name" name="last_name" type="text" required value="{{ user.last_name or '' }}" placeholder="e.g. Smith"><br><br>
+
+      <button type="submit">Save Changes</button>
+    </form>
+  </div>
+</div>
 
 <p>
   <a class="button" href="{{ url_for('admin.profile') }}">Back to Profile</a>

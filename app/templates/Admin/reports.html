@@ -3,51 +3,92 @@
 {% block title %}Sponsor Reports{% endblock %}
 
 {% block content %}
-<h1>Reports</h1>
+<style>
+  .dashboard-container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px;
+  }
+
+  .dashboard-title {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .section-card {
+    background: white;
+    padding: 25px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .section-title {
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 600;
+    color:black;
+  }
+
+  .button2 {
+    padding: 4px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #4a90e2;
+    color: white;
+    cursor: pointer;
+  }
+</style>
+
+<div class="dashboard-title"><h1>Reports</h1></div>
+
+<div class="dashboard-container">
+  <div class="section-card">
+    <div class="section-title"><h2>Sales by Sponsor</h2></div>
     <p>
+      <a class="button" href="{{ url_for('admin.sales_by_sponsor_report') }}">Summary</a>
+      <a class="button" href="{{ url_for('admin.sales_by_sponsor_report', detail=1) }}">Detailed</a>
+    </p>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title"><h2>Sales by Driver</h2></div>
+    <p>
+      <a class="button" href="{{ url_for('admin.sales_by_driver_report') }}">Summary</a>
+      <a class="button" href="{{ url_for('admin.sales_by_driver_report', detail=1) }}">Detailed</a>
+    </p>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title"><h2>Driver Purchases Summary</h2></div>
+    <p>
+      <a class="button" href="{{ url_for('admin.driver_purchases_summary') }}">Run Summary</a>
+    </p>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title"><h2 id="sponsors">Sponsors</h2></div>
+    <p>
+      <a class="button" href="{{ url_for('admin.create_sponsor_user') }}">Add Sponsor User</a>
+    </p>
+    {% if sponsors %}
+      <ul>
+        {% for sponsor in sponsors %}
+          <li style="margin-bottom: 10px">
+            <strong>{{ sponsor.name }}</strong>
+            (ID: {{ sponsor.organization_id }})
+            - <a class="button2" href="{{ url_for('admin.edit_sponsor', organization_id=sponsor.organization_id) }}">Edit</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No sponsors found.</p>
+    {% endif %}
+  </div>
+</div>
+
+<p>
   <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
 </p>
 
-<hr>
-
-<h2>Sales by Sponsor</h2>
-<p>
-  <a class="button" href="{{ url_for('admin.sales_by_sponsor_report') }}">Summary</a>
-  <a class="button" href="{{ url_for('admin.sales_by_sponsor_report', detail=1) }}">Detailed</a>
-</p>
-
-<hr>
-
-<h2>Sales by Driver</h2>
-<p>
-  <a class="button" href="{{ url_for('admin.sales_by_driver_report') }}">Summary</a>
-  <a class="button" href="{{ url_for('admin.sales_by_driver_report', detail=1) }}">Detailed</a>
-</p>
-
-<hr>
-
-    <h2>Driver Purchases Summary</h2>
-<p>
-  <a class="button" href="{{ url_for('admin.driver_purchases_summary') }}">Run Summary</a>
-</p>
-
-<hr>
-
-<h2 id="sponsors">Sponsors</h2>
-<p>
-  <a class="button" href="{{ url_for('admin.create_sponsor_user') }}">Add Sponsor User</a>
-</p>
-{% if sponsors %}
-  <ul>
-    {% for sponsor in sponsors %}
-      <li style="margin-bottom: 10px">
-        <strong>{{ sponsor.name }}</strong>
-        (ID: {{ sponsor.organization_id }})
-        - <a class="button" href="{{ url_for('admin.edit_sponsor', organization_id=sponsor.organization_id) }}">Edit</a>
-      </li>
-    {% endfor %}
-  </ul>
-{% else %}
-  <p>No sponsors found.</p>
-{% endif %}
 {% endblock %}

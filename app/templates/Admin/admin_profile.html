@@ -3,14 +3,49 @@
 {% block title %}Admin Profile{% endblock %}
 
 {% block content %}
-<h1>Admin Profile</h1>
-<p>
-  <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
-</p>
-<p><strong>Username:</strong> {{ user.username }}</p>
-<p><strong>Email:</strong> {{ user.email }}</p>
-<p><strong>Name:</strong> {{ user.first_name }} {{ user.last_name }}</p>
-<p>
-  <a class="button" href="{{ url_for('admin.edit_profile') }}">Edit Profile</a>
-</p>
+<style>
+  .dashboard-container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px;
+  }
+
+  .dashboard-title {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .section-card {
+    background: white;
+    padding: 25px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .section-title {
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 600;
+    color:black;
+  }
+</style>
+
+<div class="dashboard-container">
+
+  <div class="section-card">
+    <div class="section-title"><h1>Admin Profile</h1></div>
+
+    <p><strong>Username:</strong> {{ user.username }}</p>
+    <p><strong>Email:</strong> {{ user.email }}</p>
+    <p><strong>Name:</strong> {{ user.first_name }} {{ user.last_name }}</p>
+    <p>
+      <a class="button" href="{{ url_for('admin.edit_profile') }}">Edit Profile</a>
+    </p>
+
+    <p>
+      <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+    </p>
+  </div>
+</div>
 {% endblock %}

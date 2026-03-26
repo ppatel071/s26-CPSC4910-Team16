@@ -3,35 +3,69 @@
 {% block title %}Add Sponsor User{% endblock %}
 
 {% block content %}
-<h1>Add Sponsor User</h1>
+<style>
+  .dashboard-container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px;
+  }
+
+  .dashboard-title {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .section-card {
+    background: white;
+    padding: 25px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .section-title {
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 600;
+    color:black;
+  }
+</style>
+
+<div class="dashboard-title"><h1>Add Sponsor User</h1></div>
+
+
+<div class="dashboard-container">
+  <div class="section-card">
+    <form method="post">
+      <p>
+        <label for="username">Username</label><br>
+        <input id="username" name="username" type="text" value="{{ username or '' }}" placeholder="e.g. jsmith" required>
+      </p>
+
+      <p>
+        <label for="email">Email</label><br>
+        <input id="email" name="email" type="email" value="{{ email or '' }}" placeholder="e.g. jsmith123@gmail.com" required>
+      </p>
+
+      <p>
+        <label for="organization_name">Sponsor Organization Name</label><br>
+        <input id="organization_name" name="organization_name" type="text" value="{{ organization_name or '' }}" placeholder="e.g. Organization Name" required>
+      </p>
+
+      <p>
+        <label for="password">Password</label><br>
+        <input id="password" name="password" type="password" placeholder="e.g. Password123" required>
+      </p>
+
+      <p>
+        <button type="submit">Create Sponsor</button> <br> <br>
+        <a class="button" href="{{ url_for('admin.sponsor_users_list') }}">Back to Sponsor Users</a>
+      </p>
+    </form>
+  </div>
+</div>
+
 <p>
   <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
 </p>
-
-<form method="post">
-  <p>
-    <label for="username">Username</label><br>
-    <input id="username" name="username" type="text" value="{{ username or '' }}" placeholder="e.g. jsmith" required>
-  </p>
-
-  <p>
-    <label for="email">Email</label><br>
-    <input id="email" name="email" type="email" value="{{ email or '' }}" placeholder="e.g. jsmith123@gmail.com" required>
-  </p>
-
-  <p>
-    <label for="organization_name">Sponsor Organization Name</label><br>
-    <input id="organization_name" name="organization_name" type="text" value="{{ organization_name or '' }}" placeholder="e.g. Organization Name" required>
-  </p>
-
-  <p>
-    <label for="password">Password</label><br>
-    <input id="password" name="password" type="password" placeholder="e.g. Password123" required>
-  </p>
-
-  <p>
-    <button type="submit">Create Sponsor</button> <br> <br>
-    <a class="button" href="{{ url_for('admin.sponsor_users_list') }}">Back to Sponsor Users</a>
-  </p>
-</form>
 {% endblock %}

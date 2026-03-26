@@ -2,51 +2,84 @@
 
 {% block content %}
 
-<h1>Driver Application Form</h1>
+<style>
+  .dashboard-container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px;
+  }
+
+  .dashboard-title {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .section-card {
+    background: white;
+    padding: 25px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .section-title {
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 600;
+    color:black;
+  }
+</style>
+
+
+<div class="dashboard-title"><h1>Driver Application Form</h1></div>
 <hr>
 
-<form method="POST" action="{{ url_for('driver.submit_application') }}">
-    <p>
-        <label>Sponsor Organization:</label><br>
-        <select name="organization_id" required>
-            <option value="">Select an organization</option>
-            {% for org in available_organizations %}
-                <option
-                    value="{{ org.organization_id }}"
-                    {% if selected_organization_id == org.organization_id %}selected{% endif %}
-                >
-                    {{ org.name }}
-                </option>
-            {% endfor %}
-        </select>
-    </p>
+<div class="dashboard-container">
+    <div class="section-card">
+        <form method="POST" action="{{ url_for('driver.submit_application') }}">
+            <p>
+                <label>Sponsor Organization:</label><br>
+                <select name="organization_id" required>
+                    <option value="">Select an organization</option>
+                    {% for org in available_organizations %}
+                        <option
+                            value="{{ org.organization_id }}"
+                            {% if selected_organization_id == org.organization_id %}selected{% endif %}
+                        >
+                            {{ org.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </p>
 
-    <p>
-        <label>Full Name:</label><br>
-        <input type="text" name="full_name" required>
-    </p>
+            <p>
+                <label>Full Name:</label><br>
+                <input type="text" name="full_name" required>
+            </p>
 
-    <p>
-        <label>Phone Number:</label><br>
-        <input type="text" name="phone_number" required>
-    </p>
+            <p>
+                <label>Phone Number:</label><br>
+                <input type="text" name="phone_number" required>
+            </p>
 
-    <p>
-        <label>Address:</label><br>
-        <input type="text" name="address" required>
-    </p>
+            <p>
+                <label>Address:</label><br>
+                <input type="text" name="address" required>
+            </p>
 
-    <p>
-        <label>Driving Experience:</label><br>
-        <textarea name="experience" rows="4" required></textarea>
-    </p>
+            <p>
+                <label>Driving Experience:</label><br>
+                <textarea name="experience" rows="4" required></textarea>
+            </p>
 
-    <button type="submit">Submit Application</button>
+            <button type="submit">Submit Application</button>
 
-</form>
+        </form>
 
-{% if not available_organizations %}
-    <p>No sponsor organizations are currently available for application.</p>
-{% endif %}
+        {% if not available_organizations %}
+            <p>No sponsor organizations are currently available for application.</p>
+        {% endif %}
+    </div>
+</div>
 
 {% endblock %}
