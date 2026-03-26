@@ -4,6 +4,14 @@ from functools import wraps
 from flask import abort, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from app.catalog_api.utils import (
+    CATALOG_PAGE_SIZE,
+    browse_catalog_products,
+    get_catalog_categories,
+    get_catalog_item_lookup,
+    get_catalog_products_for_organization,
+    get_organization_catalog_items,
+)
 from app.extensions import db
 from app.models import DriverApplication, SponsorOrganization, SponsorUser, User
 from app.models.enums import (
@@ -18,18 +26,13 @@ from app.sponsor.services import (
     adjust_driver_points_for_sponsor,
     add_catalog_item_for_organization,
     approve_driver_for_sponsor,
-    browse_catalog_products,
     create_sponsor_user,
-    get_catalog_products_for_organization,
     get_driver_point_transactions_for_sponsor,
     get_organization_driver_sponsorship,
-    get_organization_catalog_items,
-    get_catalog_categories,
     get_driver_applications,
     get_organization_drivers,
     remove_catalog_item_for_organization,
     set_driver_status_for_sponsor,
-    CATALOG_PAGE_SIZE,
     update_driver_profile_for_sponsor,
     update_sponsor_organization,
     validate_and_apply_user_profile_updates,
@@ -102,7 +105,8 @@ def render_catalog_management_page(
 ):
     try:
         catalog_items = get_catalog_products_for_organization(org_id)
-    except Exception:
+    except Exception as e:
+        print(e)
         return render_template(
             "sponsor/catalog_management.html",
             catalog_items=[],
@@ -138,7 +142,8 @@ def render_catalog_browser_page(
             page_size=page_size,
         )
         catalog_items = get_organization_catalog_items(org_id)
-    except Exception:
+    except Exception as e:
+        print(e)
         return render_template(
             "sponsor/catalog_browse.html",
             catalog_external_ids=set(),
@@ -166,13 +171,12 @@ def render_catalog_browser_page(
             page=safe_page,
             page_size=page_size,
         )
+    catalog_external_ids, catalog_ids_by_external_id = get_catalog_item_lookup(catalog_items)
 
     return render_template(
         "sponsor/catalog_browse.html",
-        catalog_external_ids={item.external_id for item in catalog_items},
-        catalog_ids_by_external_id={
-            item.external_id: item.catalog_id for item in catalog_items
-        },
+        catalog_external_ids=catalog_external_ids,
+        catalog_ids_by_external_id=catalog_ids_by_external_id,
         categories=categories,
         products=product_list.products,
         current_query=query,
@@ -348,7 +352,8 @@ def catalog_management():
             return redirect(url_for("sponsor.catalog_management"))
         except ValueError as e:
             return render_catalog_management_page(org_id, error=str(e))
-        except Exception:
+        except Exception as e:
+            print(e)
             return render_catalog_management_page(
                 org_id,
                 error="The product catalog service is unavailable right now. Please try again.",
@@ -398,7 +403,8 @@ def catalog_browse():
                 page=page,
                 error=str(e),
             )
-        except Exception:
+        except Exception as e:
+            print(e)
             return render_catalog_browser_page(
                 org_id,
                 query=query,

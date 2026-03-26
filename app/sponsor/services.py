@@ -2,7 +2,6 @@ from decimal import Decimal, InvalidOperation
 from typing import Tuple, List
 from sqlalchemy.orm import joinedload
 from app.catalog_api.client import catalog_client
-from app.catalog_api.models import Product, ProductCategory, ProductList
 from app.extensions import db
 from app.models import (
     SponsorOrganization,
@@ -20,9 +19,6 @@ from app.models import (
     NotificationCategory,
 )
 from app.auth.services import register_user
-
-
-CATALOG_PAGE_SIZE = 30
 
 
 def normalize_profile_fields(
@@ -94,48 +90,6 @@ def update_sponsor_organization(
     return organization
 
 
-def get_organization_catalog_items(
-    organization_id: int,
-) -> List[SponsorCatalogItem]:
-    return (
-        SponsorCatalogItem.query.filter_by(organization_id=organization_id)
-        .order_by(SponsorCatalogItem.product_name.asc(), SponsorCatalogItem.catalog_id.asc())
-        .all()
-    )
-
-
-def get_catalog_products_for_organization(
-    organization_id: int,
-) -> List[tuple[SponsorCatalogItem, Product | None]]:
-    catalog_items = get_organization_catalog_items(organization_id)
-    products = catalog_client.get_all_products().products
-    products_by_id = {product.id: product for product in products}
-    return [(item, products_by_id.get(item.external_id)) for item in catalog_items]
-
-
-def browse_catalog_products(
-    *,
-    query: str = "",
-    category: str = "",
-    page: int = 1,
-    page_size: int = CATALOG_PAGE_SIZE,
-) -> ProductList:
-    safe_page = max(page, 1)
-    skip = (safe_page - 1) * page_size
-    clean_query = (query or "").strip()
-    clean_category = (category or "").strip()
-
-    if clean_query:
-        return catalog_client.search_products(clean_query, limit=page_size, skip=skip)
-    if clean_category:
-        return catalog_client.get_by_category(clean_category, limit=page_size, skip=skip)
-    return catalog_client.get_products(limit=page_size, skip=skip)
-
-
-def get_catalog_categories() -> List[ProductCategory]:
-    return sorted(catalog_client.get_categories(), key=lambda category: category.name.lower())
-
-
 def add_catalog_item_for_organization(
     organization_id: int, external_id: int
 ) -> SponsorCatalogItem:
@@ -151,6 +105,7 @@ def add_catalog_item_for_organization(
         organization_id=organization_id,
         external_id=product.id,
         product_name=product.title,
+        price=product.price
     )
     db.session.add(catalog_item)
     db.session.commit()

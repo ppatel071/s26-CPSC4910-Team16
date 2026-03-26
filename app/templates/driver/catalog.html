@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Reward Catalog{% endblock %}
+
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="/static/catalog.css">
+{% endblock %}
+
+{% block content %}
+<div class="catalog-shell">
+  <section class="catalog-hero catalog-hero-blue">
+    <h1>Reward Catalog</h1>
+    <p>
+      Sponsor: <strong>{{ organization.name }}</strong><br>
+      Available Points: <strong>{{ active_sponsorship.point_balance }}</strong>
+    </p>
+    <div class="catalog-actions">
+      <a class="button" href="{{ url_for('driver.dashboard') }}">Back to Dashboard</a>
+    </div>
+  </section>
+
+  {% include "driver/partials/active_sponsorship_dropdown.html" %}
+
+  <section class="catalog-panel catalog-panel-blue">
+    <h2>Current Catalog</h2>
+    {% if catalog_items %}
+      <div class="catalog-grid">
+        {% for item, product in catalog_items %}
+          <article class="catalog-card">
+            {% if product and product.thumbnail %}
+              <img class="catalog-card-image" src="{{ product.thumbnail }}" alt="{{ product.title }}">
+            {% else %}
+              <div class="catalog-card-image" aria-hidden="true"></div>
+            {% endif %}
+            <div>
+              <strong>{{ product.title if product else item.product_name }}</strong><br>
+              <span class="catalog-meta">{{ product.category if product else 'Sponsor reward' }}</span>
+            </div>
+            <div>
+              {{ product.description if product else 'Redeem this reward from your sponsor using your current sponsorship points.' }}
+            </div>
+            <div class="catalog-card-price">{{ item.points_required }} points</div>
+            <div>
+              {% if active_sponsorship.point_balance >= item.points_required %}
+                <span class="catalog-status-pill">Eligible</span>
+                {% if product %}
+                  <span class="catalog-meta">Stock: {{ product.stock }}</span>
+                {% endif %}
+              {% else %}
+                <span class="catalog-meta">Not enough points yet</span>
+              {% endif %}
+            </div>
+            <div class="catalog-card-actions">
+              {% if active_sponsorship.point_balance >= item.points_required %}
+                <form method="POST" action="{{ url_for('driver.redeem_points') }}" class="catalog-inline-form">
+                  <input type="hidden" name="catalog_id" value="{{ item.catalog_id }}">
+                  <button type="submit">Redeem</button>
+                </form>
+              {% else %}
+                <span class="catalog-meta">Requires {{ item.points_required }} points</span>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="catalog-empty">
+        <p>Your sponsor has not added any rewards yet.</p>
+        <p><a class="button" href="{{ url_for('driver.dashboard') }}">Back to Dashboard</a></p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
