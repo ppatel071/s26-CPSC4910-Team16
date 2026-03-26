@@ -129,18 +129,45 @@ def register_user(username: str, password: str, role: RoleType, email: str,
     return user
 
 
-def send_reset_email(user_email: str):
-    email = (
+def send_reset_email(user_email: str) -> int:
+    user_info = (
         db.session.query(
+            User.user_id,
             User.email
         )
         .filter((User.username == user_email) | (User.email == user_email))
         .first()
     )
 
+    email = user_info.email
+    user_id = user_info.user_id
+
     if not email:
         raise ValueError('Email not found')
+    
+    ## send email
 
+    return user_id
+
+def hash_id(user_id : int) -> str:
+    return generate_password_hash(str(user_id))[17:]
+def check_id_hash(user_id : int, id_hash : str) -> bool:
+    return check_password_hash("scrypt:32768:8:1$" + id_hash, str(user_id))
+    
+def email_reset_password(user: User, new_password: str):
+    valid, msg = validate_complexity(new_password)
+    if not valid:
+        raise ValueError(msg)
+    
+    user.password = generate_password_hash(new_password)
+
+    password_change = PasswordChange(
+        user_id = user.user_id,
+        change_type=PasswordChangeType.RESET
+    )
+
+    db.session.add(password_change)
+    db.session.commit()
 
 def reset_user_password(user: User, current_password: str, new_password: str):
     if not check_password_hash(user.password, current_password):

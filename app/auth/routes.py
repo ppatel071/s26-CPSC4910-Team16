@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for
 from app.auth import auth_bp
-from app.auth.services import authenticate, register_user, reset_user_password, send_reset_email
+from app.auth.services import authenticate, register_user, reset_user_password, email_reset_password, send_reset_email, hash_id, check_id_hash
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models.enums import RoleType
 from app.models import AboutPage, User
@@ -78,8 +78,15 @@ def forgot_password():
         user_email = request.form.get('user_email')
 
         try:
-            send_reset_email(user_email)
-            return redirect(url_for('auth.login'))
+            user_id = send_reset_email(user_email)
+            id_hash = hash_id(user_id)
+
+            return (render_template(
+                'forgot_password.html',
+                form_sent=True,
+                user_email=user_email,
+                url=f'/email_reset/{user_id}/{id_hash}'
+            ))
         except ValueError as e:
             return render_template(
                 'forgot_password.html',
@@ -88,6 +95,26 @@ def forgot_password():
             )
 
     return render_template('forgot_password.html')
+
+@auth_bp.route('/email_reset/<user_id>/<id_hash>', methods=['GET', 'POST'])
+def email_reset(user_id, id_hash):
+    if not check_id_hash(user_id, id_hash):
+        return render_template('login.html', error='Unauthenticated password reset.')
+
+    if request.method == 'POST':
+        user = User.query.get(user_id)
+        new_password = request.form.get('new_password', '')
+
+        try:
+            email_reset_password(
+                user=user,
+                new_password=new_password
+            )
+            return redirect(url_for('auth.login'))
+        except ValueError as e:
+            return render_template('email_reset.html', error=str(e))
+
+    return render_template('email_reset.html')
 
 @auth_bp.route('/about')
 @login_required
