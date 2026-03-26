@@ -21,6 +21,7 @@
     margin-bottom: 25px;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    color: black;
   }
 
   .section-title {
@@ -40,7 +41,7 @@
     {% endif %}
 
     <form method="POST" action="" onsubmit="return confirm('Are you sure you want to save these changes?');">
-      <label for="username">Username</label><br>
+      <label style="color: black;" for="username">Username</label><br>
       <input id="username" name="username" type="text" required value="{{ user.username }}" placeholder="e.g. jsmith"><br><br>
 
       <label for="email">Email</label><br>

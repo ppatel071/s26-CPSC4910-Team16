@@ -10,7 +10,7 @@
 {% block content %}
 <div class="catalog-shell">
   <section class="catalog-hero catalog-hero-blue">
-    <h1>Catalog Management</h1>
+    <h1 style="color: black;">Catalog Management</h1>
     <div class="catalog-actions">
       <a class="button" href="{{ url_for('sponsor.catalog_browse') }}">Browse Products</a>
       <a class="button" href="{{ url_for('sponsor.dashboard') }}">Back to Dashboard</a>
@@ -18,7 +18,7 @@
   </section>
 
   <section class="catalog-panel catalog-panel-blue">
-    <h2>Current Catalog</h2>
+    <h2 style="color: black;">Current Catalog</h2>
     {% if catalog_items %}
       <div class="catalog-grid">
         {% for item, product in catalog_items %}
@@ -68,7 +68,7 @@
       </div>
     {% else %}
       <div class="catalog-empty">
-        <p>Your organization catalog is empty.</p>
+        <p style="color: black;">Your organization catalog is empty.</p>
         <p><a class="button" href="{{ url_for('sponsor.catalog_browse') }}">Browse Products</a></p>
       </div>
     {% endif %}
