@@ -1,6 +1,6 @@
 from app.extensions import db
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, DateTime, ForeignKey, DECIMAL
+from sqlalchemy import String, DateTime, ForeignKey, DECIMAL, Text
 from sqlalchemy.sql import func
 from decimal import Decimal
 import datetime as dt
@@ -23,11 +23,24 @@ class SponsorOrganization(db.Model):
     contact_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     address: Mapped[str | None] = mapped_column(String(255), nullable=True)
     point_value: Mapped[Decimal] = mapped_column(DECIMAL(10, 4), nullable=False, server_default='0.01')
-    create_time: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    sponsor_users: Mapped[List['SponsorUser']] = relationship('SponsorUser', back_populates='organization', passive_deletes=True)
-    driver_sponsorships: Mapped[List['DriverSponsorship']] = relationship(back_populates='organization', passive_deletes=True)
-    catalog_items: Mapped[List['SponsorCatalogItem']] = relationship(back_populates='organization', cascade='all, delete-orphan')
-    applications: Mapped[List['DriverApplication']] = relationship(back_populates='organization', cascade='all, delete-orphan')
+    # Rules/criteria the sponsor uses to award or deduct points (story 4078 / 18136)
+    rules: Mapped[str | None] = mapped_column(Text, nullable=True)
+    create_time: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    sponsor_users: Mapped[List['SponsorUser']] = relationship(
+        'SponsorUser', back_populates='organization', passive_deletes=True
+    )
+    driver_sponsorships: Mapped[List['DriverSponsorship']] = relationship(
+        back_populates='organization', passive_deletes=True
+    )
+    catalog_items: Mapped[List['SponsorCatalogItem']] = relationship(
+        back_populates='organization', cascade='all, delete-orphan'
+    )
+    applications: Mapped[List['DriverApplication']] = relationship(
+        back_populates='organization', cascade='all, delete-orphan'
+    )
     point_transactions: Mapped[List['PointTransaction']] = relationship(back_populates='organization')
     orders: Mapped[List['Order']] = relationship(back_populates='organization')
 
@@ -39,9 +52,24 @@ class SponsorCatalogItem(db.Model):
         super().__init__(*args, **kwargs)
 
     catalog_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    organization_id: Mapped[int] = mapped_column(ForeignKey('sponsor_organization.organization_id', ondelete='CASCADE'), nullable=False)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey('sponsor_organization.organization_id', ondelete='CASCADE'), nullable=False
+    )
     external_id: Mapped[int] = mapped_column(nullable=False)
     product_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    last_update: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    # Price in dollars from the external catalog API
+    price: Mapped[Decimal | None] = mapped_column(DECIMAL(10, 2), nullable=True)
+    last_update: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
     organization: Mapped[SponsorOrganization] = relationship(back_populates='catalog_items')
     order_items: Mapped[List['OrderItem']] = relationship(back_populates='catalog_item')
+
+    @property
+    def points_required(self) -> int:
+        """Convert the item's dollar price to points using the sponsor's point_value rate."""
+        if self.price is None:
+            return 0
+        pv = self.organization.point_value or Decimal('0.01')
+        return int(self.price / pv)

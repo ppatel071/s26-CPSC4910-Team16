@@ -32,7 +32,6 @@ def ensure_user_lockout_columns(app: Flask) -> None:
             for statement in statements:
                 connection.execute(text(statement))
 
-
 def create_app():
     app = Flask(__name__)
 
@@ -41,12 +40,14 @@ def create_app():
 
     db.init_app(app)
     login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'  # type: ignore
+    login_manager.login_view = 'auth.login'
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(sponsor_bp, url_prefix='/sponsor')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(driver_bp, url_prefix='/driver')
-    ensure_user_lockout_columns(app)
+
+    with app.app_context():
+        db.create_all()
 
     return app
