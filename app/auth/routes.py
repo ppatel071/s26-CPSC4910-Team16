@@ -1,5 +1,6 @@
 from flask import render_template, request, redirect, url_for
 from app.auth import auth_bp
+from app.auth.impersonation import clear_sponsor_driver_impersonation
 from app.auth.services import authenticate, register_user, reset_user_password, email_reset_password, send_reset_email, hash_id, check_id_hash
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models.enums import RoleType
@@ -72,6 +73,7 @@ def register():
 
     return render_template('register.html')
 
+
 @auth_bp.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
@@ -95,6 +97,7 @@ def forgot_password():
             )
 
     return render_template('forgot_password.html')
+
 
 @auth_bp.route('/email_reset/<user_id>/<id_hash>', methods=['GET', 'POST'])
 def email_reset(user_id, id_hash):
@@ -126,6 +129,7 @@ def about():
 @auth_bp.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
+    clear_sponsor_driver_impersonation()
     logout_user()
     return redirect(url_for('auth.login'))
 
