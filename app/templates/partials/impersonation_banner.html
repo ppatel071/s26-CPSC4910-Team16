@@ -1,0 +1,28 @@
+<style>
+  .impersonation-banner {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    margin: 16px 0;
+    padding: 14px 18px;
+    border: 1px solid #e8a9a9;
+    border-radius: 10px;
+    background: #f9d7d7;
+    color: #5c1f1f;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    box-shadow: 0 6px 18px rgba(92, 31, 31, 0.12);
+  }
+</style>
+
+{% if impersonation_banner_message and impersonation_exit_endpoint %}
+<section class="impersonation-banner">
+  <div><strong>{{ impersonation_banner_message }}</strong></div>
+  <form method="POST" action="{{ url_for(impersonation_exit_endpoint) }}" style="margin: 0;">
+    <button type="submit">{{ impersonation_exit_label or "Exit Impersonation" }}</button>
+  </form>
+</section>
+{% endif %}

@@ -34,6 +34,8 @@
     {% include "partials/navbar.html" %}
     {% endblock %}
 
+    {% include "partials/impersonation_banner.html" %}
+
     <main>
       {% if error %}
         <p style="color: red;">{{ error }}</p>

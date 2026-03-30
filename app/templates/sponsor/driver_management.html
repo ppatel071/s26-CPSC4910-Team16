@@ -2,6 +2,35 @@
 
 {% block title %}Driver Management{% endblock %}
 
+{% block head %}
+{{ super() }}
+<style>
+  .driver-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .driver-actions form {
+    margin: 0;
+  }
+
+  .driver-actions .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 8px 14px;
+    margin: 0;
+    line-height: 1.2;
+    text-decoration: none;
+    box-sizing: border-box;
+    vertical-align: middle;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Driver Management</h1>
 
@@ -46,6 +75,7 @@
         <td>{{ sponsorship.point_balance }}</td>
         <td>
           {% if sponsorship.status.value == 'ACTIVE' %}
+            <div class="driver-actions">
             <button
               type="button"
               class="button point-action-btn"
@@ -68,6 +98,12 @@
             >
               Edit
             </a>
+            <form
+              method="POST"
+              action="{{ url_for('sponsor.impersonate_driver', driver_sponsorship_id=sponsorship.driver_sponsorship_id) }}"
+            >
+              <button type="submit" class="button">Impersonate</button>
+            </form>
             <button
               type="button"
               class="button drop-btn"
@@ -76,7 +112,9 @@
             >
               Drop
             </button>
+            </div>
           {% elif sponsorship.status.value == 'DROPPED' %}
+            <div class="driver-actions">
             <button
               type="button"
               class="button restore-btn"
@@ -85,6 +123,7 @@
             >
               Restore
             </button>
+            </div>
           {% endif %}
         </td>
       </tr>

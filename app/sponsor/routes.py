@@ -1,9 +1,10 @@
 import datetime as dt
 from functools import wraps
 
-from flask import abort, redirect, render_template, request, url_for
-from flask_login import current_user, login_required
+from flask import abort, flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required, login_user
 
+from app.auth.impersonation import start_sponsor_driver_impersonation
 from app.catalog_api.utils import (
     CATALOG_PAGE_SIZE,
     browse_catalog_products,
@@ -573,7 +574,6 @@ def update_driver_points(driver_sponsorship_id: int):
             reason,
             current_user,
         )
-        return redirect(url_for("sponsor.driver_management"))
     except ValueError as e:
         return render_driver_management_page(
             org_id,
@@ -584,3 +584,41 @@ def update_driver_points(driver_sponsorship_id: int):
                 "reason": reason,
             },
         )
+
+    return redirect(url_for("sponsor.driver_management"))
+
+
+@sponsor_bp.route(
+    "/drivers/<int:driver_sponsorship_id>/impersonate",
+    methods=["POST"],
+)
+@login_required
+@sponsor_required
+def impersonate_driver(driver_sponsorship_id: int):
+    org_id = current_user.sponsor_user.organization_id
+    sponsorship = get_organization_driver_sponsorship(org_id, driver_sponsorship_id)
+
+    if sponsorship.status != DriverStatus.ACTIVE:
+        flash("Only active drivers can be impersonated.", "error")
+        return redirect(url_for("sponsor.driver_management"))
+
+    driver_user = sponsorship.driver.user
+    if not driver_user or driver_user.role_type != RoleType.DRIVER:
+        abort(404)
+
+    sponsor_user_id = current_user.user_id
+    start_sponsor_driver_impersonation(
+        sponsor_user_id=sponsor_user_id,
+        driver_sponsorship_id=sponsorship.driver_sponsorship_id,
+    )
+    login_user(driver_user)
+
+    display_name = f"{driver_user.first_name or ''} {driver_user.last_name or ''}".strip()
+    if not display_name:
+        display_name = driver_user.username
+
+    flash(
+        f"You are now impersonating {display_name} for {sponsorship.organization.name}.",
+        "success",
+    )
+    return redirect(url_for("driver.dashboard"))
