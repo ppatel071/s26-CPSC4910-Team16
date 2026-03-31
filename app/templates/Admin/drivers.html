@@ -5,10 +5,20 @@
 {% block content %}
 <h1>Driver Management</h1>
 
+{% if message %}
+  <p style="color: green;">{{ message }}</p>
+{% endif %}
 {% if error %}
   <p style="color: red;">{{ error }}</p>
 {% endif %}
 
+<p>
+  <a class="button" href="{{ url_for('admin.create_driver_user') }}">Add Driver</a>
+</p>
+
+<hr>
+
+<h2>Manage Existing Drivers</h2>
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
     <tr>

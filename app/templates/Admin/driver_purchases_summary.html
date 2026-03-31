@@ -25,7 +25,7 @@
     <tr>
       <th>Driver</th>
       <th>Purchases</th>
-      <th>Total Amount</th>
+      <th>Total Value (Points)</th>
     </tr>
     {% for row in rows %}
      <tr>
@@ -38,4 +38,8 @@
 {% else %}
   <p>No purchases found for the selected date range.</p>
 {% endif %}
+
+<p>
+  <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+</p>
 {% endblock %}

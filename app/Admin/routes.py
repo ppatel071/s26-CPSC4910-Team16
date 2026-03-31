@@ -16,13 +16,17 @@ from app.Admin.services import (
     get_all_admin_users,
     get_all_drivers,
     admin_update_driver_user,
+    create_driver_account,
     admin_update_own_profile,
     get_all_sponsor_users,
     create_sponsor_account,
     get_users_for_removal_page,
     deactivate_driver_user,
+    reactivate_driver_user,
     deactivate_admin_user,
+    reactivate_admin_user,
     deactivate_sponsor_user,
+    reactivate_sponsor_user,
     get_all_system_users,
     unlock_user_login,
     get_admin_password_reset_audit_entries,
@@ -179,10 +183,49 @@ def admin_logins():
 @admin_required
 def drivers_list():
     drivers = get_all_drivers()
+    message = request.args.get('message')
 
     breadcrumbs = admin_breadcrumbs(("Drivers", None))
 
-    return render_template('Admin/drivers.html', drivers=drivers, breadcrumbs=breadcrumbs)
+    return render_template('Admin/drivers.html', drivers=drivers, breadcrumbs=breadcrumbs, message=message)
+
+
+@admin_bp.route('/drivers/new', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def create_driver_user():
+    breadcrumbs = admin_breadcrumbs(("Drivers", url_for("admin.drivers_list")), ("Add Driver", None))
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        first_name = request.form.get('first_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
+        password = request.form.get('password', '')
+        confpass = request.form.get('confpass', '')
+
+        try:
+            create_driver_account(
+                username=username,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                password=password,
+                confpass=confpass,
+            )
+            return redirect(url_for('admin.drivers_list', message='Driver user created'))
+        except ValueError as e:
+            return render_template(
+                'Admin/create_driver_user.html',
+                error=str(e),
+                username=username,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                breadcrumbs=breadcrumbs,
+            )
+
+    return render_template('Admin/create_driver_user.html', breadcrumbs=breadcrumbs)
 
 
 @admin_bp.route('/drivers/<int:user_id>/edit', methods=['GET', 'POST'])
@@ -196,10 +239,11 @@ def edit_driver(user_id):
         last_name = request.form.get('last_name', '')
         try:
             admin_update_driver_user(user_id, username, email, first_name, last_name)
-            return redirect(url_for('admin.drivers_list'))
+            return redirect(url_for('admin.drivers_list', message='Driver user updated'))
         except ValueError as e:
             drivers = get_all_drivers()
-            return render_template('Admin/drivers.html', drivers=drivers, error=str(e))
+            breadcrumbs = admin_breadcrumbs(("Drivers", None))
+            return render_template('Admin/drivers.html', drivers=drivers, error=str(e), breadcrumbs=breadcrumbs)
 
     return redirect(url_for('admin.drivers_list'))
 
@@ -338,6 +382,17 @@ def deactivate_driver(user_id):
         return redirect(url_for('admin.remove_users_page', error=str(e)))
 
 
+@admin_bp.route('/users/drivers/<int:user_id>/reactivate', methods=['POST'])
+@login_required
+@admin_required
+def reactivate_driver(user_id):
+    try:
+        reactivate_driver_user(user_id)
+        return redirect(url_for('admin.remove_users_page', message='Driver user reactivated'))
+    except ValueError as e:
+        return redirect(url_for('admin.remove_users_page', error=str(e)))
+
+
 @admin_bp.route('/users/admins/<int:user_id>/deactivate', methods=['POST'])
 @login_required
 @admin_required
@@ -351,6 +406,17 @@ def deactivate_admin(user_id):
         return redirect(url_for('admin.remove_users_page', error=str(e)))
 
 
+@admin_bp.route('/users/admins/<int:user_id>/reactivate', methods=['POST'])
+@login_required
+@admin_required
+def reactivate_admin(user_id):
+    try:
+        reactivate_admin_user(user_id)
+        return redirect(url_for('admin.remove_users_page', message='Admin user reactivated'))
+    except ValueError as e:
+        return redirect(url_for('admin.remove_users_page', error=str(e)))
+
+
 @admin_bp.route('/users/sponsors/<int:user_id>/deactivate', methods=['POST'])
 @login_required
 @admin_required
@@ -358,6 +424,17 @@ def deactivate_sponsor(user_id):
     try:
         deactivate_sponsor_user(user_id)
         return redirect(url_for('admin.remove_users_page', message='Sponsor user deactivated'))
+    except ValueError as e:
+        return redirect(url_for('admin.remove_users_page', error=str(e)))
+
+
+@admin_bp.route('/users/sponsors/<int:user_id>/reactivate', methods=['POST'])
+@login_required
+@admin_required
+def reactivate_sponsor(user_id):
+    try:
+        reactivate_sponsor_user(user_id)
+        return redirect(url_for('admin.remove_users_page', message='Sponsor user reactivated'))
     except ValueError as e:
         return redirect(url_for('admin.remove_users_page', error=str(e)))
 
@@ -384,11 +461,13 @@ def system_users():
 @login_required
 @admin_required
 def password_reset_audit_log():
-    entries = get_admin_password_reset_audit_entries()
+    username = request.args.get('username', '').strip()
+    entries = get_admin_password_reset_audit_entries(username=username)
     breadcrumbs = admin_breadcrumbs(("Password Reset Audit Log", None))
     return render_template(
         'Admin/password_reset_audit_log.html',
         entries=entries,
+        username=username,
         breadcrumbs=breadcrumbs,
     )
 

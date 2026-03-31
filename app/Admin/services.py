@@ -179,6 +179,35 @@ def admin_update_driver_user(
     return user
 
 
+def create_driver_account(
+    username: str,
+    email: str,
+    first_name: str,
+    last_name: str,
+    password: str,
+    confpass: str,
+) -> User:
+    clean_username = (username or '').strip()
+    clean_email = (email or '').strip().lower()
+    clean_first = (first_name or '').strip()
+    clean_last = (last_name or '').strip()
+
+    if not clean_first:
+        raise ValueError('First name is required')
+    if not clean_last:
+        raise ValueError('Last name is required')
+
+    return register_user(
+        username=clean_username,
+        password=password,
+        role=RoleType.DRIVER,
+        email=clean_email,
+        first_name=clean_first,
+        last_name=clean_last,
+        confpass=confpass,
+    )
+
+
 def admin_update_own_profile(
     user: User,
     username: str,
@@ -325,6 +354,20 @@ def deactivate_driver_user(user_id: int):
     return user
 
 
+def reactivate_driver_user(user_id: int):
+    user = User.query.get(user_id)
+    if user is None:
+        raise ValueError('Driver user not found')
+    if user.role_type != RoleType.DRIVER:
+        raise ValueError('Selected user is not a driver')
+    if user.is_user_active:
+        raise ValueError('Driver user is already active')
+
+    user.is_user_active = True
+    db.session.commit()
+    return user
+
+
 def deactivate_admin_user(user_id: int):
     user = User.query.get(user_id)
     if user is None:
@@ -339,6 +382,20 @@ def deactivate_admin_user(user_id: int):
     return user
 
 
+def reactivate_admin_user(user_id: int):
+    user = User.query.get(user_id)
+    if user is None:
+        raise ValueError('Admin user not found')
+    if user.role_type != RoleType.ADMIN:
+        raise ValueError('Selected user is not an admin')
+    if user.is_user_active:
+        raise ValueError('Admin user is already active')
+
+    user.is_user_active = True
+    db.session.commit()
+    return user
+
+
 def deactivate_sponsor_user(user_id: int):
     user = User.query.get(user_id)
     if user is None:
@@ -349,6 +406,20 @@ def deactivate_sponsor_user(user_id: int):
         raise ValueError('Sponsor user is already deactivated')
 
     user.is_user_active = False
+    db.session.commit()
+    return user
+
+
+def reactivate_sponsor_user(user_id: int):
+    user = User.query.get(user_id)
+    if user is None:
+        raise ValueError('Sponsor user not found')
+    if user.role_type != RoleType.SPONSOR:
+        raise ValueError('Selected user is not a sponsor user')
+    if user.is_user_active:
+        raise ValueError('Sponsor user is already active')
+
+    user.is_user_active = True
     db.session.commit()
     return user
 
@@ -377,8 +448,10 @@ def get_all_system_users():
     )
 
 
-def get_admin_password_reset_audit_entries():
-    return (
+def get_admin_password_reset_audit_entries(username: str = ''):
+    clean_username = (username or '').strip()
+
+    query = (
         db.session.query(
             PasswordChange.pass_id.label('pass_id'),
             PasswordChange.change_time.label('change_time'),
@@ -390,8 +463,12 @@ def get_admin_password_reset_audit_entries():
         .join(User, PasswordChange.user_id == User.user_id)
         .filter(PasswordChange.change_type == PasswordChangeType.ADMIN_RESET)
         .order_by(PasswordChange.change_time.desc(), PasswordChange.pass_id.desc())
-        .all()
     )
+
+    if clean_username:
+        query = query.filter(User.username.ilike(f'%{clean_username}%'))
+
+    return query.all()
 
 
 def admin_reset_user_password(user_id: int, new_password: str, confirm_password: str):
