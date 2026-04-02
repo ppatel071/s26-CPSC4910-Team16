@@ -125,7 +125,9 @@ def build_impersonation_banner_context() -> dict[str, str | bool | None]:
         sponsor_user = get_impersonating_sponsor_user()
         sponsor_name = (
             sponsor_user.sponsor_user.organization.name
-            if sponsor_user and sponsor_user.sponsor_user and sponsor_user.sponsor_user.organization
+            if sponsor_user
+            and sponsor_user.sponsor_user
+            and sponsor_user.sponsor_user.organization
             else None
         )
         banner_message = "You are impersonating this user"
@@ -164,19 +166,43 @@ def get_driver_dashboard_data(driver: Driver, *, include_applications: bool) -> 
             .all()
         )
 
-    notifications_query = Notification.query.filter_by(driver_id=driver.driver_id)
+    # ------------------------------------------------------------------
+    # Notifications:
+    #   - DRIVER_DROPPED must ALWAYS be shown regardless of preferences
+    #     (story 4067 / 18927 — this alert cannot be disabled)
+    #   - POINT_CHANGE is filtered when point_change_alert is off
+    #   - ORDER_PLACED is filtered when order_alert is off
+    # ------------------------------------------------------------------
+    suppressed_categories: list[NotificationCategory] = []
 
     if not driver.point_change_alert:
-        notifications_query = notifications_query.filter(
-            Notification.category != NotificationCategory.POINT_CHANGE
-        )
+        suppressed_categories.append(NotificationCategory.POINT_CHANGE)
 
     if not driver.order_alert:
+        suppressed_categories.append(NotificationCategory.ORDER_PLACED)
+
+    # Never suppress DRIVER_DROPPED — it is always delivered
+    notifications_query = Notification.query.filter_by(driver_id=driver.driver_id)
+
+    if suppressed_categories:
         notifications_query = notifications_query.filter(
-            Notification.category != NotificationCategory.ORDER_PLACED
+            db.or_(
+                # Always include DRIVER_DROPPED
+                Notification.category == NotificationCategory.DRIVER_DROPPED,
+                # Include everything that isn't in the suppressed list
+                Notification.category.notin_(suppressed_categories),
+            )
         )
 
     notifications = notifications_query.order_by(Notification.create_time.desc()).all()
+
+    # Split out unread drop alerts so the dashboard can highlight them
+    drop_alerts = [
+        n
+        for n in notifications
+        if n.category == NotificationCategory.DRIVER_DROPPED and not n.is_read
+    ]
+
     orders = (
         Order.query.filter_by(driver_id=driver.driver_id)
         .order_by(Order.create_time.desc())
@@ -192,6 +218,7 @@ def get_driver_dashboard_data(driver: Driver, *, include_applications: bool) -> 
         "point_value": point_value,
         "orders": orders,
         "notifications": notifications,
+        "drop_alerts": drop_alerts,
     }
 
 
@@ -220,7 +247,9 @@ def update_driver_account(user: User, *, first_name: str, last_name: str, email:
     db.session.commit()
 
 
-def submit_driver_application(driver: Driver, organization_id: int, form_data: dict) -> None:
+def submit_driver_application(
+    driver: Driver, organization_id: int, form_data: dict
+) -> None:
     existing = DriverApplication.query.filter_by(
         driver_id=driver.driver_id,
         organization_id=organization_id,
@@ -287,17 +316,20 @@ def redeem_catalog_item_for_driver(
             price=cost,
         )
     )
-    db.session.add(
-        Notification(
-            driver_id=driver.driver_id,
-            issued_by_user_id=acting_user_id,
-            category=NotificationCategory.ORDER_PLACED,
-            message=(
-                f"Order placed: {item.product_name} for {cost} points. "
-                f"Order #{order.order_id} is now pending."
-            ),
+
+    # Only fire ORDER_PLACED notification if the driver has that alert on
+    if driver.order_alert:
+        db.session.add(
+            Notification(
+                driver_id=driver.driver_id,
+                issued_by_user_id=acting_user_id,
+                category=NotificationCategory.ORDER_PLACED,
+                message=(
+                    f"Order placed: {item.product_name} for {cost} points. "
+                    f"Order #{order.order_id} is now pending."
+                ),
+            )
         )
-    )
 
     db.session.commit()
     return f"Successfully redeemed {item.product_name} for {cost} points!"
@@ -309,6 +341,7 @@ def toggle_driver_alert(driver: Driver, alert_type: str) -> str:
         state = "enabled" if driver.order_alert else "disabled"
         message = f"Order placement alerts {state}."
     else:
+        # "point" — DRIVER_DROPPED is never toggled here
         driver.point_change_alert = not driver.point_change_alert
         state = "enabled" if driver.point_change_alert else "disabled"
         message = f"Point change alerts {state}."
