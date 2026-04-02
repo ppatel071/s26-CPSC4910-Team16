@@ -15,7 +15,7 @@
     <tr>
       <th>Sponsor</th>
       <th>Driver</th>
-      <th>Amount</th>
+      <th>Amount (Points)</th>
       <th>Sale Time</th>
     </tr>
     {% for row in rows %}
@@ -33,7 +33,7 @@
     <tr>
       <th>Sponsor</th>
       <th>Sales</th>
-      <th>Total Amount</th>
+      <th>Total Amount (Points)</th>
     </tr>
     {% for row in rows %}
       <tr>
@@ -44,4 +44,8 @@
     {% endfor %}
   </table>
 {% endif %}
+
+<p>
+  <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+</p>
 {% endblock %}

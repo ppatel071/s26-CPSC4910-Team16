@@ -1,6 +1,6 @@
 from app.extensions import db
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, DateTime, Enum, ForeignKey, Boolean
+from sqlalchemy import String, DateTime, Enum, ForeignKey, Boolean, event
 from sqlalchemy.sql import func
 from flask_login import UserMixin
 from typing import List, Optional, TYPE_CHECKING
@@ -128,3 +128,13 @@ class PasswordChange(db.Model):
     change_time: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     user: Mapped[User] = relationship(back_populates='password_changes')
+
+
+@event.listens_for(PasswordChange, 'before_update')
+def prevent_password_change_audit_update(mapper, connection, target):
+    raise ValueError('Password reset audit log entries cannot be edited')
+
+
+@event.listens_for(PasswordChange, 'before_delete')
+def prevent_password_change_audit_delete(mapper, connection, target):
+    raise ValueError('Password reset audit log entries cannot be deleted')

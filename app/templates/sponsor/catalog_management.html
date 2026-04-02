@@ -29,7 +29,7 @@
               <div class="catalog-card-image" aria-hidden="true"></div>
             {% endif %}
             <div>
-              <strong>{{ product.title if product else item.product_name }}</strong><br>
+              <strong style="color: black;">{{ product.title if product else item.product_name }}</strong><br>
               <span class="catalog-meta">
                 {% if product %}
                   {{ product.category }}
@@ -38,8 +38,8 @@
                 {% endif %}
               </span>
             </div>
-            <div>{{ product.description if product else 'Live product data is currently unavailable.' }}</div>
-            <div class="catalog-card-price">
+            <div style="color: black;">{{ product.description if product else 'Live product data is currently unavailable.' }}</div>
+            <div style="color: black;" class="catalog-card-price">
               {% if product %}
                 ${{ "%.2f"|format(product.price) }}
               {% else %}

@@ -28,6 +28,7 @@
       <button class="button" onclick="ChangeFontSize(16)">Default Text Size</button>
       <button class="button" onclick="ChangeFontSize(20)">Enlarge Text Size</button>
       <button class="button" onclick="ToggleDarkMode()">Toggle Dark Mode</button>
+      <button id="motionToggleButton" class="button" onclick="ToggleMotion()">Disable Animation</button>
     </div>
     
     {% block nav %}
@@ -61,9 +62,32 @@
         localStorage.setItem('darkMode', isDark);
       }
 
+      function ToggleMotion() {
+        document.body.classList.toggle('reduce-motion');
+        
+        const isReduced = document.body.classList.contains('reduce-motion');
+        localStorage.setItem('reduceMotion', isReduced);
+
+        UpdateMotionButton();
+      }
+
+      function UpdateMotionButton() {
+        const button = document.getElementById("motionToggleButton");
+        const isReduced = document.body.classList.contains('reduce-motion');
+
+        if (isReduced) {
+          button.textContent = "Enable Animations";
+        } else {
+          button.textContent = "Disable Animations";
+        }
+      }
+
+      document.documentElement.classList.add("no-transition");
+
       window.onload = function() {
         const savedSize = localStorage.getItem('fontSize');
-        const darkMode = localStorage.getItem('darkMode')
+        const darkMode = localStorage.getItem('darkMode');
+        const reduceMotion = localStorage.getItem('reduceMotion');
 
         if(savedSize) {
           document.documentElement.style.setProperty('--base-font-size', savedSize + 'px');
@@ -72,6 +96,14 @@
         if(darkMode === "true") {
           document.body.classList.add("dark-mode")
         }
+
+        if(reduceMotion === "true") {
+          document.body.classList.add("reduce-motion");
+        }
+
+        UpdateMotionButton();
+
+        setTimeout(() => {document.documentElement.classList.remove("no-transition");}, 50);
       }
 
       function showAltText(imageId) {

@@ -36,7 +36,7 @@
 }
 
 .breadcrumbs span {
-    color: #555;
+    color: #696969;
 }
 
 :root {
@@ -68,6 +68,11 @@ body {
     font-size: var(--base-font-size);
     background-color: var(--bg-color);
     color: var(--text-color);
+    transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+.no-transition * {
+    transition: none !important;
 }
 
 .section-card {
@@ -76,6 +81,11 @@ body {
     margin-bottom: 25px;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.reduce-motion * {
+  animation: none !important;
+  transition: none !important;
 }
 
 h1 {
