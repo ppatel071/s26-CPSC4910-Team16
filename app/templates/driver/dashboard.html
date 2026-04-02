@@ -82,6 +82,23 @@ button:hover,
 .notification.unread {
   border-left: 4px solid #4a90e2;
 }
+
+/* story 4067 / 18927 — drop alert banner */
+.drop-alert-banner {
+  background: #fff2f2;
+  border-left: 5px solid #d9534f;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  color: #a02020;
+}
+.drop-alert-banner strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.drop-alert-banner small {
+  color: #888;
+}
 </style>
 
 <div class="dashboard-container">
@@ -102,6 +119,20 @@ button:hover,
       <div class="alert alert-{{ category }}">{{ message }}</div>
     {% endfor %}
   {% endwith %}
+
+  {# story 4067 / 18927 — DRIVER_DROPPED banners always shown at top, cannot be disabled #}
+  {% if drop_alerts %}
+    <div class="section-card" style="border: 2px solid #d9534f;">
+      <h2 style="color: #d9534f;">&#9888; Sponsor Drop Notification</h2>
+      {% for alert in drop_alerts %}
+        <div class="drop-alert-banner">
+          <strong>You have been dropped by a sponsor</strong>
+          {{ alert.message }}
+          <br><small>{{ alert.create_time.strftime('%Y-%m-%d %H:%M') }}</small>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
 
   {% if active_sponsorship %}
     <div class="section-card">
@@ -186,6 +217,12 @@ button:hover,
             </button>
           </form>
         </td>
+      </tr>
+      {# story 4067 / 18927 — drop alert row is shown as locked, cannot be toggled #}
+      <tr>
+        <td>Sponsor Drop Alerts</td>
+        <td>Always Enabled</td>
+        <td><span style="color: #888; font-size: 0.9rem;">Cannot be disabled</span></td>
       </tr>
     </table>
   </div>

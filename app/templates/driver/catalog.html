@@ -5,6 +5,75 @@
 {% block head %}
 {{ super() }}
 <link rel="stylesheet" href="/static/catalog.css">
+<style>
+  /* ── Confirmation modal (story 4057 / 18925) ── */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-backdrop.open {
+    display: flex;
+  }
+  .modal-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 32px 28px;
+    max-width: 420px;
+    width: 92%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    text-align: center;
+  }
+  .modal-box h3 {
+    margin: 0 0 8px;
+    font-size: 1.2rem;
+  }
+  .modal-box .modal-product-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin-bottom: 6px;
+  }
+  .modal-box .modal-cost {
+    color: #4a90e2;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .modal-box .modal-balance-after {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  .modal-actions .btn-confirm {
+    background: #4a90e2;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 22px;
+    cursor: pointer;
+    font-size: 0.95rem;
+  }
+  .modal-actions .btn-confirm:hover { background: #357abd; }
+  .modal-actions .btn-cancel {
+    background: #f0f0f0;
+    color: #333;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 22px;
+    cursor: pointer;
+    font-size: 0.95rem;
+  }
+  .modal-actions .btn-cancel:hover { background: #ddd; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -14,6 +83,9 @@
     <p>
       Sponsor: <strong>{{ organization.name }}</strong><br>
       Available Points: <strong>{{ active_sponsorship.point_balance }}</strong>
+      {% if organization.point_value %}
+        &nbsp;&mdash;&nbsp;1&nbsp;pt&nbsp;=&nbsp;${{ "%.4f"|format(organization.point_value|float) }}
+      {% endif %}
     </p>
     <div class="catalog-actions">
       <a class="button" href="{{ url_for('driver.dashboard') }}">Back to Dashboard</a>
@@ -22,43 +94,85 @@
 
   {% include "driver/partials/active_sponsorship_dropdown.html" %}
 
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
   <section class="catalog-panel catalog-panel-blue">
     <h2>Current Catalog</h2>
+
     {% if catalog_items %}
       <div class="catalog-grid">
         {% for item, product in catalog_items %}
+          {# ── Cost in points (story 4051 / 18923) ── #}
+          {% set cost = item.points_required %}
+          {% set can_afford = active_sponsorship.point_balance >= cost %}
+          {% set balance_after = active_sponsorship.point_balance - cost %}
+
           <article class="catalog-card">
+            {# Product image #}
             {% if product and product.thumbnail %}
-              <img class="catalog-card-image" src="{{ product.thumbnail }}" alt="{{ product.title }}">
+              <img class="catalog-card-image" src="{{ product.thumbnail }}"
+                   alt="{{ product.title }}">
             {% else %}
               <div class="catalog-card-image" aria-hidden="true"></div>
             {% endif %}
+
+            {# Name & category #}
             <div>
               <strong>{{ product.title if product else item.product_name }}</strong><br>
-              <span class="catalog-meta">{{ product.category if product else 'Sponsor reward' }}</span>
+              <span class="catalog-meta">
+                {{ product.category if product else 'Sponsor reward' }}
+              </span>
             </div>
+
+            {# Description #}
             <div>
-              {{ product.description if product else 'Redeem this reward from your sponsor using your current sponsorship points.' }}
+              {{ product.description if product
+                 else 'Redeem this reward from your sponsor using your current sponsorship points.' }}
             </div>
-            <div class="catalog-card-price">{{ item.points_required }} points</div>
-            <div>
-              {% if active_sponsorship.point_balance >= item.points_required %}
-                <span class="catalog-status-pill">Eligible</span>
-                {% if product %}
-                  <span class="catalog-meta">Stock: {{ product.stock }}</span>
-                {% endif %}
-              {% else %}
-                <span class="catalog-meta">Not enough points yet</span>
+
+            {# ── Points cost breakdown (story 4051 / 18923) ── #}
+            <div class="catalog-card-price">
+              <strong>{{ cost }}</strong> points
+              {% if organization.point_value and product and product.price %}
+                <span class="catalog-meta">
+                  &nbsp;(${{ "%.2f"|format(product.price|float) }} value)
+                </span>
               {% endif %}
             </div>
-            <div class="catalog-card-actions">
-              {% if active_sponsorship.point_balance >= item.points_required %}
-                <form method="POST" action="{{ url_for('driver.redeem_points') }}" class="catalog-inline-form">
-                  <input type="hidden" name="catalog_id" value="{{ item.catalog_id }}">
-                  <button type="submit">Redeem</button>
-                </form>
+
+            {# Eligibility + stock #}
+            <div>
+              {% if can_afford %}
+                <span class="catalog-status-pill">Eligible</span>
+                {% if product %}
+                  <span class="catalog-meta">&nbsp;Stock: {{ product.stock }}</span>
+                {% endif %}
               {% else %}
-                <span class="catalog-meta">Requires {{ item.points_required }} points</span>
+                <span class="catalog-meta">
+                  Need {{ cost - active_sponsorship.point_balance }} more points
+                </span>
+              {% endif %}
+            </div>
+
+            {# ── Redeem button triggers confirmation modal (story 4057 / 18925) ── #}
+            <div class="catalog-card-actions">
+              {% if can_afford %}
+                <button
+                  type="button"
+                  class="btn-open-confirm"
+                  data-catalog-id="{{ item.catalog_id }}"
+                  data-product-name="{{ product.title if product else item.product_name }}"
+                  data-cost="{{ cost }}"
+                  data-balance-after="{{ balance_after }}"
+                >
+                  Redeem
+                </button>
+              {% else %}
+                <span class="catalog-meta">Requires {{ cost }} points</span>
               {% endif %}
             </div>
           </article>
@@ -67,9 +181,77 @@
     {% else %}
       <div class="catalog-empty">
         <p>Your sponsor has not added any rewards yet.</p>
-        <p><a class="button" href="{{ url_for('driver.dashboard') }}">Back to Dashboard</a></p>
+        <p>
+          <a class="button" href="{{ url_for('driver.dashboard') }}">Back to Dashboard</a>
+        </p>
       </div>
     {% endif %}
   </section>
 </div>
+
+{# ── Confirmation modal (story 4057 / 18925) ── #}
+<div class="modal-backdrop" id="confirmModal" role="dialog"
+     aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-box">
+    <h3 id="modalTitle">Confirm Redemption</h3>
+    <p class="modal-product-name" id="modalProductName"></p>
+    <p class="modal-cost" id="modalCost"></p>
+    <p class="modal-balance-after" id="modalBalanceAfter"></p>
+    <div class="modal-actions">
+      {# The real form — catalog_id injected by JS before submit #}
+      <form method="POST" action="{{ url_for('driver.redeem_points') }}" id="confirmForm">
+        <input type="hidden" name="catalog_id" id="modalCatalogId">
+        <button type="submit" class="btn-confirm">Yes, redeem</button>
+      </form>
+      <button type="button" class="btn-cancel" id="modalCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const modal       = document.getElementById('confirmModal');
+    const productName = document.getElementById('modalProductName');
+    const costEl      = document.getElementById('modalCost');
+    const balanceEl   = document.getElementById('modalBalanceAfter');
+    const catalogId   = document.getElementById('modalCatalogId');
+    const cancelBtn   = document.getElementById('modalCancelBtn');
+
+    // Open modal when a Redeem button is clicked
+    document.querySelectorAll('.btn-open-confirm').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const name   = btn.dataset.productName;
+        const cost   = parseInt(btn.dataset.cost, 10);
+        const after  = parseInt(btn.dataset.balanceAfter, 10);
+
+        productName.textContent = name;
+        costEl.textContent      = cost + ' points';
+        balanceEl.textContent   = 'Your balance after: ' + after + ' points';
+        catalogId.value         = btn.dataset.catalogId;
+
+        modal.classList.add('open');
+        cancelBtn.focus();
+      });
+    });
+
+    // Close on Cancel button
+    cancelBtn.addEventListener('click', function () {
+      modal.classList.remove('open');
+    });
+
+    // Close when clicking the backdrop (outside the box)
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) {
+        modal.classList.remove('open');
+      }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal.classList.contains('open')) {
+        modal.classList.remove('open');
+      }
+    });
+  })();
+</script>
 {% endblock %}
