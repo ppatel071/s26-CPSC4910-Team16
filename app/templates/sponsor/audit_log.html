@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Sponsor Dashboard{% endblock %}
+
+{% block content %}
+
+<h1>Audit Log</h1>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width: 60%;">
+    <tr>
+        <th>Username</th>
+        <th>Event</th>
+        <th>Description</th>
+        <th>Time</th>
+    </tr>
+    {% for audit in audits %}
+        <tr>
+            <td>{{ audit.username }}</td>
+            <td>{{ audit.event_type }}</td>
+            <td>{{ audit.detail }}</td>
+            <td>{{ audit.event_time }}</td>
+        </tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

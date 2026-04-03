@@ -1,23 +1,10 @@
 from decimal import Decimal, InvalidOperation
 from typing import Tuple, List
+from sqlalchemy import text
 from sqlalchemy.orm import joinedload
 from app.catalog_api.client import catalog_client
 from app.extensions import db
-from app.models import (
-    SponsorOrganization,
-    SponsorCatalogItem,
-    SponsorUser,
-    User,
-    RoleType,
-    Driver,
-    DriverSponsorship,
-    DriverStatus,
-    DriverApplication,
-    DriverApplicationStatus,
-    PointTransaction,
-    Notification,
-    NotificationCategory,
-)
+from app.models import *
 from app.auth.services import register_user
 
 
@@ -355,3 +342,18 @@ def adjust_driver_points_for_sponsor(
 
     db.session.commit()
     return driver_sponsorship
+
+
+def get_organization_audit_logs(org_id: int):
+
+    query = text(f"SELECT username, event_type, detail, event_time FROM audit_log WHERE organization_id = {org_id}")
+    rows = db.session.execute(query).fetchall()
+
+    audits = [{
+        'username' : row[0],
+        'event_type' : row[1],
+        'detail' : row[2],
+        'event_time' : row[3]
+    } for row in rows]
+
+    return audits

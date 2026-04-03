@@ -23,21 +23,7 @@ from app.models.enums import (
 )
 from app.models.system import Notification
 from app.sponsor import sponsor_bp
-from app.sponsor.services import (
-    adjust_driver_points_for_sponsor,
-    add_catalog_item_for_organization,
-    approve_driver_for_sponsor,
-    create_sponsor_user,
-    get_driver_point_transactions_for_sponsor,
-    get_organization_driver_sponsorship,
-    get_driver_applications,
-    get_organization_drivers,
-    remove_catalog_item_for_organization,
-    set_driver_status_for_sponsor,
-    update_driver_profile_for_sponsor,
-    update_sponsor_organization,
-    validate_and_apply_user_profile_updates,
-)
+from app.sponsor.services import *
 
 
 def sponsor_required(f):
@@ -331,6 +317,15 @@ def get_applications():
         breadcrumbs=breadcrumbs,
     )
 
+@sponsor_bp.route("/audit_log")
+@login_required
+@sponsor_required
+
+def audit_log():
+    org_id = current_user.sponsor_user.organization_id
+    audits = get_organization_audit_logs(org_id)
+
+    return render_template("sponsor/audit_log.html", audits=audits)
 
 @sponsor_bp.route("/catalog", methods=["GET", "POST"])
 @login_required
