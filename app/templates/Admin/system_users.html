@@ -48,6 +48,7 @@
       <th>Failed Attempts</th>
       <th>Status Label</th>
       <th>Action</th>
+      <th>Role Assignment</th>
       <th>Password</th>
     </tr>
   </thead>
@@ -77,6 +78,13 @@
             Deactivated
           {% else %}
             Active
+          {% endif %}
+        </td>
+        <td>
+          {% if not user.is_user_active or user.is_login_locked %}
+            Unavailable
+          {% else %}
+            <a class="button2" href="{{ url_for('admin.assign_user_role', user_id=user.user_id) }}">Assign Role</a>
           {% endif %}
         </td>
         <td>

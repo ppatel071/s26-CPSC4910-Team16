@@ -8,7 +8,7 @@ from app.extensions import db, login_manager
 from app.driver import driver_bp
 
 
-def ensure_user_lockout_columns(app: Flask) -> None:
+def ensure_user_account_columns(app: Flask) -> None:
     with app.app_context():
         inspector = inspect(db.engine)
         column_names = {column['name'] for column in inspector.get_columns('users')}
@@ -19,6 +19,10 @@ def ensure_user_lockout_columns(app: Flask) -> None:
             statements.append('ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0')
         if 'is_login_locked' not in column_names:
             statements.append('ALTER TABLE users ADD COLUMN is_login_locked BOOLEAN NOT NULL DEFAULT FALSE')
+        if 'must_notify_password_reset' not in column_names:
+            statements.append(
+                'ALTER TABLE users ADD COLUMN must_notify_password_reset BOOLEAN NOT NULL DEFAULT FALSE'
+            )
         if 'locked_at' not in column_names:
             locked_at_type = 'TIMESTAMP WITH TIME ZONE'
             if dialect in {'sqlite', 'mysql'}:
@@ -49,5 +53,6 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        ensure_user_account_columns(app)
 
     return app

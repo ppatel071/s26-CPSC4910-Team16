@@ -1,8 +1,10 @@
 import datetime as dt
-from flask import render_template, abort, request, redirect, url_for
+from flask import render_template, abort, request, redirect, url_for, flash
 from functools import wraps
 from flask_login import current_user, login_required
+from flask_login import login_user
 from app.Admin import admin_bp
+from app.auth.impersonation import start_admin_driver_impersonation
 from app.models.enums import RoleType
 from app.models import User
 from app.auth.services import register_user
@@ -15,6 +17,10 @@ from app.Admin.services import (
     get_driver_purchase_summary,
     get_all_admin_users,
     get_all_drivers,
+    get_all_drivers_for_impersonation,
+    count_active_sponsorships,
+    get_driver_by_id,
+    get_driver_for_impersonation,
     admin_update_driver_user,
     create_driver_account,
     admin_update_own_profile,
@@ -31,6 +37,9 @@ from app.Admin.services import (
     unlock_user_login,
     get_admin_password_reset_audit_entries,
     admin_reset_user_password,
+    reassign_user_role,
+    resolve_sponsor_organization_for_role_assignment,
+    user_has_driver_dependencies,
 )
 
 
@@ -45,6 +54,19 @@ def admin_required(f):
 def admin_breadcrumbs(*crumbs):
     base = [("Admin Dashboard", url_for("admin.dashboard"))]
     return base + list(crumbs)
+
+
+def _build_user_display_name(user: User) -> str:
+    name_parts = []
+    for raw_part in [user.first_name, user.last_name]:
+        clean_part = (raw_part or "").strip()
+        if clean_part and clean_part.lower() != "none":
+            name_parts.append(clean_part)
+
+    display_name = " ".join(name_parts).strip()
+    if display_name:
+        return display_name
+    return user.username
 
 @admin_bp.route('/dashboard')
 @login_required
@@ -188,6 +210,45 @@ def drivers_list():
     breadcrumbs = admin_breadcrumbs(("Drivers", None))
 
     return render_template('Admin/drivers.html', drivers=drivers, breadcrumbs=breadcrumbs, message=message)
+
+
+@admin_bp.route('/drivers/impersonate')
+@login_required
+@admin_required
+def impersonate_driver_page():
+    driver_rows = [
+        {
+            "user": user,
+            "active_sponsorship_count": count_active_sponsorships(user.driver),
+            "total_sponsorship_count": len(user.driver.sponsorships),
+        }
+        for user in get_all_drivers_for_impersonation()
+    ]
+    breadcrumbs = admin_breadcrumbs(("Drivers", url_for("admin.drivers_list")), ("Impersonate Driver", None))
+    return render_template(
+        'Admin/impersonate_driver.html',
+        driver_rows=driver_rows,
+        breadcrumbs=breadcrumbs,
+    )
+
+
+@admin_bp.route('/drivers/<int:user_id>/impersonate', methods=['POST'])
+@login_required
+@admin_required
+def impersonate_driver(user_id):
+    try:
+        driver_user = get_driver_for_impersonation(user_id)
+    except ValueError:
+        abort(404)
+
+    admin_user_id = current_user.user_id
+
+    start_admin_driver_impersonation(admin_user_id)
+    login_user(driver_user)
+
+    display_name = _build_user_display_name(driver_user)
+    flash(f"You are now impersonating {display_name}.", "success")
+    return redirect(url_for('driver.dashboard'))
 
 
 @admin_bp.route('/drivers/new', methods=['GET', 'POST'])
@@ -457,17 +518,139 @@ def system_users():
     )
 
 
+@admin_bp.route('/users/<int:user_id>/role', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def assign_user_role(user_id):
+    user = User.query.get_or_404(user_id)
+    breadcrumbs = admin_breadcrumbs(
+        ("System Users", url_for("admin.system_users")),
+        ("Assign User Role", None),
+    )
+    sponsors = get_all_sponsors()
+    role_options = [RoleType.ADMIN, RoleType.SPONSOR, RoleType.DRIVER]
+
+    if request.method == 'POST':
+        selected_role = request.form.get('role_type', '').strip()
+        sponsor_organization_id = request.form.get('sponsor_organization_id', type=int)
+        new_sponsor_organization_name = request.form.get('new_sponsor_organization_name', '').strip()
+
+        if selected_role == RoleType.SPONSOR.value:
+            try:
+                sponsor_organization_id = resolve_sponsor_organization_for_role_assignment(
+                    sponsor_organization_id,
+                    new_sponsor_organization_name,
+                )
+            except ValueError as e:
+                return render_template(
+                    'Admin/assign_user_role.html',
+                    user=user,
+                    sponsors=sponsors,
+                    role_options=role_options,
+                    selected_role=selected_role,
+                    selected_sponsor_organization_id=request.form.get('sponsor_organization_id', ''),
+                    new_sponsor_organization_name=new_sponsor_organization_name,
+                    has_driver_dependencies=user_has_driver_dependencies(user),
+                    error=str(e),
+                    breadcrumbs=breadcrumbs,
+                )
+
+        if current_user.user_id == user.user_id and selected_role != RoleType.ADMIN.value:
+            return render_template(
+                'Admin/assign_user_role.html',
+                user=user,
+                sponsors=sponsors,
+                role_options=role_options,
+                selected_role=selected_role,
+                selected_sponsor_organization_id=sponsor_organization_id,
+                new_sponsor_organization_name=new_sponsor_organization_name,
+                has_driver_dependencies=user_has_driver_dependencies(user),
+                error='You cannot change your own admin account to a different role.',
+                breadcrumbs=breadcrumbs,
+            )
+
+        try:
+            reassign_user_role(user.user_id, selected_role, sponsor_organization_id)
+            return redirect(
+                url_for(
+                    'admin.system_users',
+                    message=f'Role updated for user {user.username}'
+                )
+            )
+        except ValueError as e:
+            return render_template(
+                'Admin/assign_user_role.html',
+                user=user,
+                sponsors=sponsors,
+                role_options=role_options,
+                selected_role=selected_role,
+                selected_sponsor_organization_id=sponsor_organization_id,
+                new_sponsor_organization_name=new_sponsor_organization_name,
+                has_driver_dependencies=user_has_driver_dependencies(user),
+                error=str(e),
+                breadcrumbs=breadcrumbs,
+            )
+
+    return render_template(
+        'Admin/assign_user_role.html',
+        user=user,
+        sponsors=sponsors,
+        role_options=role_options,
+        selected_role=user.role_type.value,
+        selected_sponsor_organization_id=(
+            user.sponsor_user.organization_id if user.sponsor_user else None
+        ),
+        new_sponsor_organization_name='',
+        has_driver_dependencies=user_has_driver_dependencies(user),
+        breadcrumbs=breadcrumbs,
+    )
+
+
 @admin_bp.route('/audit-log/password-resets')
 @login_required
 @admin_required
 def password_reset_audit_log():
     username = request.args.get('username', '').strip()
-    entries = get_admin_password_reset_audit_entries(username=username)
+    start_date_str = request.args.get('start_date', '').strip()
+    end_date_str = request.args.get('end_date', '').strip()
     breadcrumbs = admin_breadcrumbs(("Password Reset Audit Log", None))
+
+    try:
+        start_date = dt.date.fromisoformat(start_date_str) if start_date_str else None
+        end_date = dt.date.fromisoformat(end_date_str) if end_date_str else None
+    except ValueError:
+        return render_template(
+            'Admin/password_reset_audit_log.html',
+            entries=[],
+            username=username,
+            start_date=start_date_str,
+            end_date=end_date_str,
+            error='Invalid date format. Use YYYY-MM-DD.',
+            breadcrumbs=breadcrumbs,
+        )
+
+    if start_date and end_date and end_date < start_date:
+        return render_template(
+            'Admin/password_reset_audit_log.html',
+            entries=[],
+            username=username,
+            start_date=start_date_str,
+            end_date=end_date_str,
+            error='End date must be on or after start date.',
+            breadcrumbs=breadcrumbs,
+        )
+
+    entries = get_admin_password_reset_audit_entries(
+        username=username,
+        start_date=start_date,
+        end_date=end_date,
+    )
     return render_template(
         'Admin/password_reset_audit_log.html',
         entries=entries,
         username=username,
+        start_date=start_date_str,
+        end_date=end_date_str,
         breadcrumbs=breadcrumbs,
     )
 

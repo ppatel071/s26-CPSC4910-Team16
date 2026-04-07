@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Assign User Role{% endblock %}
+
+{% block content %}
+<h1>Assign User Role</h1>
+
+<p><strong>User:</strong> {{ user.username }}</p>
+<p><strong>Current Role:</strong> {{ user.role_type.value }}</p>
+
+{% if has_driver_dependencies and user.role_type.value == 'DRIVER' %}
+  <p style="color: red;">
+    This driver has existing driver history. Their role cannot be changed unless that data is handled separately.
+  </p>
+{% endif %}
+
+<form method="POST" action="{{ url_for('admin.assign_user_role', user_id=user.user_id) }}">
+  <label for="role_type">Role</label><br>
+  <select id="role_type" name="role_type" onchange="toggleSponsorOrganization()">
+    {% for role in role_options %}
+      <option value="{{ role.value }}" {% if selected_role == role.value %}selected{% endif %}>
+        {{ role.value }}
+      </option>
+    {% endfor %}
+  </select>
+
+  <div id="sponsor-organization-group" style="margin-top: 16px;">
+    <label for="sponsor_organization_id">Sponsor Organization</label><br>
+    <select id="sponsor_organization_id" name="sponsor_organization_id">
+      <option value="">Select an organization</option>
+      {% for sponsor in sponsors %}
+        <option
+          value="{{ sponsor.organization_id }}"
+          {% if selected_sponsor_organization_id == sponsor.organization_id %}selected{% endif %}
+        >
+          {{ sponsor.name }}
+        </option>
+      {% endfor %}
+    </select>
+    <br><br>
+    <label for="new_sponsor_organization_name">Or Create New Organization</label><br>
+    <input
+      id="new_sponsor_organization_name"
+      name="new_sponsor_organization_name"
+      type="text"
+      value="{{ new_sponsor_organization_name or '' }}"
+      placeholder="Enter a new sponsor organization name"
+    >
+  </div>
+
+  <p>
+    <button type="submit">Save Role</button>
+    <a class="button" href="{{ url_for('admin.system_users') }}">Cancel</a>
+  </p>
+</form>
+
+<script>
+  function toggleSponsorOrganization() {
+    const roleField = document.getElementById("role_type");
+    const sponsorGroup = document.getElementById("sponsor-organization-group");
+    sponsorGroup.style.display = roleField.value === "SPONSOR" ? "block" : "none";
+  }
+
+  window.addEventListener("load", toggleSponsorOrganization);
+</script>
+{% endblock %}
