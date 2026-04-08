@@ -1,5 +1,6 @@
 import os
-from flask import Flask
+from flask import Flask, flash, redirect, request, url_for
+from flask_login import current_user, login_user, logout_user
 from sqlalchemy import inspect, text
 from app.auth import auth_bp
 from app.sponsor import sponsor_bp
@@ -36,6 +37,7 @@ def ensure_user_account_columns(app: Flask) -> None:
             for statement in statements:
                 connection.execute(text(statement))
 
+
 def create_app():
     app = Flask(__name__)
 
@@ -44,12 +46,58 @@ def create_app():
 
     db.init_app(app)
     login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'
+    login_manager.login_view = 'auth.login'  # type: ignore
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(sponsor_bp, url_prefix='/sponsor')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(driver_bp, url_prefix='/driver')
+
+    @app.before_request
+    def expire_idle_sponsor_impersonation():
+        from app.auth.impersonation import (
+            clear_sponsor_driver_impersonation,
+            get_impersonator_sponsor_user_id,
+            is_sponsor_driver_impersonation_active,
+            is_sponsor_driver_impersonation_timed_out,
+            touch_sponsor_driver_impersonation_activity,
+        )
+        from app.driver.services import get_sponsor_user_for_impersonation_return
+
+        if request.endpoint == 'static':
+            return None
+
+        if not current_user.is_authenticated:
+            return None
+
+        if not is_sponsor_driver_impersonation_active():
+            return None
+
+        if is_sponsor_driver_impersonation_timed_out():
+            sponsor_user_id = get_impersonator_sponsor_user_id()
+            clear_sponsor_driver_impersonation()
+
+            if sponsor_user_id is None:
+                return None
+
+            sponsor_user = get_sponsor_user_for_impersonation_return(sponsor_user_id)
+            if sponsor_user is None:
+                logout_user()
+                flash(
+                    'Your sponsor impersonation session expired, and the sponsor account could not be restored.',
+                    'error',
+                )
+                return redirect(url_for('auth.login'))
+
+            login_user(sponsor_user)
+            flash(
+                'Your sponsor impersonation session expired after 10 minutes of inactivity.',
+                'info',
+            )
+            return redirect(url_for('sponsor.driver_management'))
+
+        touch_sponsor_driver_impersonation_activity()
+        return None
 
     with app.app_context():
         db.create_all()

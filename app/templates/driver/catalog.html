@@ -108,6 +108,7 @@
         {% for item, product in catalog_items %}
           {# ── Cost in points (story 4051 / 18923) ── #}
           {% set cost = item.points_required %}
+          {% set dollar_price = product.price if product and product.price is not none else item.price %}
           {% set can_afford = active_sponsorship.point_balance >= cost %}
           {% set balance_after = active_sponsorship.point_balance - cost %}
 
@@ -137,9 +138,9 @@
             {# ── Points cost breakdown (story 4051 / 18923) ── #}
             <div class="catalog-card-price">
               <strong>{{ cost }}</strong> points
-              {% if organization.point_value and product and product.price %}
+              {% if dollar_price is not none %}
                 <span class="catalog-meta">
-                  &nbsp;(${{ "%.2f"|format(product.price|float) }} value)
+                  &nbsp;(${{ "%.2f"|format(dollar_price|float) }})
                 </span>
               {% endif %}
             </div>

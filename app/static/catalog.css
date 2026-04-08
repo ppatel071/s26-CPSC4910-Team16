@@ -92,6 +92,8 @@
 .catalog-card {
   display: grid;
   gap: 12px;
+  width: 100%;
+  max-width: 360px;
   border: 1px solid #d9e6ee;
   border-radius: 16px;
   padding: 14px;

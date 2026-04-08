@@ -19,9 +19,32 @@
 
   <section class="catalog-panel catalog-panel-blue">
     <h2 style="color: black;">Current Catalog</h2>
+    <form method="GET" action="{{ url_for('sponsor.catalog_management') }}" class="catalog-filters">
+      <div>
+        <label style="color: black;" for="catalog-query">Search</label><br>
+        <input id="catalog-query" type="text" name="query" value="{{ current_query }}" placeholder="Search by product name">
+      </div>
+      <div>
+        <label style="color: black;" for="catalog-category">Category</label><br>
+        <select id="catalog-category" name="category">
+          <option value="">All Categories</option>
+          {% for category in categories %}
+            <option value="{{ category.slug }}" {% if current_category == category.slug %}selected{% endif %}>
+              {{ category.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <button type="submit">Apply Filters</button>
+        <a class="button" href="{{ url_for('sponsor.catalog_management') }}">Clear</a>
+      </div>
+    </form>
     {% if catalog_items %}
       <div class="catalog-grid">
         {% for item, product in catalog_items %}
+          {% set cost = item.points_required %}
+          {% set dollar_price = product.price if product else item.price %}
           <article class="catalog-card">
             {% if product and product.thumbnail %}
               <img class="catalog-card-image" src="{{ product.thumbnail }}" alt="{{ product.title }}">
@@ -40,8 +63,9 @@
             </div>
             <div style="color: black;">{{ product.description if product else 'Live product data is currently unavailable.' }}</div>
             <div style="color: black;" class="catalog-card-price">
-              {% if product %}
-                ${{ "%.2f"|format(product.price) }}
+              {% if dollar_price is not none %}
+                <strong>{{ cost }}</strong> points
+                <span class="catalog-meta">&nbsp;(${{ "%.2f"|format(dollar_price|float) }})</span>
               {% else %}
                 Price unavailable
               {% endif %}
@@ -60,6 +84,8 @@
               <form method="POST" action="{{ url_for('sponsor.catalog_management') }}" class="catalog-inline-form">
                 <input type="hidden" name="action" value="remove">
                 <input type="hidden" name="catalog_id" value="{{ item.catalog_id }}">
+                <input type="hidden" name="query" value="{{ current_query }}">
+                <input type="hidden" name="category" value="{{ current_category }}">
                 <button type="submit">Remove</button>
               </form>
             </div>
@@ -68,7 +94,13 @@
       </div>
     {% else %}
       <div class="catalog-empty">
-        <p style="color: black;">Your organization catalog is empty.</p>
+        <p style="color: black;">
+          {% if current_query or current_category %}
+            No catalog items matched the current filters.
+          {% else %}
+            Your organization catalog is empty.
+          {% endif %}
+        </p>
         <p><a class="button" href="{{ url_for('sponsor.catalog_browse') }}">Browse Products</a></p>
       </div>
     {% endif %}

@@ -11,6 +11,11 @@
 <div class="catalog-shell">
   <section class="catalog-hero catalog-hero-amber">
     <h1 style="color: black;">Browse Products</h1>
+    {% if organization and organization.point_value %}
+      <p style="color: black;">
+        Sponsor point value: <strong>1 pt = ${{ "%.4f"|format(organization.point_value|float) }}</strong>
+      </p>
+    {% endif %}
     <div class="catalog-actions">
       <a class="button" href="{{ url_for('sponsor.catalog_management') }}">View Current Catalog</a>
       <a class="button" href="{{ url_for('sponsor.dashboard') }}">Back to Dashboard</a>
@@ -43,6 +48,7 @@
     {% if products %}
       <div class="catalog-grid">
         {% for product in products %}
+          {% set points_price = organization.points_for_price(product.price) if organization else 0 %}
           <article class="catalog-card">
             <img class="catalog-card-image" src="{{ product.thumbnail }}" alt="{{ product.title }}">
             <div>
@@ -50,7 +56,10 @@
               <span style="color: black;" class="catalog-meta">{{ product.category }}</span>
             </div>
             <div style="color: black;">{{ product.description }}</div>
-            <div style="color: black;" class="catalog-card-price">${{ "%.2f"|format(product.price) }}</div>
+            <div style="color: black;" class="catalog-card-price">
+              <strong>{{ points_price }}</strong> points
+              <span class="catalog-meta">&nbsp;(${{ "%.2f"|format(product.price) }})</span>
+            </div>
             <div>
               <span class="catalog-status-pill">{{ product.availabilityStatus }}</span>
               <span class="catalog-meta">Stock: {{ product.stock }}</span>
