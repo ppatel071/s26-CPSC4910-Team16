@@ -4,8 +4,11 @@ from flask import abort, flash, redirect, render_template, request, session, url
 from flask_login import current_user, login_required, login_user, logout_user
 
 from app.auth.impersonation import (
-    clear_sponsor_driver_impersonation,
+    clear_driver_impersonation,
+    get_impersonator_admin_user_id,
     get_impersonator_sponsor_user_id,
+    is_admin_driver_impersonation_active,
+    is_sponsor_driver_impersonation_active,
 )
 from app.catalog_api.utils import get_catalog_products_for_organization
 from app.driver import driver_bp
@@ -14,6 +17,7 @@ from app.driver.services import (
     build_impersonation_banner_context,
     cancel_driver_order,
     filter_driver_orders,
+    get_admin_user_for_impersonation_return,
     get_active_sponsorship,
     get_available_organizations,
     get_driver_dashboard_data,
@@ -49,6 +53,8 @@ def inject_driver_context():
             "driver_sponsorships": [],
             "active_sponsorship": None,
             "is_impersonating_driver": False,
+            "is_sponsor_impersonating_driver": False,
+            "is_admin_impersonating_driver": False,
             "impersonation_banner_message": None,
             "impersonation_exit_endpoint": None,
             "impersonation_exit_label": None,
@@ -58,6 +64,8 @@ def inject_driver_context():
     return {
         "driver_sponsorships": sponsorships,
         "active_sponsorship": active_sponsorship,
+        "is_sponsor_impersonating_driver": is_sponsor_driver_impersonation_active(),
+        "is_admin_impersonating_driver": is_admin_driver_impersonation_active(),
         **build_impersonation_banner_context(),
     }
 
@@ -93,9 +101,10 @@ def dashboard():
     assert isinstance(driver, Driver)
 
     is_impersonating_driver = is_driver_impersonated()
+    is_sponsor_impersonating_driver = is_sponsor_driver_impersonation_active()
     dashboard_data = get_driver_dashboard_data(
         driver,
-        include_applications=not is_impersonating_driver,
+        include_applications=not is_sponsor_impersonating_driver,
     )
     dashboard_data["orders"] = filter_driver_orders(
         driver.driver_id,
@@ -106,6 +115,7 @@ def dashboard():
     return render_template(
         "driver/dashboard.html",
         is_impersonating_driver=is_impersonating_driver,
+        is_sponsor_impersonating_driver=is_sponsor_impersonating_driver,
         **dashboard_data,
     )
 
@@ -157,7 +167,7 @@ def account_settings():
 @login_required
 @driver_required
 def application_form():
-    if is_driver_impersonated():
+    if is_sponsor_driver_impersonation_active():
         return _redirect_impersonated_driver_to_dashboard()
 
     driver = current_user.driver
@@ -173,7 +183,7 @@ def application_form():
 @login_required
 @driver_required
 def submit_application():
-    if is_driver_impersonated():
+    if is_sponsor_driver_impersonation_active():
         return _redirect_impersonated_driver_to_dashboard()
 
     driver = current_user.driver
@@ -199,7 +209,11 @@ def submit_application():
 def redeem_points():
     driver = current_user.driver
     catalog_id = request.form.get("catalog_id", type=int)
-    acting_user_id = get_impersonator_sponsor_user_id() or current_user.user_id
+    acting_user_id = (
+        get_impersonator_sponsor_user_id()
+        or get_impersonator_admin_user_id()
+        or current_user.user_id
+    )
 
     if not catalog_id:
         flash("Invalid product selection.", "error")
@@ -249,8 +263,23 @@ def cancel_order(order_id):
 @login_required
 @driver_required
 def stop_impersonation():
+    admin_user_id = get_impersonator_admin_user_id()
     sponsor_user_id = get_impersonator_sponsor_user_id()
-    clear_sponsor_driver_impersonation()
+    clear_driver_impersonation()
+
+    if admin_user_id is not None:
+        admin_user = get_admin_user_for_impersonation_return(admin_user_id)
+        if admin_user is None:
+            logout_user()
+            flash(
+                "The impersonation session ended, but the admin account could not be restored.",
+                "error",
+            )
+            return redirect(url_for("auth.login"))
+
+        login_user(admin_user)
+        flash("Returned to the admin impersonation page.", "success")
+        return redirect(url_for("admin.impersonate_driver_page"))
 
     if sponsor_user_id is None:
         return redirect(url_for("driver.dashboard"))

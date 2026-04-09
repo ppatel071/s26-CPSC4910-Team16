@@ -5,7 +5,7 @@
         id="driver_sponsorship_id"
         name="driver_sponsorship_id"
         onchange="this.form.submit()"
-        {% if is_impersonating_driver %}disabled{% endif %}
+        {% if is_sponsor_impersonating_driver %}disabled{% endif %}
     >
         {% for sponsorship in driver_sponsorships %}
             <option
@@ -16,7 +16,7 @@
             </option>
         {% endfor %}
     </select>
-    {% if is_impersonating_driver and active_sponsorship %}
+    {% if is_sponsor_impersonating_driver and active_sponsorship %}
     <input type="hidden" name="driver_sponsorship_id" value="{{ active_sponsorship.driver_sponsorship_id }}">
     {% endif %}
     <input type="hidden" name="next" value="{{ request.path }}">

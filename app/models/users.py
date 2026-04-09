@@ -30,6 +30,7 @@ class User(db.Model, UserMixin):
     is_user_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     failed_login_attempts: Mapped[int] = mapped_column(nullable=False, default=0)
     is_login_locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    must_notify_password_reset: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     locked_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     sponsor_user: Mapped[Optional['SponsorUser']] = relationship(back_populates='user', uselist=False)
