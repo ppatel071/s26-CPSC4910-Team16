@@ -8,6 +8,9 @@
 </p>
 
 <form method="GET" action="{{ url_for('admin.driver_purchases_summary') }}">
+  <label for="search">Search driver:</label><br>
+  <input id="search" type="search" name="search" value="{{ search }}" placeholder="Username or name"><br><br>
+
   <label for="start_date">Start date:</label><br>
   <input id="start_date" type="date" name="start_date" value="{{ start_date }}" placeholder="e.g. 2026-01-01" required><br><br>
 
@@ -15,6 +18,7 @@
   <input id="end_date" type="date" name="end_date" value="{{ end_date }}" placeholder="e.g. 2026-12-31" required><br><br>
 
   <button type="submit">Run Report</button>
+  <a class="button" href="{{ url_for('admin.driver_purchases_summary') }}">Clear</a>
 </form>
 
 {% if error %}
@@ -36,7 +40,7 @@
     {% endfor %}
   </table>
 {% else %}
-  <p>No purchases found for the selected date range.</p>
+  <p>No purchases found for the selected filters.</p>
 {% endif %}
 
 <p>

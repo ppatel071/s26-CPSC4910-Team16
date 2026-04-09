@@ -70,6 +70,13 @@ def _build_user_display_name(user: User) -> str:
         return display_name
     return user.username
 
+
+def _parse_optional_date(date_str: str) -> dt.date | None:
+    clean_date = (date_str or "").strip()
+    if not clean_date:
+        return None
+    return dt.date.fromisoformat(clean_date)
+
 @admin_bp.route('/dashboard')
 @login_required
 @admin_required
@@ -118,11 +125,43 @@ def edit_sponsor(organization_id):
 @admin_required
 def sales_by_sponsor_report():
     detail = request.args.get('detail') == '1'
-    rows = get_sales_by_sponsor(detail)
+    search = request.args.get('search', '').strip()
+    start_str = request.args.get('start_date', '').strip()
+    end_str = request.args.get('end_date', '').strip()
+
+    start_date = None
+    end_date = None
+    error = None
+
+    if detail:
+        try:
+            start_date = _parse_optional_date(start_str)
+            end_date = _parse_optional_date(end_str)
+        except ValueError:
+            error = 'Invalid date format. Use YYYY-MM-DD.'
+
+        if error is None and start_date and end_date and end_date < start_date:
+            error = 'End date must be on or after start date.'
+
+    rows = [] if error else get_sales_by_sponsor(
+        detail,
+        search=search,
+        start_date=start_date,
+        end_date=end_date,
+    )
 
     breadcrumbs = admin_breadcrumbs(("Reports", url_for("admin.reports")), ("Sales by Sponsor", None))
 
-    return render_template('Admin/sales_by_sponsor.html', detail=detail, rows=rows, breadcrumbs=breadcrumbs)
+    return render_template(
+        'Admin/sales_by_sponsor.html',
+        detail=detail,
+        rows=rows,
+        breadcrumbs=breadcrumbs,
+        search=search,
+        start_date=start_str,
+        end_date=end_str,
+        error=error,
+    )
 
 
 @admin_bp.route('/reports/sales-by-driver')
@@ -130,11 +169,43 @@ def sales_by_sponsor_report():
 @admin_required
 def sales_by_driver_report():
     detail = request.args.get('detail') == '1'
-    rows = get_sales_by_driver(detail)
+    search = request.args.get('search', '').strip()
+    start_str = request.args.get('start_date', '').strip()
+    end_str = request.args.get('end_date', '').strip()
+
+    start_date = None
+    end_date = None
+    error = None
+
+    if detail:
+        try:
+            start_date = _parse_optional_date(start_str)
+            end_date = _parse_optional_date(end_str)
+        except ValueError:
+            error = 'Invalid date format. Use YYYY-MM-DD.'
+
+        if error is None and start_date and end_date and end_date < start_date:
+            error = 'End date must be on or after start date.'
+
+    rows = [] if error else get_sales_by_driver(
+        detail,
+        search=search,
+        start_date=start_date,
+        end_date=end_date,
+    )
 
     breadcrumbs = admin_breadcrumbs(("Reports", url_for("admin.reports")), ("Sales by Driver", None))
 
-    return render_template('Admin/sales_by_driver.html', detail=detail, rows=rows, breadcrumbs=breadcrumbs)
+    return render_template(
+        'Admin/sales_by_driver.html',
+        detail=detail,
+        rows=rows,
+        breadcrumbs=breadcrumbs,
+        search=search,
+        start_date=start_str,
+        end_date=end_str,
+        error=error,
+    )
 
 
 @admin_bp.route('/reports/driver-purchases-summary', methods=['GET'])
@@ -145,6 +216,7 @@ def driver_purchases_summary():
     today = dt.date.today()
     default_start = today - dt.timedelta(days=6)
 
+    search = request.args.get('search', '').strip()
     start_str = request.args.get('start_date') or default_start.isoformat()
     end_str = request.args.get('end_date') or today.isoformat()
 
@@ -158,6 +230,7 @@ def driver_purchases_summary():
             'Admin/driver_purchases_summary.html',
             error='Invalid date format. Use YYYY-MM-DD.',
             rows=[],
+            search=search,
             start_date=start_str,
             end_date=end_str,
             breadcrumbs=breadcrumbs
@@ -168,14 +241,16 @@ def driver_purchases_summary():
             'Admin/driver_purchases_summary.html',
             error='End date must be on or after start date.',
             rows=[],
+            search=search,
             start_date=start_str,
             end_date=end_str,
             breadcrumbs=breadcrumbs
         )
-    rows = get_driver_purchase_summary(start_date, end_date)
+    rows = get_driver_purchase_summary(start_date, end_date, search=search)
     return render_template(
         'Admin/driver_purchases_summary.html',
         rows=rows,
+        search=search,
         start_date=start_date.isoformat(),
         end_date=end_date.isoformat(),
         breadcrumbs=breadcrumbs
@@ -195,11 +270,17 @@ def profile():
 @login_required
 @admin_required
 def admin_logins():
-    users = get_all_admin_users()
+    username = request.args.get('username', '').strip()
+    users = get_all_admin_users(username=username)
 
     breadcrumbs = admin_breadcrumbs(("Admin Users", None))
 
-    return render_template('Admin/admin_logins.html', users=users, breadcrumbs=breadcrumbs)
+    return render_template(
+        'Admin/admin_logins.html',
+        users=users,
+        breadcrumbs=breadcrumbs,
+        username=username,
+    )
 
 
 @admin_bp.route('/drivers')
@@ -425,29 +506,39 @@ def create_admin_user():
 @login_required
 @admin_required
 def sponsor_users_list():
-    rows = get_all_sponsor_users()
+    username = request.args.get('username', '').strip()
+    rows = get_all_sponsor_users(username=username)
 
     breadcrumbs = admin_breadcrumbs(("Sponsor Users", None))
 
-    return render_template('Admin/sponsor_users.html', rows=rows, breadcrumbs=breadcrumbs)
+    return render_template(
+        'Admin/sponsor_users.html',
+        rows=rows,
+        breadcrumbs=breadcrumbs,
+        username=username,
+    )
 
 @admin_bp.route('/sponsors/new', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def create_sponsor_user():
-    breadcrumbs = admin_breadcrumbs(("Sponsor Users", url_for("admin.sponsor_users_list")), ("Create Sponsor User",))
+    breadcrumbs = admin_breadcrumbs(("Sponsor Users", url_for("admin.sponsor_users_list")), ("Create Sponsor User", None))
+    sponsors = get_all_sponsors()
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         email = request.form.get('email', '').strip()
-        organization_name = request.form.get('organization_name', '').strip()
+        sponsor_organization_id_raw = request.form.get('sponsor_organization_id', '').strip()
+        new_sponsor_organization_name = request.form.get('new_sponsor_organization_name', '').strip()
         password = request.form.get('password', '')
 
         try:
+            sponsor_organization_id = int(sponsor_organization_id_raw) if sponsor_organization_id_raw else None
             create_sponsor_account(
                 username=username,
                 email=email,
-                organization_name=organization_name,
+                sponsor_organization_id=sponsor_organization_id,
+                new_sponsor_organization_name=new_sponsor_organization_name,
                 password=password,
             )
             return redirect(url_for('admin.sponsor_users_list'))
@@ -457,18 +548,35 @@ def create_sponsor_user():
                 error=str(e),
                 username=username,
                 email=email,
-                organization_name=organization_name,
-                breadcrumbs=breadcrumbs
+                sponsors=sponsors,
+                selected_sponsor_organization_id=(
+                    int(sponsor_organization_id_raw) if sponsor_organization_id_raw.isdigit() else None
+                ),
+                new_sponsor_organization_name=new_sponsor_organization_name,
+                breadcrumbs=breadcrumbs,
             )
 
-    return render_template('Admin/create_sponsor_user.html')
+    return render_template(
+        'Admin/create_sponsor_user.html',
+        sponsors=sponsors,
+        selected_sponsor_organization_id=None,
+        new_sponsor_organization_name='',
+        breadcrumbs=breadcrumbs,
+    )
 
 
 @admin_bp.route('/users/remove')
 @login_required
 @admin_required
 def remove_users_page():
-    admin_users, sponsor_users, driver_users = get_users_for_removal_page()
+    admin_username = request.args.get('admin_username', '').strip()
+    sponsor_username = request.args.get('sponsor_username', '').strip()
+    driver_username = request.args.get('driver_username', '').strip()
+    admin_users, sponsor_users, driver_users = get_users_for_removal_page(
+        admin_username=admin_username,
+        sponsor_username=sponsor_username,
+        driver_username=driver_username,
+    )
     breadcrumbs = admin_breadcrumbs(("Remove Users", None))
     message = request.args.get('message')
     error = request.args.get('error')
@@ -480,6 +588,9 @@ def remove_users_page():
         driver_users=driver_users,
         message=message,
         error=error,
+        search_admin_username=admin_username,
+        search_sponsor_username=sponsor_username,
+        search_driver_username=driver_username,
         breadcrumbs=breadcrumbs,
     )
 
@@ -488,75 +599,172 @@ def remove_users_page():
 @login_required
 @admin_required
 def deactivate_driver(user_id):
+    admin_username = request.args.get('admin_username', '').strip()
+    sponsor_username = request.args.get('sponsor_username', '').strip()
+    driver_username = request.args.get('driver_username', '').strip()
     try:
         deactivate_driver_user(user_id)
-        return redirect(url_for('admin.remove_users_page', message='Driver user deactivated'))
+        return redirect(url_for(
+            'admin.remove_users_page',
+            message='Driver user deactivated',
+            admin_username=admin_username,
+            sponsor_username=sponsor_username,
+            driver_username=driver_username,
+        ))
     except ValueError as e:
-        return redirect(url_for('admin.remove_users_page', error=str(e)))
+        return redirect(url_for(
+            'admin.remove_users_page',
+            error=str(e),
+            admin_username=admin_username,
+            sponsor_username=sponsor_username,
+            driver_username=driver_username,
+        ))
 
 
 @admin_bp.route('/users/drivers/<int:user_id>/reactivate', methods=['POST'])
 @login_required
 @admin_required
 def reactivate_driver(user_id):
+    admin_username = request.args.get('admin_username', '').strip()
+    sponsor_username = request.args.get('sponsor_username', '').strip()
+    driver_username = request.args.get('driver_username', '').strip()
     try:
         reactivate_driver_user(user_id)
-        return redirect(url_for('admin.remove_users_page', message='Driver user reactivated'))
+        return redirect(url_for(
+            'admin.remove_users_page',
+            message='Driver user reactivated',
+            admin_username=admin_username,
+            sponsor_username=sponsor_username,
+            driver_username=driver_username,
+        ))
     except ValueError as e:
-        return redirect(url_for('admin.remove_users_page', error=str(e)))
+        return redirect(url_for(
+            'admin.remove_users_page',
+            error=str(e),
+            admin_username=admin_username,
+            sponsor_username=sponsor_username,
+            driver_username=driver_username,
+        ))
 
 
 @admin_bp.route('/users/admins/<int:user_id>/deactivate', methods=['POST'])
 @login_required
 @admin_required
 def deactivate_admin(user_id):
+    admin_username = request.args.get('admin_username', '').strip()
+    sponsor_username = request.args.get('sponsor_username', '').strip()
+    driver_username = request.args.get('driver_username', '').strip()
     if current_user.user_id == user_id:
-        return redirect(url_for('admin.remove_users_page', error='You cannot deactivate your own admin account'))
+        return redirect(url_for(
+            'admin.remove_users_page',
+            error='You cannot deactivate your own admin account',
+            admin_username=admin_username,
+            sponsor_username=sponsor_username,
+            driver_username=driver_username,
+        ))
     try:
         deactivate_admin_user(user_id)
-        return redirect(url_for('admin.remove_users_page', message='Admin user deactivated'))
+        return redirect(url_for(
+            'admin.remove_users_page',
+            message='Admin user deactivated',
+            admin_username=admin_username,
+            sponsor_username=sponsor_username,
+            driver_username=driver_username,
+        ))
     except ValueError as e:
-        return redirect(url_for('admin.remove_users_page', error=str(e)))
+        return redirect(url_for(
+            'admin.remove_users_page',
+            error=str(e),
+            admin_username=admin_username,
+            sponsor_username=sponsor_username,
+            driver_username=driver_username,
+        ))
 
 
 @admin_bp.route('/users/admins/<int:user_id>/reactivate', methods=['POST'])
 @login_required
 @admin_required
 def reactivate_admin(user_id):
+    admin_username = request.args.get('admin_username', '').strip()
+    sponsor_username = request.args.get('sponsor_username', '').strip()
+    driver_username = request.args.get('driver_username', '').strip()
     try:
         reactivate_admin_user(user_id)
-        return redirect(url_for('admin.remove_users_page', message='Admin user reactivated'))
+        return redirect(url_for(
+            'admin.remove_users_page',
+            message='Admin user reactivated',
+            admin_username=admin_username,
+            sponsor_username=sponsor_username,
+            driver_username=driver_username,
+        ))
     except ValueError as e:
-        return redirect(url_for('admin.remove_users_page', error=str(e)))
+        return redirect(url_for(
+            'admin.remove_users_page',
+            error=str(e),
+            admin_username=admin_username,
+            sponsor_username=sponsor_username,
+            driver_username=driver_username,
+        ))
 
 
 @admin_bp.route('/users/sponsors/<int:user_id>/deactivate', methods=['POST'])
 @login_required
 @admin_required
 def deactivate_sponsor(user_id):
+    admin_username = request.args.get('admin_username', '').strip()
+    sponsor_username = request.args.get('sponsor_username', '').strip()
+    driver_username = request.args.get('driver_username', '').strip()
     try:
         deactivate_sponsor_user(user_id)
-        return redirect(url_for('admin.remove_users_page', message='Sponsor user deactivated'))
+        return redirect(url_for(
+            'admin.remove_users_page',
+            message='Sponsor user deactivated',
+            admin_username=admin_username,
+            sponsor_username=sponsor_username,
+            driver_username=driver_username,
+        ))
     except ValueError as e:
-        return redirect(url_for('admin.remove_users_page', error=str(e)))
+        return redirect(url_for(
+            'admin.remove_users_page',
+            error=str(e),
+            admin_username=admin_username,
+            sponsor_username=sponsor_username,
+            driver_username=driver_username,
+        ))
 
 
 @admin_bp.route('/users/sponsors/<int:user_id>/reactivate', methods=['POST'])
 @login_required
 @admin_required
 def reactivate_sponsor(user_id):
+    admin_username = request.args.get('admin_username', '').strip()
+    sponsor_username = request.args.get('sponsor_username', '').strip()
+    driver_username = request.args.get('driver_username', '').strip()
     try:
         reactivate_sponsor_user(user_id)
-        return redirect(url_for('admin.remove_users_page', message='Sponsor user reactivated'))
+        return redirect(url_for(
+            'admin.remove_users_page',
+            message='Sponsor user reactivated',
+            admin_username=admin_username,
+            sponsor_username=sponsor_username,
+            driver_username=driver_username,
+        ))
     except ValueError as e:
-        return redirect(url_for('admin.remove_users_page', error=str(e)))
+        return redirect(url_for(
+            'admin.remove_users_page',
+            error=str(e),
+            admin_username=admin_username,
+            sponsor_username=sponsor_username,
+            driver_username=driver_username,
+        ))
 
 
 @admin_bp.route('/system-users')
 @login_required
 @admin_required
 def system_users():
-    users = get_all_system_users()
+    username = request.args.get('username', '').strip()
+    users = get_all_system_users(username=username)
     breadcrumbs = admin_breadcrumbs(("System Users", None))
     message = request.args.get('message')
     error = request.args.get('error')
@@ -567,6 +775,7 @@ def system_users():
         breadcrumbs=breadcrumbs,
         message=message,
         error=error,
+        search_username=username,
     )
 
 
@@ -748,8 +957,9 @@ def reset_user_password_as_admin(user_id):
 @login_required
 @admin_required
 def unlock_locked_user(user_id):
+    username = request.args.get('username', '').strip()
     try:
         unlock_user_login(user_id)
-        return redirect(url_for('admin.system_users', message='User login lock removed'))
+        return redirect(url_for('admin.system_users', message='User login lock removed', username=username))
     except ValueError as e:
-        return redirect(url_for('admin.system_users', error=str(e)))
+        return redirect(url_for('admin.system_users', error=str(e), username=username))

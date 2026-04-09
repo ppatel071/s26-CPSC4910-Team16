@@ -9,11 +9,11 @@
     font-weight: 600;
   }
   .status-locked {
-    color: darkorange;
+    color: #b45309;
     font-weight: 600;
   }
   .status-deactivated {
-    color: red;
+    color: #b91c1c;
     font-weight: 600;
   }
 </style>
@@ -29,9 +29,21 @@
   <p style="color: red;">{{ error }}</p>
 {% endif %}
 
-<hr>
-
 <h2>Admin Users</h2>
+<form method="GET" action="{{ url_for('admin.remove_users_page') }}" style="margin-bottom: 16px;">
+  <label for="admin-username-search">Search Admin Users</label><br>
+  <input
+    id="admin-username-search"
+    name="admin_username"
+    type="text"
+    value="{{ search_admin_username or '' }}"
+    placeholder="Enter admin username"
+  >
+  <input type="hidden" name="sponsor_username" value="{{ search_sponsor_username or '' }}">
+  <input type="hidden" name="driver_username" value="{{ search_driver_username or '' }}">
+  <button type="submit">Search</button>
+  <a class="button" href="{{ url_for('admin.remove_users_page', sponsor_username=search_sponsor_username, driver_username=search_driver_username) }}">Clear</a>
+</form>
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
     <tr>
@@ -59,13 +71,13 @@
         </td>
         <td>
           {% if user.is_user_active and user.user_id != current_user.user_id %}
-            <form method="POST" action="{{ url_for('admin.deactivate_admin', user_id=user.user_id) }}">
+            <form method="POST" action="{{ url_for('admin.deactivate_admin', user_id=user.user_id, admin_username=search_admin_username, sponsor_username=search_sponsor_username, driver_username=search_driver_username) }}">
               <button type="submit" onclick="return confirm('Are you sure you want to remove this admin user?');">Remove Admin User</button>
             </form>
           {% elif user.is_user_active and user.user_id == current_user.user_id %}
             Current account
           {% else %}
-            <form method="POST" action="{{ url_for('admin.reactivate_admin', user_id=user.user_id) }}">
+            <form method="POST" action="{{ url_for('admin.reactivate_admin', user_id=user.user_id, admin_username=search_admin_username, sponsor_username=search_sponsor_username, driver_username=search_driver_username) }}">
               <button type="submit" onclick="return confirm('Reactivate this admin user?');">Undo Deactivation</button>
             </form>
           {% endif %}
@@ -75,10 +87,30 @@
   </tbody>
 </table>
 
+{% if not admin_users and not search_admin_username %}
+  <p>No admin users found.</p>
+{% elif not admin_users %}
+  <p>No admin users found for that username search.</p>
+{% endif %}
+
 <br>
 <hr>
 
 <h2>Sponsor Users</h2>
+<form method="GET" action="{{ url_for('admin.remove_users_page') }}" style="margin-bottom: 16px;">
+  <label for="sponsor-username-search">Search Sponsor Users</label><br>
+  <input
+    id="sponsor-username-search"
+    name="sponsor_username"
+    type="text"
+    value="{{ search_sponsor_username or '' }}"
+    placeholder="Enter sponsor username"
+  >
+  <input type="hidden" name="admin_username" value="{{ search_admin_username or '' }}">
+  <input type="hidden" name="driver_username" value="{{ search_driver_username or '' }}">
+  <button type="submit">Search</button>
+  <a class="button" href="{{ url_for('admin.remove_users_page', admin_username=search_admin_username, driver_username=search_driver_username) }}">Clear</a>
+</form>
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
     <tr>
@@ -108,11 +140,11 @@
         </td>
         <td>
           {% if row.is_user_active %}
-            <form method="POST" action="{{ url_for('admin.deactivate_sponsor', user_id=row.user_id) }}">
+            <form method="POST" action="{{ url_for('admin.deactivate_sponsor', user_id=row.user_id, admin_username=search_admin_username, sponsor_username=search_sponsor_username, driver_username=search_driver_username) }}">
               <button type="submit" onclick="return confirm('Are you sure you want to remove this sponsor user?');">Remove Sponsor User</button>
             </form>
           {% else %}
-            <form method="POST" action="{{ url_for('admin.reactivate_sponsor', user_id=row.user_id) }}">
+            <form method="POST" action="{{ url_for('admin.reactivate_sponsor', user_id=row.user_id, admin_username=search_admin_username, sponsor_username=search_sponsor_username, driver_username=search_driver_username) }}">
               <button type="submit" onclick="return confirm('Reactivate this sponsor user?');">Undo Deactivation</button>
             </form>
           {% endif %}
@@ -122,11 +154,31 @@
   </tbody>
 </table>
 
+{% if not sponsor_users and not search_sponsor_username %}
+  <p>No sponsor users found.</p>
+{% elif not sponsor_users %}
+  <p>No sponsor users found for that username search.</p>
+{% endif %}
+
 
 <br>
 <hr>
 
 <h2>Driver Users</h2>
+<form method="GET" action="{{ url_for('admin.remove_users_page') }}" style="margin-bottom: 16px;">
+  <label for="driver-username-search">Search Driver Users</label><br>
+  <input
+    id="driver-username-search"
+    name="driver_username"
+    type="text"
+    value="{{ search_driver_username or '' }}"
+    placeholder="Enter driver username"
+  >
+  <input type="hidden" name="admin_username" value="{{ search_admin_username or '' }}">
+  <input type="hidden" name="sponsor_username" value="{{ search_sponsor_username or '' }}">
+  <button type="submit">Search</button>
+  <a class="button" href="{{ url_for('admin.remove_users_page', admin_username=search_admin_username, sponsor_username=search_sponsor_username) }}">Clear</a>
+</form>
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
     <tr>
@@ -154,11 +206,11 @@
         </td>
         <td>
           {% if user.is_user_active %}
-            <form method="POST" action="{{ url_for('admin.deactivate_driver', user_id=user.user_id) }}">
+            <form method="POST" action="{{ url_for('admin.deactivate_driver', user_id=user.user_id, admin_username=search_admin_username, sponsor_username=search_sponsor_username, driver_username=search_driver_username) }}">
               <button type="submit" onclick="return confirm('Are you sure you want to remove this driver user?');">Remove Driver User</button>
             </form>
           {% else %}
-            <form method="POST" action="{{ url_for('admin.reactivate_driver', user_id=user.user_id) }}">
+            <form method="POST" action="{{ url_for('admin.reactivate_driver', user_id=user.user_id, admin_username=search_admin_username, sponsor_username=search_sponsor_username, driver_username=search_driver_username) }}">
               <button type="submit" onclick="return confirm('Reactivate this driver user?');">Undo Deactivation</button>
             </form>
           {% endif %}
@@ -167,6 +219,12 @@
     {% endfor %}
   </tbody>
 </table>
+
+{% if not driver_users and not search_driver_username %}
+  <p>No driver users found.</p>
+{% elif not driver_users %}
+  <p>No driver users found for that username search.</p>
+{% endif %}
 
 <p>
   <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>

@@ -1,5 +1,5 @@
 import datetime as dt
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from app.extensions import db
 from app.auth.services import register_user, validate_complexity
@@ -37,9 +37,50 @@ def admin_update_sponsor(organization_id: int, name: str, point_value: str) -> S
     return update_sponsor_organization(org, name, point_value)
 
 
-def get_sales_by_sponsor(detail: bool):
+def _apply_driver_search(query, search: str):
+    clean_search = (search or '').strip()
+    if not clean_search:
+        return query
+
+    search_term = f'%{clean_search}%'
+    return query.filter(
+        or_(
+            User.username.ilike(search_term),
+            User.first_name.ilike(search_term),
+            User.last_name.ilike(search_term),
+        )
+    )
+
+
+def _apply_sponsor_search(query, search: str):
+    clean_search = (search or '').strip()
+    if not clean_search:
+        return query
+
+    return query.filter(SponsorOrganization.name.ilike(f'%{clean_search}%'))
+
+
+def _apply_order_date_range(query, start_date: dt.date | None, end_date: dt.date | None):
+    if start_date is not None:
+        start_dt = dt.datetime.combine(start_date, dt.time.min)
+        query = query.filter(Order.create_time >= start_dt)
+
+    if end_date is not None:
+        end_dt = dt.datetime.combine(end_date + dt.timedelta(days=1), dt.time.min)
+        query = query.filter(Order.create_time < end_dt)
+
+    return query
+
+
+def get_sales_by_sponsor(
+    detail: bool,
+    *,
+    search: str = '',
+    start_date: dt.date | None = None,
+    end_date: dt.date | None = None,
+):
     if detail:
-        return (
+        query = (
             db.session.query(
                 SponsorOrganization.name.label('sponsor_name'),
                 Order.points.label('amount'),
@@ -48,26 +89,36 @@ def get_sales_by_sponsor(detail: bool):
             )
             .join(Order.organization)
             .join(Order.placed_by_user)
-            .order_by(SponsorOrganization.name.asc(), Order.create_time.desc())
-            .all()
         )
+        query = _apply_driver_search(query, search)
+        query = _apply_order_date_range(query, start_date, end_date)
+        return query.order_by(SponsorOrganization.name.asc(), Order.create_time.desc()).all()
 
-    return (
+    query = (
         db.session.query(
             SponsorOrganization.name.label('sponsor_name'),
             func.count(Order.order_id).label('sale_count'),
             func.sum(Order.points).label('total_amount'),
         )
         .join(Order.organization)
-        .group_by(SponsorOrganization.name)
+    )
+    query = _apply_sponsor_search(query, search)
+    return (
+        query.group_by(SponsorOrganization.name)
         .order_by(SponsorOrganization.name.asc())
         .all()
     )
 
 
-def get_sales_by_driver(detail: bool):
+def get_sales_by_driver(
+    detail: bool,
+    *,
+    search: str = '',
+    start_date: dt.date | None = None,
+    end_date: dt.date | None = None,
+):
     if detail:
-        return (
+        query = (
             db.session.query(
                 User.username.label('driver_username'),
                 Order.points.label('amount'),
@@ -76,28 +127,33 @@ def get_sales_by_driver(detail: bool):
             )
             .join(Order.placed_by_user)
             .join(Order.organization)
-            .order_by(User.username.asc(), Order.create_time.desc())
-            .all()
         )
+        query = _apply_driver_search(query, search)
+        query = _apply_order_date_range(query, start_date, end_date)
+        return query.order_by(User.username.asc(), Order.create_time.desc()).all()
 
-    return (
+    query = (
         db.session.query(
             User.username.label('driver_username'),
             func.count(Order.order_id).label('sale_count'),
             func.sum(Order.points).label('total_amount'),
         )
         .join(Order.placed_by_user)
-        .group_by(User.username)
-        .order_by(User.username.asc())
-        .all()
     )
+    query = _apply_driver_search(query, search)
+    return query.group_by(User.username).order_by(User.username.asc()).all()
 
 
-def get_driver_purchase_summary(start_date: dt.date, end_date: dt.date):
+def get_driver_purchase_summary(
+    start_date: dt.date,
+    end_date: dt.date,
+    *,
+    search: str = '',
+):
     start_dt = dt.datetime.combine(start_date, dt.time.min)
     end_dt = dt.datetime.combine(end_date + dt.timedelta(days=1), dt.time.min)
 
-    return (
+    query = (
         db.session.query(
             User.username.label('driver_username'),
             func.count(Order.order_id).label('purchase_count'),
@@ -105,10 +161,9 @@ def get_driver_purchase_summary(start_date: dt.date, end_date: dt.date):
         )
         .join(Order.placed_by_user)
         .filter(Order.create_time >= start_dt, Order.create_time < end_dt)
-        .group_by(User.username)
-        .order_by(User.username.asc())
-        .all()
     )
+    query = _apply_driver_search(query, search)
+    return query.group_by(User.username).order_by(User.username.asc()).all()
 
 
 def get_admin_users_with_logins():
@@ -122,13 +177,14 @@ def get_admin_users_with_logins():
     )
 
 
-def get_all_admin_users():
-    return (
-        db.session.query(User)
-        .filter(User.role_type == RoleType.ADMIN)
-        .order_by(User.username.asc())
-        .all()
-    )
+def get_all_admin_users(username: str = ''):
+    clean_username = (username or '').strip()
+
+    query = db.session.query(User).filter(User.role_type == RoleType.ADMIN)
+    if clean_username:
+        query = query.filter(User.username.ilike(f'%{clean_username}%'))
+
+    return query.order_by(User.username.asc()).all()
 
 
 def get_all_drivers():
@@ -291,8 +347,10 @@ def admin_update_own_profile(
     return user
 
 
-def get_all_sponsor_users():
-    return (
+def get_all_sponsor_users(username: str = ''):
+    clean_username = (username or '').strip()
+
+    query = (
         db.session.query(
             SponsorOrganization.name.label('sponsor_name'),
             User.username.label('username'),
@@ -306,23 +364,22 @@ def get_all_sponsor_users():
             SponsorUser.organization_id == SponsorOrganization.organization_id,
         )
         .join(User, SponsorUser.user_id == User.user_id)
-        .order_by(SponsorOrganization.name.asc(), User.username.asc())
-        .all()
     )
+    if clean_username:
+        query = query.filter(User.username.ilike(f'%{clean_username}%'))
+
+    return query.order_by(SponsorOrganization.name.asc(), User.username.asc()).all()
 
 
 def create_sponsor_account(
     username: str,
     email: str,
-    organization_name: str,
+    sponsor_organization_id: int | None,
+    new_sponsor_organization_name: str,
     password: str,
 ) -> User:
     clean_username = (username or '').strip()
     clean_email = (email or '').strip()
-    clean_org_name = (organization_name or '').strip()
-
-    if not clean_org_name:
-        raise ValueError('Sponsor organization name is required')
 
     user = register_user(
         username=clean_username,
@@ -333,13 +390,12 @@ def create_sponsor_account(
         last_name='',
     )
 
-    organization = SponsorOrganization(name=clean_org_name, point_value=0.01)
-    db.session.add(organization)
-    db.session.flush()
-
     sponsor_user = SponsorUser(
         user_id=user.user_id,
-        organization_id=organization.organization_id,
+        organization_id=resolve_sponsor_organization_for_role_assignment(
+            sponsor_organization_id=sponsor_organization_id,
+            new_sponsor_organization_name=new_sponsor_organization_name,
+        ),
     )
     db.session.add(sponsor_user)
     db.session.commit()
@@ -347,15 +403,21 @@ def create_sponsor_account(
     return user
 
 
-def get_users_for_removal_page():
-    admin_users = (
-        db.session.query(User)
-        .filter(User.role_type == RoleType.ADMIN)
-        .order_by(User.username.asc())
-        .all()
-    )
+def get_users_for_removal_page(
+    admin_username: str = '',
+    sponsor_username: str = '',
+    driver_username: str = '',
+):
+    clean_admin_username = (admin_username or '').strip()
+    clean_sponsor_username = (sponsor_username or '').strip()
+    clean_driver_username = (driver_username or '').strip()
 
-    sponsor_users = (
+    admin_query = db.session.query(User).filter(User.role_type == RoleType.ADMIN)
+    if clean_admin_username:
+        admin_query = admin_query.filter(User.username.ilike(f'%{clean_admin_username}%'))
+    admin_users = admin_query.order_by(User.username.asc()).all()
+
+    sponsor_query = (
         db.session.query(
             User.user_id.label('user_id'),
             User.username.label('username'),
@@ -367,16 +429,15 @@ def get_users_for_removal_page():
         .select_from(SponsorUser)
         .join(User, SponsorUser.user_id == User.user_id)
         .join(SponsorOrganization, SponsorUser.organization_id == SponsorOrganization.organization_id)
-        .order_by(SponsorOrganization.name.asc(), User.username.asc())
-        .all()
     )
+    if clean_sponsor_username:
+        sponsor_query = sponsor_query.filter(User.username.ilike(f'%{clean_sponsor_username}%'))
+    sponsor_users = sponsor_query.order_by(SponsorOrganization.name.asc(), User.username.asc()).all()
 
-    driver_users = (
-        db.session.query(User)
-        .filter(User.role_type == RoleType.DRIVER)
-        .order_by(User.username.asc())
-        .all()
-    )
+    driver_query = db.session.query(User).filter(User.role_type == RoleType.DRIVER)
+    if clean_driver_username:
+        driver_query = driver_query.filter(User.username.ilike(f'%{clean_driver_username}%'))
+    driver_users = driver_query.order_by(User.username.asc()).all()
 
     return admin_users, sponsor_users, driver_users
 
@@ -481,12 +542,14 @@ def unlock_user_login(user_id: int):
     return user
 
 
-def get_all_system_users():
-    return (
-        db.session.query(User)
-        .order_by(User.role_type.asc(), User.username.asc())
-        .all()
-    )
+def get_all_system_users(username: str = ''):
+    clean_username = (username or '').strip()
+
+    query = db.session.query(User)
+    if clean_username:
+        query = query.filter(User.username.ilike(f'%{clean_username}%'))
+
+    return query.order_by(User.role_type.asc(), User.username.asc()).all()
 
 
 def user_has_driver_dependencies(user: User) -> bool:

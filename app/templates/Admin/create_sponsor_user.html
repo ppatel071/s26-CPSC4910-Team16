@@ -37,6 +37,10 @@
 
 <div class="dashboard-container">
   <div class="section-card">
+    {% if error %}
+      <p style="color: red;">{{ error }}</p>
+    {% endif %}
+
     <form method="post">
       <p>
         <label for="username">Username</label><br>
@@ -49,8 +53,29 @@
       </p>
 
       <p>
-        <label for="organization_name">Sponsor Organization Name</label><br>
-        <input id="organization_name" name="organization_name" type="text" value="{{ organization_name or '' }}" placeholder="e.g. Organization Name" required>
+        <label for="sponsor_organization_id">Sponsor Organization</label><br>
+        <select id="sponsor_organization_id" name="sponsor_organization_id">
+          <option value="">Select an existing organization</option>
+          {% for sponsor in sponsors %}
+            <option
+              value="{{ sponsor.organization_id }}"
+              {% if selected_sponsor_organization_id == sponsor.organization_id %}selected{% endif %}
+            >
+              {{ sponsor.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </p>
+
+      <p>
+        <label for="new_sponsor_organization_name">Or Create New Organization</label><br>
+        <input
+          id="new_sponsor_organization_name"
+          name="new_sponsor_organization_name"
+          type="text"
+          value="{{ new_sponsor_organization_name or '' }}"
+          placeholder="e.g. Organization Name"
+        >
       </p>
 
       <p>
