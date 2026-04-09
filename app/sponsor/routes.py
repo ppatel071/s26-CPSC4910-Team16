@@ -52,9 +52,34 @@ def render_driver_management_page(
     error: str | None = None,
     point_form_state: dict | None = None,
 ):
+    drivers = get_organization_drivers(org_id)
+
+    driverSponsors = {}
+
+    for sponsorship in drivers:
+        driver = sponsorship.driver
+        user = driver.user
+
+        all_sponsors = (
+            db.session.query(SponsorOrganization)
+            .join(
+                DriverSponsorship,
+                DriverSponsorship.organization_id == SponsorOrganization.organization_id,
+            )
+            .filter(
+                DriverSponsorship.driver_id == driver.driver_id,
+                DriverSponsorship.status == DriverStatus.ACTIVE,
+            )
+            .order_by(SponsorOrganization.name.asc())
+            .all()
+        )
+
+        driverSponsors[user.user_id] = all_sponsors
+
     return render_template(
         "sponsor/driver_management.html",
-        drivers=get_organization_drivers(org_id),
+        drivers=drivers,
+        driverSponsors=driverSponsors,
         error=error,
         point_form_state=point_form_state,
         breadcrumbs=sponsor_breadcrumbs(("Driver Management", None)),
