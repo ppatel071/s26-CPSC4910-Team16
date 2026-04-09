@@ -28,17 +28,43 @@
       <th>Email</th>
       <th>First Name</th>
       <th>Last Name</th>
+      <th>Current Sponsors</th>
+      <th>Add To Sponsor</th>
       <th>Edit</th>
     </tr>
   </thead>
   <tbody>
-    {% for user in drivers %}
+    {% for user, driver in drivers %}
       <tr>
         <td>{{ loop.index }}</td>
         <td>{{ user.username }}</td>
         <td>{{ user.email or '' }}</td>
         <td>{{ user.first_name }}</td>
         <td>{{ user.last_name }}</td>
+        <td>
+          {% if driver_sponsors[user.user_id] %}
+            <ul>
+              {% for sponsor in driver_sponsors[user.user_id] %}
+                <li>{{ sponsor.name }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            No current sponsors
+          {% endif %}
+        </td>
+        <td>
+          <form method="POST" action="{{ url_for('admin.add_driver_to_sponsor', user_id=user.user_id) }}">
+            <select name="organization_id" required>
+              <option value="">Select an organization</option>
+              {% for org in driver_orgs[user.user_id] %}
+                <option value="{{ org.organization_id }}">
+                  {{ org.name }}
+                </option>
+              {% endfor %}
+            </select>
+            <button style="margin-top: 5px;" type="submit">Add to Sponsor</button>
+          </form>
+        </td>
         <td>
           <form method="POST" action="{{ url_for('admin.edit_driver', user_id=user.user_id) }}">
             <input style="margin-bottom: 5px;" name="username" type="text" value="{{ user.username }}" placeholder="e.g. jsmith" required>

@@ -17,7 +17,7 @@ from app.models import (
     Notification,
 )
 from app.sponsor.services import update_sponsor_organization
-from app.models.enums import RoleType, PasswordChangeType, DriverStatus
+from app.models.enums import RoleType, PasswordChangeType, DriverStatus, DriverApplicationStatus
 from werkzeug.security import generate_password_hash
 
 
@@ -138,7 +138,6 @@ def get_all_drivers():
         .order_by(User.username.asc())
         .all()
     )
-
 
 def get_all_drivers_for_impersonation():
     return (
@@ -641,3 +640,22 @@ def admin_reset_user_password(user_id: int, new_password: str, confirm_password:
     )
     db.session.commit()
     return user
+
+def get_available_organizations(driver_id: int) -> list[SponsorOrganization]:
+    active_sponsorship_orgs = db.session.query(DriverSponsorship.organization_id).filter(
+        DriverSponsorship.driver_id == driver_id,
+        DriverSponsorship.status == DriverStatus.ACTIVE,
+    )
+    pending_application_orgs = db.session.query(DriverApplication.organization_id).filter(
+        DriverApplication.driver_id == driver_id,
+        DriverApplication.status == DriverApplicationStatus.PENDING,
+    )
+
+    return (
+        SponsorOrganization.query.filter(
+            ~SponsorOrganization.organization_id.in_(active_sponsorship_orgs)
+        )
+        .filter(~SponsorOrganization.organization_id.in_(pending_application_orgs))
+        .order_by(SponsorOrganization.name.asc())
+        .all()
+    )

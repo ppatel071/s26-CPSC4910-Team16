@@ -5,9 +5,10 @@ from flask_login import current_user, login_required
 from flask_login import login_user
 from app.Admin import admin_bp
 from app.auth.impersonation import start_admin_driver_impersonation
-from app.models.enums import RoleType
-from app.models import User
+from app.models.enums import RoleType, DriverStatus
+from app.models import User, Driver, DriverSponsorship, SponsorOrganization
 from app.auth.services import register_user
+from app.extensions import db
 from app.Admin.services import (
     get_all_sponsors,
     get_sponsor_by_id,
@@ -40,6 +41,7 @@ from app.Admin.services import (
     reassign_user_role,
     resolve_sponsor_organization_for_role_assignment,
     user_has_driver_dependencies,
+    get_available_organizations,
 )
 
 
@@ -204,13 +206,63 @@ def admin_logins():
 @login_required
 @admin_required
 def drivers_list():
-    drivers = get_all_drivers()
+    drivers = (
+        db.session.query(User, Driver)
+        .join(Driver, Driver.user_id == User.user_id)
+        .order_by(User.username.asc())
+        .all()
+    )
     message = request.args.get('message')
+
+    driver_orgs = {}
+    driver_sponsors = {}
+    for user, driver in drivers:
+        driver_orgs[user.user_id] = get_available_organizations(driver.driver_id)
+
+        active_sponsors = (
+            db.session.query(SponsorOrganization)
+            .join(
+                DriverSponsorship,
+                DriverSponsorship.organization_id == SponsorOrganization.organization_id,
+            )
+            .filter(
+                DriverSponsorship.driver_id == driver.driver_id,
+                DriverSponsorship.status == DriverStatus.ACTIVE,
+            )
+            .order_by(SponsorOrganization.name.asc())
+            .all()
+        )
+
+        driver_sponsors[user.user_id] = active_sponsors
 
     breadcrumbs = admin_breadcrumbs(("Drivers", None))
 
-    return render_template('Admin/drivers.html', drivers=drivers, breadcrumbs=breadcrumbs, message=message)
+    return render_template('Admin/drivers.html', drivers=drivers, breadcrumbs=breadcrumbs, message=message, driver_orgs=driver_orgs, driver_sponsors=driver_sponsors)
 
+@admin_bp.route('/drivers/<int:user_id>/add-to-sponsor', methods=['POST'])
+@login_required
+@admin_required
+def add_driver_to_sponsor(user_id):
+    organization_id = request.form.get('organization_id', type=int)
+    if not organization_id:
+        return redirect(url_for('admin.drivers_list', error='Please select a sponsor organization'))
+    
+    driver = Driver.query.filter_by(user_id=user_id).first()
+
+    if not driver:
+        return redirect(url_for('admin.drivers_list', error='Driver not found'))
+    
+    existing = DriverSponsorship.query.filter_by(driver_id=driver.driver_id, organization_id=organization_id).first()
+
+    if existing:
+        return redirect(url_for('admin.drivers_list', error='Driver is already sponsored by this organization'))
+    
+    sponsorship = DriverSponsorship(driver_id=driver.driver_id, organization_id=organization_id, status=DriverStatus.ACTIVE)
+
+    db.session.add(sponsorship)
+    db.session.commit()
+
+    return redirect(url_for('admin.drivers_list', message='Driver added to sponsor organization successfully'))
 
 @admin_bp.route('/drivers/impersonate')
 @login_required
