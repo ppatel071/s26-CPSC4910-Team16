@@ -287,13 +287,18 @@ def admin_logins():
 @login_required
 @admin_required
 def drivers_list():
-    drivers = (
+    username = request.args.get('username', '').strip()
+    drivers_query = (
         db.session.query(User, Driver)
         .join(Driver, Driver.user_id == User.user_id)
         .order_by(User.username.asc())
-        .all()
     )
+    if username:
+        drivers_query = drivers_query.filter(User.username.ilike(f'%{username}%'))
+
+    drivers = drivers_query.all()
     message = request.args.get('message')
+    error = request.args.get('error')
 
     driver_orgs = {}
     driver_sponsors = {}
@@ -318,7 +323,16 @@ def drivers_list():
 
     breadcrumbs = admin_breadcrumbs(("Drivers", None))
 
-    return render_template('Admin/drivers.html', drivers=drivers, breadcrumbs=breadcrumbs, message=message, driver_orgs=driver_orgs, driver_sponsors=driver_sponsors)
+    return render_template(
+        'Admin/drivers.html',
+        drivers=drivers,
+        breadcrumbs=breadcrumbs,
+        message=message,
+        error=error,
+        driver_orgs=driver_orgs,
+        driver_sponsors=driver_sponsors,
+        username=username,
+    )
 
 @admin_bp.route('/drivers/<int:user_id>/add-to-sponsor', methods=['POST'])
 @login_required
@@ -349,19 +363,21 @@ def add_driver_to_sponsor(user_id):
 @login_required
 @admin_required
 def impersonate_driver_page():
+    username = request.args.get('username', '').strip()
     driver_rows = [
         {
             "user": user,
             "active_sponsorship_count": count_active_sponsorships(user.driver),
             "total_sponsorship_count": len(user.driver.sponsorships),
         }
-        for user in get_all_drivers_for_impersonation()
+        for user in get_all_drivers_for_impersonation(username=username)
     ]
     breadcrumbs = admin_breadcrumbs(("Drivers", url_for("admin.drivers_list")), ("Impersonate Driver", None))
     return render_template(
         'Admin/impersonate_driver.html',
         driver_rows=driver_rows,
         breadcrumbs=breadcrumbs,
+        username=username,
     )
 
 

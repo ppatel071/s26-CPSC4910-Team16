@@ -36,6 +36,23 @@
     overflow-x: auto;
   }
 
+  .impersonate-search {
+    padding: 18px 24px 0;
+    background: #10263d;
+    color: #fff;
+  }
+
+  .impersonate-search form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .impersonate-search input {
+    min-width: 240px;
+  }
+
   .impersonate-table {
     width: 100%;
     border-collapse: collapse;
@@ -103,6 +120,23 @@
       <p>Choose a driver by username or user ID. Starting impersonation opens the live driver account and any actions taken there affect real system data.</p>
     </div>
 
+    <div class="impersonate-search">
+      <form method="GET" action="{{ url_for('admin.impersonate_driver_page') }}">
+        <label for="impersonate-username-search">Search by username:</label>
+        <input
+          id="impersonate-username-search"
+          name="username"
+          type="text"
+          value="{{ username or '' }}"
+          placeholder="e.g. jsmith"
+        >
+        <button type="submit">Search</button>
+        {% if username %}
+          <a class="button" href="{{ url_for('admin.impersonate_driver_page') }}">Clear</a>
+        {% endif %}
+      </form>
+    </div>
+
     <div class="impersonate-table-wrap">
       <table class="impersonate-table">
         <thead>
@@ -155,6 +189,10 @@
                   <button type="submit">Impersonate</button>
                 </form>
               </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="8">No drivers found.</td>
             </tr>
           {% endfor %}
         </tbody>

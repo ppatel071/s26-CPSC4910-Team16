@@ -187,22 +187,28 @@ def get_all_admin_users(username: str = ''):
     return query.order_by(User.username.asc()).all()
 
 
-def get_all_drivers():
-    return (
-        db.session.query(User)
-        .filter(User.role_type == RoleType.DRIVER)
-        .order_by(User.username.asc())
-        .all()
-    )
+def get_all_drivers(username: str = ''):
+    clean_username = (username or '').strip()
 
-def get_all_drivers_for_impersonation():
-    return (
+    query = db.session.query(User).filter(User.role_type == RoleType.DRIVER)
+    if clean_username:
+        query = query.filter(User.username.ilike(f'%{clean_username}%'))
+
+    return query.order_by(User.username.asc()).all()
+
+
+def get_all_drivers_for_impersonation(username: str = ''):
+    clean_username = (username or '').strip()
+
+    query = (
         db.session.query(User)
         .join(User.driver)
         .options(joinedload(User.driver).joinedload(Driver.sponsorships))
-        .order_by(User.username.asc())
-        .all()
     )
+    if clean_username:
+        query = query.filter(User.username.ilike(f'%{clean_username}%'))
+
+    return query.order_by(User.username.asc()).all()
 
 
 def get_driver_for_impersonation(user_id: int) -> User:
