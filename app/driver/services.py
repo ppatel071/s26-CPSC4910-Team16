@@ -4,8 +4,10 @@ from flask import session
 from sqlalchemy.orm import joinedload
 
 from app.auth.impersonation import (
+    get_impersonator_admin_user_id,
     get_impersonated_driver_sponsorship_id,
     get_impersonator_sponsor_user_id,
+    is_admin_driver_impersonation_active,
     is_sponsor_driver_impersonation_active,
 )
 from app.extensions import db
@@ -30,6 +32,13 @@ from app.models.enums import (
 from app.models.organization import SponsorCatalogItem
 
 ACTIVE_SPONSORSHIP_SESSION_KEY = "active_driver_sponsorship_id"
+
+
+def _clean_name_part(value: str | None) -> str:
+    clean_value = (value or "").strip()
+    if clean_value.lower() == "none":
+        return ""
+    return clean_value
 
 
 def get_active_sponsorships_for_driver(driver_id: int) -> list[DriverSponsorship]:
@@ -109,7 +118,10 @@ def get_available_organizations(driver_id: int) -> list[SponsorOrganization]:
 
 
 def is_driver_impersonated() -> bool:
-    return is_sponsor_driver_impersonation_active()
+    return (
+        is_sponsor_driver_impersonation_active()
+        or is_admin_driver_impersonation_active()
+    )
 
 
 def get_impersonating_sponsor_user() -> User | None:
@@ -119,9 +131,19 @@ def get_impersonating_sponsor_user() -> User | None:
     return User.query.get(sponsor_user_id)
 
 
+def get_impersonating_admin_user() -> User | None:
+    admin_user_id = get_impersonator_admin_user_id()
+    if admin_user_id is None:
+        return None
+    return User.query.get(admin_user_id)
+
+
 def build_impersonation_banner_context() -> dict[str, str | bool | None]:
     banner_message = None
-    if is_driver_impersonated():
+    exit_endpoint = None
+    exit_label = None
+
+    if is_sponsor_driver_impersonation_active():
         sponsor_user = get_impersonating_sponsor_user()
         sponsor_name = (
             sponsor_user.sponsor_user.organization.name
@@ -134,12 +156,35 @@ def build_impersonation_banner_context() -> dict[str, str | bool | None]:
         if sponsor_name:
             banner_message += f" for {sponsor_name}"
         banner_message += "."
+        exit_endpoint = "driver.stop_impersonation"
+        exit_label = "Return to Sponsor View"
+    elif is_admin_driver_impersonation_active():
+        admin_user = get_impersonating_admin_user()
+        admin_name = None
+        if admin_user:
+            admin_name = " ".join(
+                part
+                for part in [
+                    _clean_name_part(admin_user.first_name),
+                    _clean_name_part(admin_user.last_name),
+                ]
+                if part
+            ).strip()
+            if not admin_name:
+                admin_name = admin_user.username
+
+        banner_message = "You are impersonating this driver as an admin"
+        if admin_name:
+            banner_message += f" ({admin_name})"
+        banner_message += "."
+        exit_endpoint = "driver.stop_impersonation"
+        exit_label = "Return to Admin View"
 
     return {
         "is_impersonating_driver": is_driver_impersonated(),
         "impersonation_banner_message": banner_message,
-        "impersonation_exit_endpoint": "driver.stop_impersonation",
-        "impersonation_exit_label": "Return to Sponsor View",
+        "impersonation_exit_endpoint": exit_endpoint,
+        "impersonation_exit_label": exit_label,
     }
 
 
@@ -373,3 +418,10 @@ def get_sponsor_user_for_impersonation_return(sponsor_user_id: int) -> User | No
     if not sponsor_user or sponsor_user.role_type != RoleType.SPONSOR:
         return None
     return sponsor_user
+
+
+def get_admin_user_for_impersonation_return(admin_user_id: int) -> User | None:
+    admin_user = User.query.get(admin_user_id)
+    if not admin_user or admin_user.role_type != RoleType.ADMIN:
+        return None
+    return admin_user

@@ -44,6 +44,17 @@ class SponsorOrganization(db.Model):
     point_transactions: Mapped[List['PointTransaction']] = relationship(back_populates='organization')
     orders: Mapped[List['Order']] = relationship(back_populates='organization')
 
+    def points_for_price(self, price: Decimal | float | int | None) -> int:
+        """Convert a dollar value into sponsor points using the organization's point value."""
+        if price is None:
+            return 0
+
+        point_value = self.point_value or Decimal('0.01')
+        if point_value <= 0:
+            point_value = Decimal('0.01')
+
+        return int(Decimal(str(price)) / point_value)
+
 
 class SponsorCatalogItem(db.Model):
     __tablename__ = 'sponsor_catalog_items'
@@ -69,7 +80,6 @@ class SponsorCatalogItem(db.Model):
     @property
     def points_required(self) -> int:
         """Convert the item's dollar price to points using the sponsor's point_value rate."""
-        if self.price is None:
+        if not self.organization:
             return 0
-        pv = self.organization.point_value or Decimal('0.01')
-        return int(self.price / pv)
+        return self.organization.points_for_price(self.price)

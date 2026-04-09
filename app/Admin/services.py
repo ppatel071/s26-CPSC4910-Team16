@@ -1,10 +1,23 @@
 import datetime as dt
-from sqlalchemy import func
+from sqlalchemy import func, or_
+from sqlalchemy.orm import joinedload
 from app.extensions import db
 from app.auth.services import register_user, validate_complexity
-from app.models import SponsorOrganization, SponsorUser, User, Order, LoginAttempt, PasswordChange
+from app.models import (
+    SponsorOrganization,
+    SponsorUser,
+    User,
+    Order,
+    LoginAttempt,
+    PasswordChange,
+    Driver,
+    DriverApplication,
+    DriverSponsorship,
+    PointTransaction,
+    Notification,
+)
 from app.sponsor.services import update_sponsor_organization
-from app.models.enums import RoleType, PasswordChangeType
+from app.models.enums import RoleType, PasswordChangeType, DriverStatus, DriverApplicationStatus
 from werkzeug.security import generate_password_hash
 
 
@@ -24,9 +37,50 @@ def admin_update_sponsor(organization_id: int, name: str, point_value: str) -> S
     return update_sponsor_organization(org, name, point_value)
 
 
-def get_sales_by_sponsor(detail: bool):
+def _apply_driver_search(query, search: str):
+    clean_search = (search or '').strip()
+    if not clean_search:
+        return query
+
+    search_term = f'%{clean_search}%'
+    return query.filter(
+        or_(
+            User.username.ilike(search_term),
+            User.first_name.ilike(search_term),
+            User.last_name.ilike(search_term),
+        )
+    )
+
+
+def _apply_sponsor_search(query, search: str):
+    clean_search = (search or '').strip()
+    if not clean_search:
+        return query
+
+    return query.filter(SponsorOrganization.name.ilike(f'%{clean_search}%'))
+
+
+def _apply_order_date_range(query, start_date: dt.date | None, end_date: dt.date | None):
+    if start_date is not None:
+        start_dt = dt.datetime.combine(start_date, dt.time.min)
+        query = query.filter(Order.create_time >= start_dt)
+
+    if end_date is not None:
+        end_dt = dt.datetime.combine(end_date + dt.timedelta(days=1), dt.time.min)
+        query = query.filter(Order.create_time < end_dt)
+
+    return query
+
+
+def get_sales_by_sponsor(
+    detail: bool,
+    *,
+    search: str = '',
+    start_date: dt.date | None = None,
+    end_date: dt.date | None = None,
+):
     if detail:
-        return (
+        query = (
             db.session.query(
                 SponsorOrganization.name.label('sponsor_name'),
                 Order.points.label('amount'),
@@ -35,26 +89,36 @@ def get_sales_by_sponsor(detail: bool):
             )
             .join(Order.organization)
             .join(Order.placed_by_user)
-            .order_by(SponsorOrganization.name.asc(), Order.create_time.desc())
-            .all()
         )
+        query = _apply_driver_search(query, search)
+        query = _apply_order_date_range(query, start_date, end_date)
+        return query.order_by(SponsorOrganization.name.asc(), Order.create_time.desc()).all()
 
-    return (
+    query = (
         db.session.query(
             SponsorOrganization.name.label('sponsor_name'),
             func.count(Order.order_id).label('sale_count'),
             func.sum(Order.points).label('total_amount'),
         )
         .join(Order.organization)
-        .group_by(SponsorOrganization.name)
+    )
+    query = _apply_sponsor_search(query, search)
+    return (
+        query.group_by(SponsorOrganization.name)
         .order_by(SponsorOrganization.name.asc())
         .all()
     )
 
 
-def get_sales_by_driver(detail: bool):
+def get_sales_by_driver(
+    detail: bool,
+    *,
+    search: str = '',
+    start_date: dt.date | None = None,
+    end_date: dt.date | None = None,
+):
     if detail:
-        return (
+        query = (
             db.session.query(
                 User.username.label('driver_username'),
                 Order.points.label('amount'),
@@ -63,28 +127,33 @@ def get_sales_by_driver(detail: bool):
             )
             .join(Order.placed_by_user)
             .join(Order.organization)
-            .order_by(User.username.asc(), Order.create_time.desc())
-            .all()
         )
+        query = _apply_driver_search(query, search)
+        query = _apply_order_date_range(query, start_date, end_date)
+        return query.order_by(User.username.asc(), Order.create_time.desc()).all()
 
-    return (
+    query = (
         db.session.query(
             User.username.label('driver_username'),
             func.count(Order.order_id).label('sale_count'),
             func.sum(Order.points).label('total_amount'),
         )
         .join(Order.placed_by_user)
-        .group_by(User.username)
-        .order_by(User.username.asc())
-        .all()
     )
+    query = _apply_driver_search(query, search)
+    return query.group_by(User.username).order_by(User.username.asc()).all()
 
 
-def get_driver_purchase_summary(start_date: dt.date, end_date: dt.date):
+def get_driver_purchase_summary(
+    start_date: dt.date,
+    end_date: dt.date,
+    *,
+    search: str = '',
+):
     start_dt = dt.datetime.combine(start_date, dt.time.min)
     end_dt = dt.datetime.combine(end_date + dt.timedelta(days=1), dt.time.min)
 
-    return (
+    query = (
         db.session.query(
             User.username.label('driver_username'),
             func.count(Order.order_id).label('purchase_count'),
@@ -92,10 +161,9 @@ def get_driver_purchase_summary(start_date: dt.date, end_date: dt.date):
         )
         .join(Order.placed_by_user)
         .filter(Order.create_time >= start_dt, Order.create_time < end_dt)
-        .group_by(User.username)
-        .order_by(User.username.asc())
-        .all()
     )
+    query = _apply_driver_search(query, search)
+    return query.group_by(User.username).order_by(User.username.asc()).all()
 
 
 def get_admin_users_with_logins():
@@ -109,22 +177,51 @@ def get_admin_users_with_logins():
     )
 
 
-def get_all_admin_users():
-    return (
-        db.session.query(User)
-        .filter(User.role_type == RoleType.ADMIN)
-        .order_by(User.username.asc())
-        .all()
-    )
+def get_all_admin_users(username: str = ''):
+    clean_username = (username or '').strip()
+
+    query = db.session.query(User).filter(User.role_type == RoleType.ADMIN)
+    if clean_username:
+        query = query.filter(User.username.ilike(f'%{clean_username}%'))
+
+    return query.order_by(User.username.asc()).all()
 
 
-def get_all_drivers():
-    return (
+def get_all_drivers(username: str = ''):
+    clean_username = (username or '').strip()
+
+    query = db.session.query(User).filter(User.role_type == RoleType.DRIVER)
+    if clean_username:
+        query = query.filter(User.username.ilike(f'%{clean_username}%'))
+
+    return query.order_by(User.username.asc()).all()
+
+
+def get_all_drivers_for_impersonation(username: str = ''):
+    clean_username = (username or '').strip()
+
+    query = (
         db.session.query(User)
-        .filter(User.role_type == RoleType.DRIVER)
-        .order_by(User.username.asc())
-        .all()
+        .join(User.driver)
+        .options(joinedload(User.driver).joinedload(Driver.sponsorships))
     )
+    if clean_username:
+        query = query.filter(User.username.ilike(f'%{clean_username}%'))
+
+    return query.order_by(User.username.asc()).all()
+
+
+def get_driver_for_impersonation(user_id: int) -> User:
+    user = (
+        db.session.query(User)
+        .join(User.driver)
+        .options(joinedload(User.driver).joinedload(Driver.sponsorships))
+        .filter(User.user_id == user_id)
+        .first()
+    )
+    if user is None or user.role_type != RoleType.DRIVER:
+        raise ValueError('Driver is not available for impersonation')
+    return user
 
 
 def get_driver_by_id(user_id: int) -> User:
@@ -134,6 +231,12 @@ def get_driver_by_id(user_id: int) -> User:
     if user.role_type != RoleType.DRIVER:
         raise ValueError('User is not a driver')
     return user
+
+
+def count_active_sponsorships(driver: Driver) -> int:
+    return sum(
+        1 for sponsorship in driver.sponsorships if sponsorship.status == DriverStatus.ACTIVE
+    )
 
 
 def admin_update_driver_user(
@@ -250,8 +353,10 @@ def admin_update_own_profile(
     return user
 
 
-def get_all_sponsor_users():
-    return (
+def get_all_sponsor_users(username: str = ''):
+    clean_username = (username or '').strip()
+
+    query = (
         db.session.query(
             SponsorOrganization.name.label('sponsor_name'),
             User.username.label('username'),
@@ -265,23 +370,22 @@ def get_all_sponsor_users():
             SponsorUser.organization_id == SponsorOrganization.organization_id,
         )
         .join(User, SponsorUser.user_id == User.user_id)
-        .order_by(SponsorOrganization.name.asc(), User.username.asc())
-        .all()
     )
+    if clean_username:
+        query = query.filter(User.username.ilike(f'%{clean_username}%'))
+
+    return query.order_by(SponsorOrganization.name.asc(), User.username.asc()).all()
 
 
 def create_sponsor_account(
     username: str,
     email: str,
-    organization_name: str,
+    sponsor_organization_id: int | None,
+    new_sponsor_organization_name: str,
     password: str,
 ) -> User:
     clean_username = (username or '').strip()
     clean_email = (email or '').strip()
-    clean_org_name = (organization_name or '').strip()
-
-    if not clean_org_name:
-        raise ValueError('Sponsor organization name is required')
 
     user = register_user(
         username=clean_username,
@@ -292,13 +396,12 @@ def create_sponsor_account(
         last_name='',
     )
 
-    organization = SponsorOrganization(name=clean_org_name, point_value=0.01)
-    db.session.add(organization)
-    db.session.flush()
-
     sponsor_user = SponsorUser(
         user_id=user.user_id,
-        organization_id=organization.organization_id,
+        organization_id=resolve_sponsor_organization_for_role_assignment(
+            sponsor_organization_id=sponsor_organization_id,
+            new_sponsor_organization_name=new_sponsor_organization_name,
+        ),
     )
     db.session.add(sponsor_user)
     db.session.commit()
@@ -306,15 +409,21 @@ def create_sponsor_account(
     return user
 
 
-def get_users_for_removal_page():
-    admin_users = (
-        db.session.query(User)
-        .filter(User.role_type == RoleType.ADMIN)
-        .order_by(User.username.asc())
-        .all()
-    )
+def get_users_for_removal_page(
+    admin_username: str = '',
+    sponsor_username: str = '',
+    driver_username: str = '',
+):
+    clean_admin_username = (admin_username or '').strip()
+    clean_sponsor_username = (sponsor_username or '').strip()
+    clean_driver_username = (driver_username or '').strip()
 
-    sponsor_users = (
+    admin_query = db.session.query(User).filter(User.role_type == RoleType.ADMIN)
+    if clean_admin_username:
+        admin_query = admin_query.filter(User.username.ilike(f'%{clean_admin_username}%'))
+    admin_users = admin_query.order_by(User.username.asc()).all()
+
+    sponsor_query = (
         db.session.query(
             User.user_id.label('user_id'),
             User.username.label('username'),
@@ -326,16 +435,15 @@ def get_users_for_removal_page():
         .select_from(SponsorUser)
         .join(User, SponsorUser.user_id == User.user_id)
         .join(SponsorOrganization, SponsorUser.organization_id == SponsorOrganization.organization_id)
-        .order_by(SponsorOrganization.name.asc(), User.username.asc())
-        .all()
     )
+    if clean_sponsor_username:
+        sponsor_query = sponsor_query.filter(User.username.ilike(f'%{clean_sponsor_username}%'))
+    sponsor_users = sponsor_query.order_by(SponsorOrganization.name.asc(), User.username.asc()).all()
 
-    driver_users = (
-        db.session.query(User)
-        .filter(User.role_type == RoleType.DRIVER)
-        .order_by(User.username.asc())
-        .all()
-    )
+    driver_query = db.session.query(User).filter(User.role_type == RoleType.DRIVER)
+    if clean_driver_username:
+        driver_query = driver_query.filter(User.username.ilike(f'%{clean_driver_username}%'))
+    driver_users = driver_query.order_by(User.username.asc()).all()
 
     return admin_users, sponsor_users, driver_users
 
@@ -440,15 +548,116 @@ def unlock_user_login(user_id: int):
     return user
 
 
-def get_all_system_users():
-    return (
-        db.session.query(User)
-        .order_by(User.role_type.asc(), User.username.asc())
-        .all()
+def get_all_system_users(username: str = ''):
+    clean_username = (username or '').strip()
+
+    query = db.session.query(User)
+    if clean_username:
+        query = query.filter(User.username.ilike(f'%{clean_username}%'))
+
+    return query.order_by(User.role_type.asc(), User.username.asc()).all()
+
+
+def user_has_driver_dependencies(user: User) -> bool:
+    if not user.driver:
+        return False
+
+    driver_id = user.driver.driver_id
+    return any(
+        (
+            DriverApplication.query.filter_by(driver_id=driver_id).first(),
+            DriverSponsorship.query.filter_by(driver_id=driver_id).first(),
+            PointTransaction.query.filter_by(driver_id=driver_id).first(),
+            Notification.query.filter_by(driver_id=driver_id).first(),
+            Order.query.filter_by(driver_id=driver_id).first(),
+        )
     )
 
 
-def get_admin_password_reset_audit_entries(username: str = ''):
+def reassign_user_role(user_id: int, new_role_raw: str, sponsor_organization_id: int | None):
+    user = User.query.get(user_id)
+    if user is None:
+        raise ValueError('User not found')
+    if not user.is_user_active:
+        raise ValueError('Deactivated users cannot have their roles changed')
+    if user.is_login_locked:
+        raise ValueError('Locked users cannot have their roles changed')
+
+    try:
+        new_role = RoleType(new_role_raw)
+    except ValueError as exc:
+        raise ValueError('Invalid role selected') from exc
+
+    if new_role == user.role_type:
+        if new_role == RoleType.SPONSOR:
+            if sponsor_organization_id is None:
+                raise ValueError('Sponsor organization is required for sponsor users')
+            sponsor_user = user.sponsor_user
+            if sponsor_user is None:
+                sponsor_user = SponsorUser(user_id=user.user_id, organization_id=sponsor_organization_id)
+                db.session.add(sponsor_user)
+            else:
+                sponsor_user.organization_id = sponsor_organization_id
+            db.session.commit()
+            return user
+        raise ValueError('User already has that role')
+
+    if user.role_type == RoleType.DRIVER and user_has_driver_dependencies(user):
+        raise ValueError(
+            'This driver cannot be reassigned because they already have driver history.'
+        )
+
+    if user.role_type == RoleType.DRIVER and user.driver:
+        db.session.delete(user.driver)
+
+    if user.role_type == RoleType.SPONSOR and user.sponsor_user:
+        db.session.delete(user.sponsor_user)
+        db.session.flush()
+
+    user.role_type = new_role
+
+    if new_role == RoleType.DRIVER:
+        db.session.add(Driver(user_id=user.user_id))
+    elif new_role == RoleType.SPONSOR:
+        if sponsor_organization_id is None:
+            raise ValueError('Sponsor organization is required for sponsor users')
+        db.session.add(
+            SponsorUser(user_id=user.user_id, organization_id=sponsor_organization_id)
+        )
+
+    db.session.commit()
+    return user
+
+
+def resolve_sponsor_organization_for_role_assignment(
+    sponsor_organization_id: int | None,
+    new_sponsor_organization_name: str,
+) -> int:
+    clean_name = (new_sponsor_organization_name or '').strip()
+
+    if sponsor_organization_id and clean_name:
+        raise ValueError('Choose an existing sponsor organization or enter a new one, not both')
+
+    if sponsor_organization_id:
+        organization = SponsorOrganization.query.get(sponsor_organization_id)
+        if organization is None:
+            raise ValueError('Selected sponsor organization was not found')
+        return organization.organization_id
+
+    if clean_name:
+        organization = SponsorOrganization(name=clean_name, point_value=0.01)
+        db.session.add(organization)
+        db.session.flush()
+        return organization.organization_id
+
+    raise ValueError('Sponsor organization is required for sponsor users')
+
+
+def get_admin_password_reset_audit_entries(
+    username: str = '',
+    start_date: dt.date | None = None,
+    end_date: dt.date | None = None,
+):
     clean_username = (username or '').strip()
 
     query = (
@@ -467,6 +676,12 @@ def get_admin_password_reset_audit_entries(username: str = ''):
 
     if clean_username:
         query = query.filter(User.username.ilike(f'%{clean_username}%'))
+    if start_date is not None:
+        start_dt = dt.datetime.combine(start_date, dt.time.min)
+        query = query.filter(PasswordChange.change_time >= start_dt)
+    if end_date is not None:
+        end_dt = dt.datetime.combine(end_date + dt.timedelta(days=1), dt.time.min)
+        query = query.filter(PasswordChange.change_time < end_dt)
 
     return query.all()
 
@@ -483,6 +698,7 @@ def admin_reset_user_password(user_id: int, new_password: str, confirm_password:
     user.password = generate_password_hash(new_password)
     user.failed_login_attempts = 0
     user.is_login_locked = False
+    user.must_notify_password_reset = True
     user.locked_at = None
 
     db.session.add(
@@ -493,3 +709,22 @@ def admin_reset_user_password(user_id: int, new_password: str, confirm_password:
     )
     db.session.commit()
     return user
+
+def get_available_organizations(driver_id: int) -> list[SponsorOrganization]:
+    active_sponsorship_orgs = db.session.query(DriverSponsorship.organization_id).filter(
+        DriverSponsorship.driver_id == driver_id,
+        DriverSponsorship.status == DriverStatus.ACTIVE,
+    )
+    pending_application_orgs = db.session.query(DriverApplication.organization_id).filter(
+        DriverApplication.driver_id == driver_id,
+        DriverApplication.status == DriverApplicationStatus.PENDING,
+    )
+
+    return (
+        SponsorOrganization.query.filter(
+            ~SponsorOrganization.organization_id.in_(active_sponsorship_orgs)
+        )
+        .filter(~SponsorOrganization.organization_id.in_(pending_application_orgs))
+        .order_by(SponsorOrganization.name.asc())
+        .all()
+    )

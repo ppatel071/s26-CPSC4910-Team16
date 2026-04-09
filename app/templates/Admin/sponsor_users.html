@@ -34,7 +34,11 @@
     </tbody>
   </table>
 {% else %}
+  {% if username %}
+  <p>No sponsor users found for that username search.</p>
+  {% else %}
   <p>No sponsor users found.</p>
+  {% endif %}
 {% endif %}
 
 <p><a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a></p>

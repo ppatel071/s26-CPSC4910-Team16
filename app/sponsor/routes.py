@@ -1,5 +1,6 @@
 import datetime as dt
 from functools import wraps
+from re import sub
 
 from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user
@@ -23,21 +24,7 @@ from app.models.enums import (
 )
 from app.models.system import Notification
 from app.sponsor import sponsor_bp
-from app.sponsor.services import (
-    adjust_driver_points_for_sponsor,
-    add_catalog_item_for_organization,
-    approve_driver_for_sponsor,
-    create_sponsor_user,
-    get_driver_point_transactions_for_sponsor,
-    get_organization_driver_sponsorship,
-    get_driver_applications,
-    get_organization_drivers,
-    remove_catalog_item_for_organization,
-    set_driver_status_for_sponsor,
-    update_driver_profile_for_sponsor,
-    update_sponsor_organization,
-    validate_and_apply_user_profile_updates,
-)
+from app.sponsor.services import *
 
 
 def sponsor_required(f):
@@ -55,15 +42,44 @@ def sponsor_breadcrumbs(*crumbs):
     return base + list(crumbs)
 
 
+def normalize_catalog_category(value: str | None) -> str:
+    return sub(r"[^a-z0-9]+", "-", (value or "").strip().lower()).strip("-")
+
+
 def render_driver_management_page(
     org_id: int,
     *,
     error: str | None = None,
     point_form_state: dict | None = None,
 ):
+    drivers = get_organization_drivers(org_id)
+
+    driverSponsors = {}
+
+    for sponsorship in drivers:
+        driver = sponsorship.driver
+        user = driver.user
+
+        all_sponsors = (
+            db.session.query(SponsorOrganization)
+            .join(
+                DriverSponsorship,
+                DriverSponsorship.organization_id == SponsorOrganization.organization_id,
+            )
+            .filter(
+                DriverSponsorship.driver_id == driver.driver_id,
+                DriverSponsorship.status == DriverStatus.ACTIVE,
+            )
+            .order_by(SponsorOrganization.name.asc())
+            .all()
+        )
+
+        driverSponsors[user.user_id] = all_sponsors
+
     return render_template(
         "sponsor/driver_management.html",
-        drivers=get_organization_drivers(org_id),
+        drivers=drivers,
+        driverSponsors=driverSponsors,
         error=error,
         point_form_state=point_form_state,
         breadcrumbs=sponsor_breadcrumbs(("Driver Management", None)),
@@ -102,15 +118,37 @@ def render_driver_edit_page(
 def render_catalog_management_page(
     org_id: int,
     *,
+    query: str = "",
+    category: str = "",
     error: str | None = None,
 ):
+    clean_query = (query or "").strip().lower()
+    clean_category = (category or "").strip()
+
     try:
+        categories = get_catalog_categories()
         catalog_items = get_catalog_products_for_organization(org_id)
+        if clean_query:
+            catalog_items = [
+                (item, product)
+                for item, product in catalog_items
+                if clean_query
+                in (product.title if product else item.product_name).strip().lower()
+            ]
+        if clean_category:
+            catalog_items = [
+                (item, product)
+                for item, product in catalog_items
+                if product and normalize_catalog_category(product.category) == clean_category
+            ]
     except Exception as e:
         print(e)
         return render_template(
             "sponsor/catalog_management.html",
+            categories=[],
             catalog_items=[],
+            current_query=query,
+            current_category=category,
             error=error
             or "The product catalog service is unavailable right now. Please try again.",
             breadcrumbs=sponsor_breadcrumbs(("Catalog Management", None)),
@@ -118,7 +156,10 @@ def render_catalog_management_page(
 
     return render_template(
         "sponsor/catalog_management.html",
+        categories=categories,
         catalog_items=catalog_items,
+        current_query=query,
+        current_category=category,
         error=error,
         breadcrumbs=sponsor_breadcrumbs(("Catalog Management", None)),
     )
@@ -133,6 +174,7 @@ def render_catalog_browser_page(
     error: str | None = None,
 ):
     page_size = CATALOG_PAGE_SIZE
+    organization = db.session.get(SponsorOrganization, org_id)
 
     try:
         categories = get_catalog_categories()
@@ -147,6 +189,7 @@ def render_catalog_browser_page(
         print(e)
         return render_template(
             "sponsor/catalog_browse.html",
+            organization=organization,
             catalog_external_ids=set(),
             catalog_ids_by_external_id={},
             categories=[],
@@ -176,6 +219,7 @@ def render_catalog_browser_page(
 
     return render_template(
         "sponsor/catalog_browse.html",
+        organization=organization,
         catalog_external_ids=catalog_external_ids,
         catalog_ids_by_external_id=catalog_ids_by_external_id,
         categories=categories,
@@ -331,6 +375,15 @@ def get_applications():
         breadcrumbs=breadcrumbs,
     )
 
+@sponsor_bp.route("/audit_log")
+@login_required
+@sponsor_required
+
+def audit_log():
+    org_id = current_user.sponsor_user.organization_id
+    audits = get_organization_audit_logs(org_id)
+
+    return render_template("sponsor/audit_log.html", audits=audits)
 
 @sponsor_bp.route("/catalog", methods=["GET", "POST"])
 @login_required
@@ -341,6 +394,8 @@ def catalog_management():
     if request.method == "POST":
         action = (request.form.get("action") or "").strip().lower()
         catalog_id = request.form.get("catalog_id", type=int)
+        query = (request.form.get("query") or "").strip()
+        category = (request.form.get("category") or "").strip()
 
         try:
             if action == "remove":
@@ -350,17 +405,34 @@ def catalog_management():
             else:
                 abort(400)
 
-            return redirect(url_for("sponsor.catalog_management"))
+            return redirect(
+                url_for(
+                    "sponsor.catalog_management",
+                    query=query,
+                    category=category,
+                )
+            )
         except ValueError as e:
-            return render_catalog_management_page(org_id, error=str(e))
+            return render_catalog_management_page(
+                org_id,
+                query=query,
+                category=category,
+                error=str(e),
+            )
         except Exception as e:
             print(e)
             return render_catalog_management_page(
                 org_id,
+                query=query,
+                category=category,
                 error="The product catalog service is unavailable right now. Please try again.",
             )
 
-    return render_catalog_management_page(org_id)
+    return render_catalog_management_page(
+        org_id,
+        query=(request.args.get("query") or "").strip(),
+        category=(request.args.get("category") or "").strip(),
+    )
 
 
 @sponsor_bp.route("/catalog/browse", methods=["GET", "POST"])

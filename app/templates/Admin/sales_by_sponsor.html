@@ -4,45 +4,78 @@
 <h1>Sales by Sponsor</h1>
 
 <p>
-  <a class="button" href="{{ url_for('admin.sales_by_sponsor_report') }}">Summary</a>
-  <a class="button" href="{{ url_for('admin.sales_by_sponsor_report', detail=1) }}">Detailed</a>
+  <a class="button" href="{{ url_for('admin.sales_by_sponsor_report', search=search) }}">Summary</a>
+  <a class="button" href="{{ url_for('admin.sales_by_sponsor_report', detail=1, search=search, start_date=start_date, end_date=end_date) }}">Detailed</a>
   <a class="button" href="{{ url_for('admin.reports') }}">Back to Reports</a>
 </p>
 
+<form method="GET" action="{{ url_for('admin.sales_by_sponsor_report') }}" style="margin-bottom: 20px;">
+  <input type="hidden" name="detail" value="{{ 1 if detail else 0 }}">
+
+  {% if detail %}
+    <label for="search">Search user:</label>
+    <input id="search" type="search" name="search" value="{{ search }}" placeholder="Username or name">
+
+    <label for="start_date">Start date:</label>
+    <input id="start_date" type="date" name="start_date" value="{{ start_date }}">
+
+    <label for="end_date">End date:</label>
+    <input id="end_date" type="date" name="end_date" value="{{ end_date }}">
+  {% else %}
+    <label for="search">Search sponsor:</label>
+    <input id="search" type="search" name="search" value="{{ search }}" placeholder="Sponsor name">
+  {% endif %}
+
+  <button type="submit">Apply</button>
+  <a class="button" href="{{ url_for('admin.sales_by_sponsor_report', detail=1) if detail else url_for('admin.sales_by_sponsor_report') }}">Clear</a>
+</form>
+
+{% if error %}
+  <p style="color: red;">{{ error }}</p>
+{% endif %}
+
 {% if detail %}
   <h2>Detailed</h2>
-  <table border="1" cellpadding="6" cellspacing="0">
-    <tr>
-      <th>Sponsor</th>
-      <th>Driver</th>
-      <th>Amount (Points)</th>
-      <th>Sale Time</th>
-    </tr>
-    {% for row in rows %}
+  {% if rows %}
+    <table border="1" cellpadding="6" cellspacing="0">
       <tr>
-        <td>{{ row.sponsor_name }}</td>
-        <td>{{ row.driver_username }}</td>
-        <td>{{ row.amount }}</td>
-        <td>{{ row.sale_time }}</td>
+        <th>Sponsor</th>
+        <th>Driver</th>
+        <th>Amount (Points)</th>
+        <th>Sale Time</th>
       </tr>
-    {% endfor %}
-  </table>
+      {% for row in rows %}
+        <tr>
+          <td>{{ row.sponsor_name }}</td>
+          <td>{{ row.driver_username }}</td>
+          <td>{{ row.amount }}</td>
+          <td>{{ row.sale_time }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p>No detailed sales found for the selected filters.</p>
+  {% endif %}
 {% else %}
   <h2>Summary</h2>
-  <table border="1" cellpadding="6" cellspacing="0">
-    <tr>
-      <th>Sponsor</th>
-      <th>Sales</th>
-      <th>Total Amount (Points)</th>
-    </tr>
-    {% for row in rows %}
+  {% if rows %}
+    <table border="1" cellpadding="6" cellspacing="0">
       <tr>
-        <td>{{ row.sponsor_name }}</td>
-        <td>{{ row.sale_count }}</td>
-        <td>{{ row.total_amount }}</td>
+        <th>Sponsor</th>
+        <th>Sales</th>
+        <th>Total Amount (Points)</th>
       </tr>
-    {% endfor %}
-  </table>
+      {% for row in rows %}
+        <tr>
+          <td>{{ row.sponsor_name }}</td>
+          <td>{{ row.sale_count }}</td>
+          <td>{{ row.total_amount }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p>No sponsors matched the current search.</p>
+  {% endif %}
 {% endif %}
 
 <p>

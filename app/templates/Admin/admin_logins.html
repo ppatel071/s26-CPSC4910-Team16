@@ -8,6 +8,15 @@
   <a class="button" href="{{ url_for('admin.create_admin_user') }}">Add Admin User</a>
 </p>
 
+<form method="GET" action="{{ url_for('admin.admin_logins') }}" style="margin: 12px 0;">
+  <label for="username">Search by Username:</label>
+  <input id="username" name="username" type="text" value="{{ username or '' }}" placeholder="e.g. jsmith">
+  <button type="submit">Search</button>
+  {% if username %}
+    <a class="button" href="{{ url_for('admin.admin_logins') }}">Clear</a>
+  {% endif %}
+</form>
+
 {% if users %}
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
@@ -30,7 +39,11 @@
   </tbody>
 </table>
 {% else %}
-<p>No admin users found.</p>
+  {% if username %}
+  <p>No admin users found for that username search.</p>
+  {% else %}
+  <p>No admin users found.</p>
+  {% endif %}
 {% endif %}
 
 <p>

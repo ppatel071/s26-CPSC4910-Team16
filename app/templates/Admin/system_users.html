@@ -9,11 +9,11 @@
     font-weight: 600;
   }
   .status-locked {
-    color: darkorange;
+    color: #b45309;
     font-weight: 600;
   }
   .status-deactivated {
-    color: red;
+    color: #b91c1c;
     font-weight: 600;
   }
 
@@ -38,6 +38,19 @@
   <p style="color: red;">{{ error }}</p>
 {% endif %}
 
+<form method="GET" action="{{ url_for('admin.system_users') }}" style="margin-bottom: 16px;">
+  <label for="username-search">Search by Username</label><br>
+  <input
+    id="username-search"
+    name="username"
+    type="text"
+    value="{{ search_username or '' }}"
+    placeholder="Enter username"
+  >
+  <button type="submit">Search</button>
+  <a class="button" href="{{ url_for('admin.system_users') }}">Clear</a>
+</form>
+
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
     <tr>
@@ -48,6 +61,7 @@
       <th>Failed Attempts</th>
       <th>Status Label</th>
       <th>Action</th>
+      <th>Role Assignment</th>
       <th>Password</th>
     </tr>
   </thead>
@@ -70,13 +84,20 @@
         </td>
         <td>
           {% if user.is_user_active and user.is_login_locked %}
-            <form method="POST" action="{{ url_for('admin.unlock_locked_user', user_id=user.user_id) }}">
+            <form method="POST" action="{{ url_for('admin.unlock_locked_user', user_id=user.user_id, username=search_username) }}">
               <button type="submit" onclick="return confirm('Unlock this user account?');">Unlock User</button>
             </form>
           {% elif not user.is_user_active %}
             Deactivated
           {% else %}
             Active
+          {% endif %}
+        </td>
+        <td>
+          {% if not user.is_user_active or user.is_login_locked %}
+            Unavailable
+          {% else %}
+            <a class="button2" href="{{ url_for('admin.assign_user_role', user_id=user.user_id) }}">Assign Role</a>
           {% endif %}
         </td>
         <td>
@@ -90,6 +111,10 @@
     {% endfor %}
   </tbody>
 </table>
+
+{% if not users %}
+  <p>No users found for that username search.</p>
+{% endif %}
 
 <p>
   <a class="button" href="{{ url_for('admin.password_reset_audit_log') }}">Password Reset Audit Log</a>
