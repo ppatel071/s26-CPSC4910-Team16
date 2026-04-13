@@ -3,9 +3,13 @@ from functools import wraps
 from re import sub
 
 from flask import abort, flash, redirect, render_template, request, url_for
-from flask_login import current_user, login_required, login_user
+from flask_login import current_user, login_required, login_user, logout_user
 
-from app.auth.impersonation import start_sponsor_driver_impersonation
+from app.auth.impersonation import (
+    clear_admin_sponsor_impersonation,
+    get_impersonator_admin_sponsor_user_id,
+    start_sponsor_driver_impersonation,
+)
 from app.catalog_api.utils import (
     CATALOG_PAGE_SIZE,
     browse_catalog_products,
@@ -44,6 +48,19 @@ def sponsor_breadcrumbs(*crumbs):
 
 def normalize_catalog_category(value: str | None) -> str:
     return sub(r"[^a-z0-9]+", "-", (value or "").strip().lower()).strip("-")
+
+
+@sponsor_bp.context_processor
+def inject_sponsor_context():
+    if not current_user.is_authenticated or current_user.role_type != RoleType.SPONSOR:
+        return {
+            "is_admin_impersonating_sponsor": False,
+            "impersonation_banner_message": None,
+            "impersonation_exit_endpoint": None,
+            "impersonation_exit_label": None,
+        }
+
+    return build_admin_sponsor_impersonation_banner_context()
 
 
 def render_driver_management_page(
@@ -254,6 +271,30 @@ def dashboard():
         num_applications=len(pending_applications),
         breadcrumbs=[("Sponsor Dashboard", None)],
     )
+
+
+@sponsor_bp.route("/impersonation/stop", methods=["POST"])
+@login_required
+@sponsor_required
+def stop_impersonation():
+    admin_user_id = get_impersonator_admin_sponsor_user_id()
+    clear_admin_sponsor_impersonation()
+
+    if admin_user_id is None:
+        return redirect(url_for("sponsor.dashboard"))
+
+    admin_user = get_admin_user_for_impersonation_return(admin_user_id)
+    if admin_user is None:
+        logout_user()
+        flash(
+            "The impersonation session ended, but the admin account could not be restored.",
+            "error",
+        )
+        return redirect(url_for("auth.login"))
+
+    login_user(admin_user)
+    flash("Returned to the admin impersonation page.", "success")
+    return redirect(url_for("admin.impersonate_sponsor_page"))
 
 
 @sponsor_bp.route("/organization", methods=["GET", "POST"])
@@ -677,6 +718,9 @@ def impersonate_driver(driver_sponsorship_id: int):
     driver_user = sponsorship.driver.user
     if not driver_user or driver_user.role_type != RoleType.DRIVER:
         abort(404)
+    if not driver_user.is_user_active or driver_user.is_login_locked:
+        flash("Only active, unlocked drivers can be impersonated.", "error")
+        return redirect(url_for("sponsor.driver_management"))
 
     sponsor_user_id = current_user.user_id
     start_sponsor_driver_impersonation(

@@ -4,7 +4,10 @@ from functools import wraps
 from flask_login import current_user, login_required
 from flask_login import login_user
 from app.Admin import admin_bp
-from app.auth.impersonation import start_admin_driver_impersonation
+from app.auth.impersonation import (
+    start_admin_driver_impersonation,
+    start_admin_sponsor_impersonation,
+)
 from app.models.enums import RoleType, DriverStatus
 from app.models import User, Driver, DriverSponsorship, SponsorOrganization
 from app.auth.services import register_user
@@ -16,6 +19,8 @@ from app.Admin.services import (
     get_sales_by_sponsor,
     get_sales_by_driver,
     get_driver_purchase_summary,
+    get_invoice_report,
+    format_money,
     get_all_admin_users,
     get_all_drivers,
     get_all_drivers_for_impersonation,
@@ -26,6 +31,8 @@ from app.Admin.services import (
     create_driver_account,
     admin_update_own_profile,
     get_all_sponsor_users,
+    get_all_sponsor_users_for_impersonation,
+    get_sponsor_user_for_impersonation,
     create_sponsor_account,
     get_users_for_removal_page,
     deactivate_driver_user,
@@ -254,6 +261,76 @@ def driver_purchases_summary():
         start_date=start_date.isoformat(),
         end_date=end_date.isoformat(),
         breadcrumbs=breadcrumbs
+    )
+
+
+def _parse_invoice_filters():
+    today = dt.date.today()
+    default_start = today - dt.timedelta(days=6)
+
+    sponsor_id_raw = (request.args.get('sponsor_id') or '').strip()
+    search = request.args.get('search', '').strip()
+    start_str = request.args.get('start_date') or default_start.isoformat()
+    end_str = request.args.get('end_date') or today.isoformat()
+
+    sponsor_id = None
+    if sponsor_id_raw:
+        try:
+            sponsor_id = int(sponsor_id_raw)
+        except ValueError:
+            raise ValueError('Invalid sponsor selection.')
+
+    try:
+        start_date = dt.date.fromisoformat(start_str)
+        end_date = dt.date.fromisoformat(end_str)
+    except ValueError:
+        raise ValueError('Invalid date format. Use YYYY-MM-DD.')
+
+    if end_date < start_date:
+        raise ValueError('End date must be on or after start date.')
+
+    if sponsor_id is not None and SponsorOrganization.query.get(sponsor_id) is None:
+        raise ValueError('Selected sponsor was not found.')
+
+    return sponsor_id, sponsor_id_raw, search, start_date, end_date, start_str, end_str
+
+
+@admin_bp.route('/reports/invoice')
+@login_required
+@admin_required
+def invoice_report():
+    sponsors = get_all_sponsors()
+    breadcrumbs = admin_breadcrumbs(("Reports", url_for("admin.reports")), ("Invoice", None))
+    error = None
+    invoices = []
+
+    try:
+        sponsor_id, sponsor_id_raw, search, start_date, end_date, start_str, end_str = _parse_invoice_filters()
+        invoices = get_invoice_report(
+            sponsor_id=sponsor_id,
+            start_date=start_date,
+            end_date=end_date,
+            search=search,
+        )
+    except ValueError as e:
+        sponsor_id_raw = (request.args.get('sponsor_id') or '').strip()
+        search = request.args.get('search', '').strip()
+        start_str = request.args.get('start_date') or ''
+        end_str = request.args.get('end_date') or ''
+        error = str(e)
+
+    return render_template(
+        'Admin/invoice_report.html',
+        sponsors=sponsors,
+        invoices=invoices,
+        selected_sponsor_id=sponsor_id_raw,
+        search=search,
+        start_date=start_str,
+        end_date=end_str,
+        invoice_date=dt.date.today().isoformat(),
+        error=error,
+        breadcrumbs=breadcrumbs,
+        format_money=format_money,
     )
 
 
@@ -533,6 +610,44 @@ def sponsor_users_list():
         breadcrumbs=breadcrumbs,
         username=username,
     )
+
+
+@admin_bp.route('/sponsors/impersonate')
+@login_required
+@admin_required
+def impersonate_sponsor_page():
+    username = request.args.get('username', '').strip()
+    sponsor_users = get_all_sponsor_users_for_impersonation(username=username)
+    breadcrumbs = admin_breadcrumbs(
+        ("Sponsor Users", url_for("admin.sponsor_users_list")),
+        ("Impersonate Sponsor", None),
+    )
+    return render_template(
+        'Admin/impersonate_sponsor.html',
+        sponsor_users=sponsor_users,
+        breadcrumbs=breadcrumbs,
+        username=username,
+    )
+
+
+@admin_bp.route('/sponsors/<int:user_id>/impersonate', methods=['POST'])
+@login_required
+@admin_required
+def impersonate_sponsor(user_id):
+    try:
+        sponsor_user = get_sponsor_user_for_impersonation(user_id)
+    except ValueError:
+        abort(404)
+
+    admin_user_id = current_user.user_id
+
+    start_admin_sponsor_impersonation(admin_user_id)
+    login_user(sponsor_user)
+
+    display_name = _build_user_display_name(sponsor_user)
+    flash(f"You are now impersonating {display_name}.", "success")
+    return redirect(url_for('sponsor.dashboard'))
+
 
 @admin_bp.route('/sponsors/new', methods=['GET', 'POST'])
 @login_required

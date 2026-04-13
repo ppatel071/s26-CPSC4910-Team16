@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Invoice Report{% endblock %}
+
+{% block content %}
+<style>
+  .invoice-page {
+    max-width: 1160px;
+    margin: 0 auto;
+  }
+
+  .invoice-toolbar {
+    background: #f4f7fb;
+    border: 1px solid #c8d3df;
+    border-radius: 8px;
+    color: #17202a;
+    padding: 18px;
+    margin-bottom: 22px;
+  }
+
+  .invoice-toolbar form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: end;
+  }
+
+  .invoice-toolbar label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .invoice-toolbar select,
+  .invoice-toolbar input {
+    min-width: 180px;
+  }
+
+  .invoice-document {
+    background: #fff;
+    color: #17202a;
+    border: 1px solid #c9d3dd;
+    border-radius: 8px;
+    margin-bottom: 28px;
+    overflow: hidden;
+    box-shadow: 0 8px 22px rgba(23, 32, 42, 0.08);
+  }
+
+  .invoice-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 24px;
+    background: #17202a;
+    color: #fff;
+  }
+
+  .invoice-header h2 {
+    margin: 0 0 8px;
+    font-size: 28px;
+  }
+
+  .invoice-meta {
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  .invoice-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    border-bottom: 1px solid #d8e0e8;
+  }
+
+  .summary-field {
+    padding: 18px 22px;
+    border-right: 1px solid #d8e0e8;
+  }
+
+  .summary-field:last-child {
+    border-right: none;
+  }
+
+  .summary-label {
+    color: #52616f;
+    font-size: 0.92rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .summary-value {
+    margin-top: 8px;
+    font-size: 1.35rem;
+    font-weight: 700;
+  }
+
+  .invoice-section {
+    padding: 22px 24px;
+  }
+
+  .invoice-section h3 {
+    margin: 0 0 14px;
+  }
+
+  .invoice-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .invoice-table th,
+  .invoice-table td {
+    padding: 11px 12px;
+    border-bottom: 1px solid #e5ebf1;
+    text-align: left;
+  }
+
+  .invoice-table th {
+    background: #eef3f7;
+    color: #17202a;
+  }
+
+  .amount {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .invoice-total {
+    display: flex;
+    justify-content: flex-end;
+    padding: 18px 24px 24px;
+    background: #f8fafc;
+  }
+
+  .invoice-total-box {
+    min-width: 280px;
+    border-top: 3px solid #17202a;
+    padding-top: 12px;
+    text-align: right;
+  }
+
+  .invoice-total-box strong {
+    display: block;
+    font-size: 1.45rem;
+    margin-top: 6px;
+  }
+
+  .empty-note {
+    padding: 24px;
+    background: #fff7e6;
+    border: 1px solid #efcf88;
+    border-radius: 8px;
+    color: #49360c;
+  }
+
+</style>
+
+<div class="invoice-page">
+  <h1>Invoice Report</h1>
+
+  <p>
+    <a class="button" href="{{ url_for('admin.reports') }}">Back to Reports</a>
+  </p>
+
+  <section class="invoice-toolbar">
+    <form method="GET" action="{{ url_for('admin.invoice_report') }}">
+      <div>
+        <label for="sponsor_id">Sponsor</label>
+        <select id="sponsor_id" name="sponsor_id">
+          <option value="" {% if not selected_sponsor_id %}selected{% endif %}>All sponsors</option>
+          {% for sponsor in sponsors %}
+            <option
+              value="{{ sponsor.organization_id }}"
+              {% if selected_sponsor_id and selected_sponsor_id|int == sponsor.organization_id %}selected{% endif %}
+            >
+              {{ sponsor.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="search">Search driver</label>
+        <input id="search" type="search" name="search" value="{{ search }}" placeholder="Username or name">
+      </div>
+
+      <div>
+        <label for="start_date">Start date</label>
+        <input id="start_date" type="date" name="start_date" value="{{ start_date }}" required>
+      </div>
+
+      <div>
+        <label for="end_date">End date</label>
+        <input id="end_date" type="date" name="end_date" value="{{ end_date }}" required>
+      </div>
+
+      <button type="submit">Run Invoice</button>
+      <a class="button" href="{{ url_for('admin.invoice_report') }}">Clear</a>
+    </form>
+  </section>
+
+  {% if error %}
+    <p style="color: red;">{{ error }}</p>
+  {% elif invoices %}
+    {% for invoice in invoices %}
+      <article class="invoice-document">
+        <header class="invoice-header">
+          <div>
+            <h2>Platform Fee Invoice</h2>
+            <div>{{ invoice.sponsor.name }}</div>
+            {% if invoice.sponsor.contact_email %}
+              <div>{{ invoice.sponsor.contact_email }}</div>
+            {% endif %}
+          </div>
+          <div class="invoice-meta">
+            <div><strong>Invoice date:</strong> {{ invoice.invoice_date.isoformat() }}</div>
+            <div><strong>Date range:</strong> {{ invoice.start_date.isoformat() }} to {{ invoice.end_date.isoformat() }}</div>
+            <div><strong>Sponsor ID:</strong> {{ invoice.sponsor.organization_id }}</div>
+            <div><strong>Fee rate:</strong> 1%</div>
+          </div>
+        </header>
+
+        <section class="invoice-summary">
+          <div class="summary-field">
+            <div class="summary-label">Total Purchases Amount</div>
+            <div class="summary-value">${{ format_money(invoice.total_purchase_amount) }}</div>
+          </div>
+          <div class="summary-field">
+            <div class="summary-label">Invoiceable Orders</div>
+            <div class="summary-value">{{ invoice.total_purchase_count }}</div>
+          </div>
+          <div class="summary-field">
+            <div class="summary-label">Total Fee Due</div>
+            <div class="summary-value">${{ format_money(invoice.total_fee_due) }}</div>
+          </div>
+        </section>
+
+        <section class="invoice-section">
+          <h3>Platform Fee by Driver</h3>
+          <table class="invoice-table">
+            <thead>
+              <tr>
+                <th>Driver</th>
+                <th>Username</th>
+                <th class="amount">Purchases</th>
+                <th class="amount">Total Purchase Amount</th>
+                <th class="amount">Fee Generated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in invoice.driver_rows %}
+                <tr>
+                  <td>{{ row.driver_name }}</td>
+                  <td>{{ row.driver_username }}</td>
+                  <td class="amount">{{ row.purchase_count }}</td>
+                  <td class="amount">${{ format_money(row.total_purchase_amount) }}</td>
+                  <td class="amount">${{ format_money(row.fee_generated) }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+
+        <section class="invoice-section">
+          <h3>Purchase Details</h3>
+          <table class="invoice-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Purchase Date</th>
+                <th>Driver</th>
+                <th>Product</th>
+                <th class="amount">Quantity</th>
+                <th class="amount">Purchase Amount</th>
+                <th class="amount">Fee Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in invoice.detail_rows %}
+                <tr>
+                  <td>{{ row.order_id }}</td>
+                  <td>{{ row.purchase_date.strftime('%Y-%m-%d') }}</td>
+                  <td>{{ row.driver_name }}</td>
+                  <td>{{ row.product_name }}</td>
+                  <td class="amount">{{ row.quantity }}</td>
+                  <td class="amount">${{ format_money(row.purchase_amount) }}</td>
+                  <td class="amount">${{ format_money(row.fee_amount) }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+
+        <footer class="invoice-total">
+          <div class="invoice-total-box">
+            Total fee due for {{ invoice.sponsor.name }}
+            <strong>${{ format_money(invoice.total_fee_due) }}</strong>
+          </div>
+        </footer>
+      </article>
+    {% endfor %}
+  {% else %}
+    <div class="empty-note">
+      No invoiceable purchases found for the selected sponsor and date range.
+    </div>
+  {% endif %}
+
+  <p>
+    <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+  </p>
+</div>
+{% endblock %}

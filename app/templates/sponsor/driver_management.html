@@ -87,6 +87,7 @@
           {% endif %}
         </td>
         <td>
+          {% set driver_can_be_impersonated = sponsorship.driver.user.is_user_active and not sponsorship.driver.user.is_login_locked %}
           {% if sponsorship.status.value == 'ACTIVE' %}
             <div class="driver-actions">
             <button
@@ -111,12 +112,16 @@
             >
               Edit
             </a>
-            <form
-              method="POST"
-              action="{{ url_for('sponsor.impersonate_driver', driver_sponsorship_id=sponsorship.driver_sponsorship_id) }}"
-            >
-              <button type="submit" class="button">Impersonate</button>
-            </form>
+            {% if driver_can_be_impersonated %}
+              <form
+                method="POST"
+                action="{{ url_for('sponsor.impersonate_driver', driver_sponsorship_id=sponsorship.driver_sponsorship_id) }}"
+              >
+                <button type="submit" class="button">Impersonate</button>
+              </form>
+            {% else %}
+              <button type="button" class="button" disabled>Impersonate</button>
+            {% endif %}
             <button
               type="button"
               class="button drop-btn"

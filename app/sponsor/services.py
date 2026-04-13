@@ -52,6 +52,32 @@ def validate_and_apply_user_profile_updates(
     return user
 
 
+def get_admin_user_for_impersonation_return(admin_user_id: int) -> User | None:
+    admin_user = User.query.get(admin_user_id)
+    if not admin_user or admin_user.role_type != RoleType.ADMIN:
+        return None
+    return admin_user
+
+
+def build_admin_sponsor_impersonation_banner_context() -> dict[str, str | bool | None]:
+    from app.auth.impersonation import is_admin_sponsor_impersonation_active
+
+    if not is_admin_sponsor_impersonation_active():
+        return {
+            "is_admin_impersonating_sponsor": False,
+            "impersonation_banner_message": None,
+            "impersonation_exit_endpoint": None,
+            "impersonation_exit_label": None,
+        }
+
+    return {
+        "is_admin_impersonating_sponsor": True,
+        "impersonation_banner_message": "You are impersonating this sponsor as an admin",
+        "impersonation_exit_endpoint": "sponsor.stop_impersonation",
+        "impersonation_exit_label": "Return to Admin View",
+    }
+
+
 def update_sponsor_organization(
     organization: SponsorOrganization, name: str, point_value: str
 ) -> SponsorOrganization:
