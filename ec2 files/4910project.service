@@ -1,0 +1,13 @@
+[Unit]
+Description=4910 Project Web App
+After=network.target
+
+[Service]
+User=ec2-user
+WorkingDirectory=/home/ec2-user/s26-CPSC4910-Team16
+ExecStart=/home/ec2-user/.pyenv/shims/gunicorn -w 2 -b 0.0.0.0:8000 run:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

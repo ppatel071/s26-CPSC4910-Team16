@@ -1,0 +1,10 @@
+Flask app is run on the gunicorn production server on port 8000
+- http://127.0.0.1:8000
+
+The service file is located at /etc/systemd/system/4910project.service
+Check status with systemctl status 4910project.service
+OR restart with systemctl restart 4910project.service
+
+Using nginx as our proxy. Configs in /etc/nginx
+
+Using a user python without a venv as the enviroment with pyenv
