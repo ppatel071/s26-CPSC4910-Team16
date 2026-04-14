@@ -84,6 +84,11 @@
       </p>
 
       <p>
+        <label for="confpass">Confirm Password</label><br>
+        <input id="confpass" name="confpass" type="password" placeholder="e.g. Password123" required>
+      </p>
+
+      <p>
         <button type="submit">Create Sponsor</button> <br> <br>
         <a class="button" href="{{ url_for('admin.sponsor_users_list') }}">Back to Sponsor Users</a>
         <a class="button" href="{{ url_for('admin.reports') }}">Back to Reports</a>

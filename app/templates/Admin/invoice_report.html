@@ -265,6 +265,7 @@
             <thead>
               <tr>
                 <th>Order ID</th>
+                <th>Order Status</th>
                 <th>Purchase Date</th>
                 <th>Driver</th>
                 <th>Product</th>
@@ -277,6 +278,7 @@
               {% for row in invoice.detail_rows %}
                 <tr>
                   <td>{{ row.order_id }}</td>
+                  <td>{{ row.order_status }}</td>
                   <td>{{ row.purchase_date.strftime('%Y-%m-%d') }}</td>
                   <td>{{ row.driver_name }}</td>
                   <td>{{ row.product_name }}</td>

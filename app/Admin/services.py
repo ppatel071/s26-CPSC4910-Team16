@@ -3,7 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from app.extensions import db
-from app.auth.services import register_user, validate_complexity
+from app.auth.services import check_unique, register_user, validate_complexity
 from app.models import (
     SponsorOrganization,
     SponsorUser,
@@ -98,8 +98,10 @@ def get_sales_by_sponsor(
                 Order.create_time.label('sale_time'),
                 User.username.label('driver_username'),
             )
+            .select_from(Order)
             .join(Order.organization)
-            .join(Order.placed_by_user)
+            .join(Order.driver)
+            .join(Driver.user)
         )
         query = _apply_driver_search(query, search)
         query = _apply_order_date_range(query, start_date, end_date)
@@ -136,7 +138,9 @@ def get_sales_by_driver(
                 Order.create_time.label('sale_time'),
                 SponsorOrganization.name.label('sponsor_name'),
             )
-            .join(Order.placed_by_user)
+            .select_from(Order)
+            .join(Order.driver)
+            .join(Driver.user)
             .join(Order.organization)
         )
         query = _apply_driver_search(query, search)
@@ -149,7 +153,9 @@ def get_sales_by_driver(
             func.count(Order.order_id).label('sale_count'),
             func.sum(Order.points).label('total_amount'),
         )
-        .join(Order.placed_by_user)
+        .select_from(Order)
+        .join(Order.driver)
+        .join(Driver.user)
     )
     query = _apply_driver_search(query, search)
     return query.group_by(User.username).order_by(User.username.asc()).all()
@@ -170,7 +176,9 @@ def get_driver_purchase_summary(
             func.count(Order.order_id).label('purchase_count'),
             func.sum(Order.points).label('total_amount'),
         )
-        .join(Order.placed_by_user)
+        .select_from(Order)
+        .join(Order.driver)
+        .join(Driver.user)
         .filter(Order.create_time >= start_dt, Order.create_time < end_dt)
     )
     query = _apply_driver_search(query, search)
@@ -279,6 +287,7 @@ def get_invoice_report(
                 invoice['detail_rows'].append(
                     {
                         'order_id': order.order_id,
+                        'order_status': order.order_status.value.title(),
                         'purchase_date': order.create_time,
                         'driver_name': _display_user_name(driver_user),
                         'driver_username': driver_user.username,
@@ -292,6 +301,7 @@ def get_invoice_report(
             invoice['detail_rows'].append(
                 {
                     'order_id': order.order_id,
+                    'order_status': order.order_status.value.title(),
                     'purchase_date': order.create_time,
                     'driver_name': _display_user_name(driver_user),
                     'driver_username': driver_user.username,
@@ -576,25 +586,58 @@ def create_sponsor_account(
     sponsor_organization_id: int | None,
     new_sponsor_organization_name: str,
     password: str,
+    confpass: str,
 ) -> User:
     clean_username = (username or '').strip()
     clean_email = (email or '').strip()
+    clean_org_name = (new_sponsor_organization_name or '').strip()
 
-    user = register_user(
+    if not clean_username:
+        raise ValueError('Username is required')
+    if not password:
+        raise ValueError('Password is required')
+    if not clean_email:
+        raise ValueError('Email is required')
+
+    valid, msg = validate_complexity(password, confpass)
+    if not valid:
+        raise ValueError(msg)
+
+    valid, msg = check_unique(clean_username, clean_email)
+    if not valid:
+        raise ValueError(msg)
+
+    if sponsor_organization_id and clean_org_name:
+        raise ValueError('Choose an existing sponsor organization or enter a new one, not both')
+
+    organization_id = None
+    if sponsor_organization_id:
+        organization = SponsorOrganization.query.get(sponsor_organization_id)
+        if organization is None:
+            raise ValueError('Selected sponsor organization was not found')
+        organization_id = organization.organization_id
+    elif clean_org_name:
+        organization = SponsorOrganization(name=clean_org_name, point_value=0.01)
+        db.session.add(organization)
+        db.session.flush()
+        organization_id = organization.organization_id
+    else:
+        raise ValueError('Sponsor organization is required for sponsor users')
+
+    user = User(
         username=clean_username,
-        password=password,
-        role=RoleType.SPONSOR,
+        password=generate_password_hash(password),
+        role_type=RoleType.SPONSOR,
         email=clean_email,
         first_name='',
         last_name='',
     )
+    db.session.add(user)
+    db.session.flush()
 
     sponsor_user = SponsorUser(
         user_id=user.user_id,
-        organization_id=resolve_sponsor_organization_for_role_assignment(
-            sponsor_organization_id=sponsor_organization_id,
-            new_sponsor_organization_name=new_sponsor_organization_name,
-        ),
+        organization_id=organization_id,
     )
     db.session.add(sponsor_user)
     db.session.commit()

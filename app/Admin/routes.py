@@ -662,6 +662,7 @@ def create_sponsor_user():
         sponsor_organization_id_raw = request.form.get('sponsor_organization_id', '').strip()
         new_sponsor_organization_name = request.form.get('new_sponsor_organization_name', '').strip()
         password = request.form.get('password', '')
+        confpass = request.form.get('confpass', '')
 
         try:
             sponsor_organization_id = int(sponsor_organization_id_raw) if sponsor_organization_id_raw else None
@@ -671,6 +672,7 @@ def create_sponsor_user():
                 sponsor_organization_id=sponsor_organization_id,
                 new_sponsor_organization_name=new_sponsor_organization_name,
                 password=password,
+                confpass=confpass,
             )
             return redirect(url_for('admin.sponsor_users_list'))
         except ValueError as e:
