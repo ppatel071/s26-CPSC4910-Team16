@@ -304,6 +304,11 @@
       No invoiceable purchases found for the selected sponsor and date range.
     </div>
   {% endif %}
+  
+  <br>
+  <a style="margin-bottom: 5px; margin-top: 10px;" class="button" href="{{ url_for('admin.download_invoice_report_csv', sponsors=sponsors, selected_sponsor_id=sponsor_id_raw, search=search, start_date=start_date, end_date=end_date) }}">
+  Download CSV
+  </a>
 
   <p>
     <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>

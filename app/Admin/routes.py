@@ -545,6 +545,69 @@ def invoice_report():
         format_money=format_money,
     )
 
+@admin_bp.route('/reports/invoice/csv')
+@login_required
+@admin_required
+def download_invoice_report_csv():
+    sponsors = get_all_sponsors()
+    invoices = []
+
+
+    sponsor_id, sponsor_id_raw, search, start_date, end_date, start_str, end_str = _parse_invoice_filters()
+    invoices = get_invoice_report(
+        sponsor_id=sponsor_id,
+        start_date=start_date,
+        end_date=end_date,
+        search=search,
+    )
+
+    si = StringIO()
+    writer = csv.writer(si)
+
+    for invoice in invoices:
+        sponsor = invoice['sponsor']
+
+        writer.writerow(["Sponsor:", sponsor.name])
+
+        writer.writerow([
+            "Order ID",
+            "Order Status",
+            "Purchase Date",
+            "Driver",
+            "Product",
+            "Quantity",
+            "Purchase Amount",
+            "Fee Amount",
+            ])
+
+        for row in invoice['detail_rows']:
+            writer.writerow([
+                row['order_id'],
+                row['order_status'],
+                row['purchase_date'].strftime('%Y-%m-%d'),
+                row['driver_name'],
+                row['product_name'],
+                row['quantity'],
+                row['purchase_amount'],
+                row['fee_amount'],
+            ])
+        
+        writer.writerow(["", "", "", "", "", "", "Total Fee:", str(invoice['total_fee_due'])])
+
+        writer.writerow([])
+        writer.writerow([])
+    
+    output = si.getvalue()
+    si.close()
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=Invoice_Report.csv"
+        }
+    )
+
 
 @admin_bp.route('/profile')
 @login_required
