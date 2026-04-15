@@ -80,7 +80,12 @@
   {% endif %}
 {% endif %}
 
-<p>
+<br>
+<a style="margin-bottom: 5px; margin-top: 10px;" class="button" href="{{ url_for('admin.download_sales_by_driver_csv', detail=1 if detail else 0, search=search, start_date=start_date, end_date=end_date) }}">
+  Download CSV
+</a>
+
+<p style="margin-top: 20px;">
   <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
 </p>
 {% endblock %}
