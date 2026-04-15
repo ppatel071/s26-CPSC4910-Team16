@@ -53,7 +53,6 @@
       <th>Email</th>
       <th>Status</th>
       <th>Point Balance</th>
-      <th>Current Sponsors</th>
       <th>Actions</th>
     </tr>
   </thead>
@@ -74,18 +73,6 @@
         <td>{{ driver_user.email or 'N/A' }}</td>
         <td>{{ sponsorship.status.value.title() }}</td>
         <td>{{ sponsorship.point_balance }}</td>
-        <td>
-          {% set user = sponsorship.driver.user %}
-          {% if driverSponsors[user.user_id] %}
-            <ul style="list-style: none; padding-left: 0; margin: 0;">
-              {% for sponsor in driverSponsors[user.user_id] %}
-                <li>- {{ sponsor.name }}</li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            None
-          {% endif %}
-        </td>
         <td>
           {% set driver_can_be_impersonated = sponsorship.driver.user.is_user_active and not sponsorship.driver.user.is_login_locked %}
           {% if sponsorship.status.value == 'ACTIVE' %}

@@ -10,6 +10,7 @@ from app.auth.impersonation import (
     get_impersonator_admin_sponsor_user_id,
     start_sponsor_driver_impersonation,
 )
+from app.bulk_upload import build_text_stream, process_bulk_upload_stream
 from app.catalog_api.utils import (
     CATALOG_PAGE_SIZE,
     browse_catalog_products,
@@ -100,6 +101,15 @@ def render_driver_management_page(
         error=error,
         point_form_state=point_form_state,
         breadcrumbs=sponsor_breadcrumbs(("Driver Management", None)),
+    )
+
+
+def render_bulk_upload_page(*, report=None, error: str | None = None):
+    return render_template(
+        "sponsor/bulk_upload.html",
+        report=report,
+        error=error,
+        breadcrumbs=sponsor_breadcrumbs(("Bulk Upload", None)),
     )
 
 
@@ -400,6 +410,36 @@ def create_user():
     )
 
 
+@sponsor_bp.route("/bulk-upload", methods=["GET", "POST"])
+@login_required
+@sponsor_required
+def bulk_upload():
+    if request.method == "POST":
+        assert isinstance(current_user, User)
+        upload = request.files.get("bulk_upload_file")
+        if upload is None or not upload.filename:
+            return render_bulk_upload_page(error="Choose a pipe-delimited text file to upload.")
+
+        try:
+            stream = build_text_stream(upload)
+            report = process_bulk_upload_stream(
+                stream,
+                acting_user=current_user,
+                scope="sponsor",
+            )
+        except UnicodeDecodeError:
+            return render_bulk_upload_page(
+                error="The uploaded file must be UTF-8 text."
+            )
+        finally:
+            if "stream" in locals():
+                stream.detach()
+
+        return render_bulk_upload_page(report=report)
+
+    return render_bulk_upload_page()
+
+
 @sponsor_bp.route("/applications")
 @login_required
 @sponsor_required
@@ -539,6 +579,8 @@ def catalog_browse():
 @login_required
 @sponsor_required
 def decide_application(application_id: int):
+    assert isinstance(current_user, User)
+    assert isinstance(current_user.sponsor_user, SponsorUser)
     decision = (request.form.get("decision", "") or "").upper()
     reason = (request.form.get("reason", "") or "").strip()
 
@@ -557,7 +599,9 @@ def decide_application(application_id: int):
     decision_enum = DriverApplicationStatus[decision]
     if decision_enum == DriverApplicationStatus.APPROVED:
         approve_driver_for_sponsor(
-            application.driver, current_user.sponsor_user.organization_id
+            application.driver,
+            current_user.sponsor_user.organization_id,
+            acting_user=current_user,
         )
         message = "Your sponsor application has been approved."
     else:

@@ -10,6 +10,7 @@ from app.auth.impersonation import (
     start_admin_driver_impersonation,
     start_admin_sponsor_impersonation,
 )
+from app.bulk_upload import build_text_stream, process_bulk_upload_stream
 from app.models.enums import RoleType, DriverStatus
 from app.models import User, Driver, DriverSponsorship, SponsorOrganization
 from app.auth.services import register_user
@@ -86,6 +87,15 @@ def _parse_optional_date(date_str: str) -> dt.date | None:
         return None
     return dt.date.fromisoformat(clean_date)
 
+
+def render_bulk_upload_page(*, report=None, error: str | None = None):
+    return render_template(
+        'Admin/bulk_upload.html',
+        report=report,
+        error=error,
+        breadcrumbs=admin_breadcrumbs(("Bulk Upload", None)),
+    )
+
 @admin_bp.route('/dashboard')
 @login_required
 @admin_required
@@ -93,6 +103,33 @@ def dashboard():
     breadcrumbs = [("Admin Dashboard", None)]
 
     return render_template('Admin/admin_dashboard.html', breadcrumbs=breadcrumbs)
+
+
+@admin_bp.route('/bulk-upload', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def bulk_upload():
+    if request.method == 'POST':
+        upload = request.files.get('bulk_upload_file')
+        if upload is None or not upload.filename:
+            return render_bulk_upload_page(error='Choose a pipe-delimited text file to upload.')
+
+        try:
+            stream = build_text_stream(upload)
+            report = process_bulk_upload_stream(
+                stream,
+                acting_user=current_user,
+                scope='admin',
+            )
+        except UnicodeDecodeError:
+            return render_bulk_upload_page(error='The uploaded file must be UTF-8 text.')
+        finally:
+            if 'stream' in locals():
+                stream.detach()
+
+        return render_bulk_upload_page(report=report)
+
+    return render_bulk_upload_page()
 
 
 @admin_bp.route('/reports')

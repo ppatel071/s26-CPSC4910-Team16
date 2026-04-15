@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Bulk Upload{% endblock %}
+
+{% block content %}
+<div class="section-card">
+  <h1>Admin Bulk Upload</h1>
+  <p>Upload a pipe-delimited text file to create organizations, sponsor users, and driver users.</p>
+  <form method="POST" enctype="multipart/form-data">
+    <label for="bulk_upload_file">Bulk upload file</label><br>
+    <input id="bulk_upload_file" type="file" name="bulk_upload_file" accept=".txt,text/plain" required>
+    <br><br>
+    <button type="submit">Process Upload</button>
+  </form>
+</div>
+
+<div class="section-card">
+  <h2>Format</h2>
+  <p><code>&lt;type&gt;|organization name|first name|last name|email address|points|reason for points</code></p>
+  <ul>
+    <li>Use <code>O</code> for organizations, <code>D</code> for drivers, and <code>S</code> for sponsor users.</li>
+    <li>Organizations must already exist or be created earlier in the same file with an <code>O</code> record before sponsor or driver records can use them.</li>
+    <li>If points are supplied for a driver, a reason is required.</li>
+    <li>Points on sponsor records are ignored and reported as warnings.</li>
+    <li>New users are created with username equal to email. Temporary passwords for newly created users appear below after the upload completes.</li>
+  </ul>
+  <h2>Example</h2>
+  <code>
+  <p>O|New Organization</p>
+  <p>D|New Organization|Joe|Driver|me@email.com|100|New Driver</p>
+  <p>S|New Organization|Jill|Sponsor|jill@mail.com</p>
+  <p>D|Existing Organization|Tom|Smith|tom887@gmail.com</p>
+  </code>
+</div>
+{% if report %}
+<div class="section-card">
+  <p>
+    Upload processed.
+    <a class="button" href="#upload-results">Jump to results</a>
+  </p>
+</div>
+{% endif %}
+
+{% if report %}
+<div id="upload-results" class="section-card" tabindex="-1">
+  <h2>Summary</h2>
+  <p>
+    Processed {{ report.input_lines }} line{{ '' if report.input_lines == 1 else 's' }}.
+    {{ report.successful_lines }} succeeded and {{ report.skipped_lines }} were skipped.
+  </p>
+  <ul>
+    <li>New organizations: {{ report.created_organizations }}</li>
+    <li>New sponsor users: {{ report.created_sponsors }}</li>
+    <li>New drivers: {{ report.created_drivers }}</li>
+    <li>Existing drivers updated: {{ report.updated_drivers }}</li>
+    <li>Warnings: {{ report.warning_count }}</li>
+    <li>Errors: {{ report.error_count }}</li>
+  </ul>
+</div>
+
+{% if report.created_credentials %}
+<div class="section-card">
+  <h2>New Account Credentials</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Role</th>
+        <th>Organization</th>
+        <th>Email</th>
+        <th>Username</th>
+        <th>Temporary Password</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for credential in report.created_credentials %}
+      <tr>
+        <td>{{ credential.role }}</td>
+        <td>{{ credential.organization_name or 'N/A' }}</td>
+        <td>{{ credential.email }}</td>
+        <td>{{ credential.username }}</td>
+        <td><code>{{ credential.temporary_password }}</code></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if report.issues %}
+<div class="section-card">
+  <h2>Warnings And Errors</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Line</th>
+        <th>Level</th>
+        <th>Message</th>
+        <th>Raw Line</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for issue in report.issues %}
+      <tr>
+        <td>{{ issue.line_number }}</td>
+        <td>{{ issue.level|capitalize }}</td>
+        <td>{{ issue.message }}</td>
+        <td><code>{{ issue.raw_line }}</code></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% if report %}
+<script>
+  window.addEventListener("load", function () {
+    const results = document.getElementById("upload-results");
+    if (!results) {
+      return;
+    }
+
+    results.scrollIntoView({ behavior: "smooth", block: "start" });
+    results.focus({ preventScroll: true });
+  });
+</script>
+{% endif %}
+{% endblock %}

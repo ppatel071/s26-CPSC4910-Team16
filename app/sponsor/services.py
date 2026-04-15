@@ -1,10 +1,25 @@
+import datetime as dt
 from decimal import Decimal, InvalidOperation
 from typing import Tuple, List
 from sqlalchemy import text
 from sqlalchemy.orm import joinedload
 from app.catalog_api.client import catalog_client
 from app.extensions import db
-from app.models import *
+from app.models import (
+    User,
+    RoleType,
+    SponsorOrganization,
+    SponsorUser,
+    SponsorCatalogItem,
+    DriverApplication,
+    DriverApplicationStatus,
+    Driver,
+    DriverSponsorship,
+    DriverStatus,
+    Notification,
+    NotificationCategory,
+    PointTransaction
+)
 from app.auth.services import register_user
 
 
@@ -149,10 +164,18 @@ def create_sponsor_user(
     first_name: str,
     last_name: str,
     organization: SponsorOrganization,
+    *,
+    commit: bool = True,
 ) -> User:
 
     user = register_user(
-        username, password, RoleType.SPONSOR, email, first_name, last_name
+        username,
+        password,
+        RoleType.SPONSOR,
+        email,
+        first_name,
+        last_name,
+        commit=commit,
     )
 
     sponsor_user = SponsorUser(
@@ -160,7 +183,10 @@ def create_sponsor_user(
         organization=organization,
     )
     db.session.add(sponsor_user)
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return user
 
 
@@ -186,7 +212,13 @@ def get_driver_applications(
     return (pending_applications, historic_applications)
 
 
-def approve_driver_for_sponsor(driver: Driver, organization_id: int):
+def approve_driver_for_sponsor(
+    driver: Driver,
+    organization_id: int,
+    *,
+    acting_user: User | None = None,
+    commit: bool = True,
+):
     if not driver:
         raise ValueError("Driver does not exist")
     sponsorship = DriverSponsorship.query.filter_by(
@@ -203,6 +235,21 @@ def approve_driver_for_sponsor(driver: Driver, organization_id: int):
         db.session.add(sponsorship)
 
     sponsorship.status = DriverStatus.ACTIVE
+    pending_applications = DriverApplication.query.filter_by(
+        driver_id=driver.driver_id,
+        organization_id=organization_id,
+        status=DriverApplicationStatus.PENDING,
+    ).all()
+    decision_time = dt.datetime.now(tz=dt.timezone.utc)
+    for application in pending_applications:
+        application.status = DriverApplicationStatus.APPROVED
+        application.decision_date = decision_time
+        application.decided_by_user_id = acting_user.user_id if acting_user else None
+
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return sponsorship
 
 
@@ -316,6 +363,8 @@ def adjust_driver_points_for_sponsor(
     point_change: int,
     reason: str,
     acting_user: User,
+    *,
+    commit: bool = True,
 ) -> DriverSponsorship:
     driver_sponsorship = get_organization_driver_sponsorship(
         organization_id, driver_sponsorship_id
@@ -366,7 +415,10 @@ def adjust_driver_points_for_sponsor(
         )
     )
 
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return driver_sponsorship
 
 
