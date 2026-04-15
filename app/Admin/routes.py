@@ -1,5 +1,7 @@
 import datetime as dt
-from flask import render_template, abort, request, redirect, url_for, flash
+import csv
+from io import StringIO
+from flask import render_template, abort, request, redirect, url_for, flash, Response
 from functools import wraps
 from flask_login import current_user, login_required
 from flask_login import login_user
@@ -169,6 +171,71 @@ def sales_by_sponsor_report():
         end_date=end_str,
         error=error,
     )
+
+@admin_bp.route('')
+@login_required
+@admin_required
+def download_sales_by_sponsor_csv():
+    detail = request.args.get('detail') == '1'
+    search = request.args.get('search', '').strip()
+    start_str = request.args.get('start_date', '').strip()
+    end_str = request.args.get('end_date', '').strip()
+
+    start_date = None
+    end_date = None
+    error = None
+
+    if detail:
+        try:
+            start_date = _parse_optional_date(start_str)
+            end_date = _parse_optional_date(end_str)
+        except ValueError:
+            error = 'Invalid date format. Use YYYY-MM-DD.'
+
+        if error is None and start_date and end_date and end_date < start_date:
+            error = 'End date must be on or after start date.'
+
+    rows = [] if error else get_sales_by_sponsor(
+        detail,
+        search=search,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    si = StringIO()
+    writer = csv.writer(si)
+
+    if detail:
+        writer.writerow(["Sponsor", "Driver", "Amount (Points)", "Sale Time"])
+
+        for row in rows:
+            writer.writerow([
+                row.sponsor_name,
+                row.driver_username,
+                row.amount,
+                row.sale_time
+            ])
+    else:
+        writer.writerow(["Sponsor", "Sales", "Total Amount (Points)"])
+
+        for row in rows:
+            writer.writerow([
+                row.sponsor_name,
+                row.sale_count,
+                row.total_amount,
+            ])
+    
+    output = si.getvalue()
+    si.close
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=sales_by_sponsor.csv"
+        }
+    )
+
 
 
 @admin_bp.route('/reports/sales-by-driver')

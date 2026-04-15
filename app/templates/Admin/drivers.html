@@ -37,20 +37,20 @@
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
     <tr>
-      <th>#</th>
-      <th>Username</th>
-      <th>Email</th>
-      <th>First Name</th>
-      <th>Last Name</th>
-      <th>Current Sponsors</th>
-      <th>Add To Sponsor</th>
-      <th>Edit</th>
+      <th scope="col">#</th>
+      <th scope="col">Username</th>
+      <th scope="col">Email</th>
+      <th scope="col">First Name</th>
+      <th scope="col">Last Name</th>
+      <th scope="col">Current Sponsors</th>
+      <th scope="col">Add To Sponsor</th>
+      <th scope="col">Edit</th>
     </tr>
   </thead>
   <tbody>
     {% for user, driver in drivers %}
       <tr>
-        <td>{{ loop.index }}</td>
+        <td scope="row">{{ loop.index }}</td>
         <td>{{ user.username }}</td>
         <td>{{ user.email or '' }}</td>
         <td>{{ user.first_name }}</td>
@@ -76,7 +76,7 @@
                 </option>
               {% endfor %}
             </select>
-            <button style="margin-top: 5px;" type="submit">Add to Sponsor</button>
+            <button style="margin-top: 5px;" type="submit">Add {{ user.username}} to Sponsor</button>
           </form>
         </td>
         <td>

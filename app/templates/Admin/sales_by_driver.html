@@ -13,17 +13,22 @@
   <input type="hidden" name="detail" value="{{ 1 if detail else 0 }}">
 
   <label for="search">{% if detail %}Search user:{% else %}Search driver:{% endif %}</label>
-  <input id="search" type="search" name="search" value="{{ search }}" placeholder="Username or name">
+  <input style="margin-bottom: 5px;" id="search" type="search" name="search" value="{{ search }}" placeholder="Username or name">
 
   {% if detail %}
+    <br>
     <label for="start_date">Start date:</label>
-    <input id="start_date" type="date" name="start_date" value="{{ start_date }}">
+    <input style="margin-bottom: 5px;" id="start_date" type="date" name="start_date" value="{{ start_date }}">
 
+    <br>
     <label for="end_date">End date:</label>
-    <input id="end_date" type="date" name="end_date" value="{{ end_date }}">
+    <input style="margin-bottom: 5px;" id="end_date" type="date" name="end_date" value="{{ end_date }}">
   {% endif %}
 
-  <button type="submit">Apply</button>
+  <br>
+  <button style="margin-bottom: 15px; cursor: pointer;" type="submit">Apply</button>
+
+  <br>
   <a class="button" href="{{ url_for('admin.sales_by_driver_report', detail=1) if detail else url_for('admin.sales_by_driver_report') }}">Clear</a>
 </form>
 
