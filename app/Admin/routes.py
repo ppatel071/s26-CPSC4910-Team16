@@ -434,6 +434,48 @@ def driver_purchases_summary():
     )
 
 
+@admin_bp.route('/reports/driver-purchases-summary/csv')
+@login_required
+@admin_required
+def download_driver_purchase_summary_csv():
+    today = dt.date.today()
+    default_start = today - dt.timedelta(days=6)
+
+    search = request.args.get('search', '').strip()
+    start_str = request.args.get('start_date') or default_start.isoformat()
+    end_str = request.args.get('end_date') or today.isoformat()
+
+    start_date = dt.date.fromisoformat(start_str)
+    end_date = dt.date.fromisoformat(end_str)
+
+    rows = get_driver_purchase_summary(start_date, end_date, search=search)
+
+    si = StringIO()
+    writer = csv.writer(si)
+
+    writer.writerow(["Driver", "Purchases", "Total Value (Points)"])
+
+    for row in rows:
+        writer.writerow([
+            row.driver_username,
+            row.purchase_count,
+            row.total_amount,
+        ])
+    
+    output = si.getvalue()
+    si.close
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=driver_purchase_summary.csv"
+        }
+    )
+
+
+
+
 def _parse_invoice_filters():
     today = dt.date.today()
     default_start = today - dt.timedelta(days=6)

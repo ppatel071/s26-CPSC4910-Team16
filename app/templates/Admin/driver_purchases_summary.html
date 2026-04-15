@@ -43,6 +43,11 @@
   <p>No purchases found for the selected filters.</p>
 {% endif %}
 
+<br>
+<a style="margin-bottom: 5px; margin-top: 10px;" class="button" href="{{ url_for('admin.download_driver_purchase_summary_csv', search=search, start_date=start_date, end_date=end_date) }}">
+  Download CSV
+</a>
+
 <p>
   <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
 </p>
