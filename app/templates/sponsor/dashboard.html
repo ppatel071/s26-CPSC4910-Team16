@@ -29,19 +29,41 @@
     margin-bottom: 15px;
     font-size: 20px;
     font-weight: 600;
-    color:black;
+    color: black;
   }
 
-  button {
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+
+  table th {
+    background: #f4f7fb;
+    padding: 10px;
+    text-align: left;
+  }
+
+  table td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+  }
+
+  table tr:hover {
+    background: #f9fbff;
+  }
+
+  button, .button {
     padding: 8px 14px;
     border: none;
     border-radius: 6px;
     background: #4a90e2;
     color: white;
     cursor: pointer;
+    text-decoration: none;
   }
 
-  button:hover {
+  button:hover, .button:hover {
     background: #357abd;
   }
 </style>
@@ -52,43 +74,69 @@
     <h1>Sponsor Dashboard</h1>
   </div>
 
+  <!-- Organization -->
   <div class="section-card">
     <div class="section-title"><h2>Organization</h2></div>
-    <p><a class="button" href="{{ url_for('sponsor.organization') }}">My Organization</a></p>
+    <p>
+      <a class="button" href="{{ url_for('sponsor.organization') }}">
+        My Organization
+      </a>
+    </p>
   </div>
 
-
+  <!-- Sponsor Users -->
   <div class="section-card">
     <div class="section-title"><h2>Sponsor Users</h2></div>
     <p>
-      <a class="button" href="{{ url_for('sponsor.profile_edit') }}">Edit My Profile</a>
-      <a class="button" href="{{ url_for('sponsor.create_user') }}">Add Sponsor User</a>
+      <a class="button" href="{{ url_for('sponsor.profile_edit') }}">
+        Edit My Profile
+      </a>
+      <a class="button" href="{{ url_for('sponsor.create_user') }}">
+        Add Sponsor User
+      </a>
     </p>
   </div>
 
+  <!-- Drivers -->
   <div class="section-card">
     <div class="section-title"><h2>Drivers</h2></div>
     <p>
-      <a class="button" href="{{ url_for('sponsor.get_applications') }}">Driver Applications ({{ num_applications }})</a>
-      <a class="button" href="{{ url_for('sponsor.driver_management') }}">Driver Management</a>
+      <a class="button" href="{{ url_for('sponsor.get_applications') }}">
+        Driver Applications ({{ num_applications }})
+      </a>
+      <a class="button" href="{{ url_for('sponsor.driver_management') }}">
+        Driver Management
+      </a>
     </p>
   </div>
 
+  <!-- Administrative -->
   <div class="section-card">
     <div class="section-title"><h2>Administrative</h2></div>
     <p>
-      <a class="button" href="{{ url_for('sponsor.audit_log') }}">View Audit Log</a>
-      <a class="button" href="{{ url_for('sponsor.bulk_upload') }}">Bulk Upload Sponsors and Drivers</a>
+      <a class="button" href="{{ url_for('sponsor.audit_log') }}">
+        View Audit Log
+      </a>
+      <a class="button" href="{{ url_for('sponsor.bulk_upload') }}">
+        Bulk Upload Sponsors and Drivers
+      </a>
     </p>
   </div>
 
+  <!-- Catalog -->
   <div class="section-card">
     <div class="section-title"><h2>Catalog</h2></div>
-    <p><a class="button" href="{{ url_for('sponsor.catalog_management') }}">Manage Catalog</a></p>
+    <p>
+      <a class="button" href="{{ url_for('sponsor.catalog_management') }}">
+        Manage Catalog
+      </a>
+    </p>
   </div>
 
+  <!-- Sponsor Users List -->
   <div class="section-card">
     <div class="section-title"><h2>Users</h2></div>
+
     {% if users %}
       <ul>
         {% for user in users %}
@@ -103,7 +151,38 @@
     {% else %}
       <p>No users found.</p>
     {% endif %}
-    {% endblock %}
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">
+      <h2>Driver Redemption Totals</h2>
+    </div>
+
+    <table>
+      <tr>
+        <th>Driver</th>
+        <th>Total Redemptions</th>
+        <th>Total Points Redeemed</th>
+      </tr>
+
+      {% for row in redemption_totals %}
+        <tr>
+          <td>
+            {{ row.first_name or "" }} {{ row.last_name or "" }}
+          </td>
+          <td>{{ row.total_orders }}</td>
+          <td>{{ row.total_points }}</td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="3" style="text-align:center;">
+            No completed redemptions yet.
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
   </div>
 
 </div>
+
+{% endblock %}

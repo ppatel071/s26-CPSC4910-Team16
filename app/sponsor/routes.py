@@ -263,22 +263,46 @@ def render_catalog_browser_page(
     )
 
 
+from sqlalchemy import func
+from app.models import Order, Driver, User
+from app.models.enums import OrderStatus
+
 @sponsor_bp.route("/dashboard")
 @login_required
 @sponsor_required
 def dashboard():
     s_user: SponsorUser = current_user.sponsor_user
-    sponsor_users = s_user.organization.sponsor_users
+    org = s_user.organization
+    org_id = org.organization_id
+
+    sponsor_users = org.sponsor_users
     users = [s.user for s in sponsor_users if s.sponsor_id != s_user.sponsor_id]
-    pending_applications, _ = get_driver_applications(
-        current_user.sponsor_user.organization_id
-    )
+
+    pending_applications, _ = get_driver_applications(org_id)
     pending_applications = pending_applications or []
+
+    # 🔥 Redemption totals by driver
+    redemption_totals = (
+        db.session.query(
+            Driver.driver_id,
+            User.first_name,
+            User.last_name,
+            func.count(Order.order_id).label("total_orders"),
+            func.coalesce(func.sum(Order.points), 0).label("total_points"),
+        )
+        .join(Order, Order.driver_id == Driver.driver_id)
+        .join(User, User.user_id == Driver.user_id)
+        .filter(Order.organization_id == org_id)
+        .filter(Order.order_status == OrderStatus.COMPLETED)
+        .group_by(Driver.driver_id, User.first_name, User.last_name)
+        .all()
+    )
 
     return render_template(
         "sponsor/dashboard.html",
         users=users,
         num_applications=len(pending_applications),
+        redemption_totals=redemption_totals,
         breadcrumbs=[("Sponsor Dashboard", None)],
     )
 
