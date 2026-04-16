@@ -32,6 +32,13 @@
     color: black;
   }
 
+  .action-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
   table {
     width: 100%;
     border-collapse: collapse;
@@ -77,43 +84,43 @@
   <!-- Organization -->
   <div class="section-card">
     <div class="section-title"><h2>Organization</h2></div>
-    <p>
+    <div class="action-group">
       <a class="button" href="{{ url_for('sponsor.organization') }}">
         My Organization
       </a>
-    </p>
+    </div>
   </div>
 
   <!-- Sponsor Users -->
   <div class="section-card">
     <div class="section-title"><h2>Sponsor Users</h2></div>
-    <p>
+    <div class="action-group">
       <a class="button" href="{{ url_for('sponsor.profile_edit') }}">
         Edit My Profile
       </a>
       <a class="button" href="{{ url_for('sponsor.create_user') }}">
         Add Sponsor User
       </a>
-    </p>
+    </div>
   </div>
 
   <!-- Drivers -->
   <div class="section-card">
     <div class="section-title"><h2>Drivers</h2></div>
-    <p>
+    <div class="action-group">
       <a class="button" href="{{ url_for('sponsor.get_applications') }}">
         Driver Applications ({{ num_applications }})
       </a>
       <a class="button" href="{{ url_for('sponsor.driver_management') }}">
         Driver Management
       </a>
-    </p>
+    </div>
   </div>
 
   <!-- Administrative -->
   <div class="section-card">
     <div class="section-title"><h2>Administrative</h2></div>
-    <p>
+    <div class="action-group">
       <a class="button" href="{{ url_for('sponsor.point_transactions_report') }}">
         Point Transactions Report
       </a>
@@ -123,17 +130,17 @@
       <a class="button" href="{{ url_for('sponsor.bulk_upload') }}">
         Bulk Upload Sponsors and Drivers
       </a>
-    </p>
+    </div>
   </div>
 
   <!-- Catalog -->
   <div class="section-card">
     <div class="section-title"><h2>Catalog</h2></div>
-    <p>
+    <div class="action-group">
       <a class="button" href="{{ url_for('sponsor.catalog_management') }}">
         Manage Catalog
       </a>
-    </p>
+    </div>
   </div>
 
   <!-- Sponsor Users List -->
