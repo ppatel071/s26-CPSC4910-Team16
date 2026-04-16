@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Point Transactions Report{% endblock %}
+
+{% block content %}
+<style>
+  .report-container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 30px;
+  }
+
+  .report-title {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .section-card {
+    background: white;
+    padding: 24px;
+    margin-bottom: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    color: black;
+  }
+
+  .filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    align-items: end;
+  }
+
+  .filter-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  .filter-group input,
+  .filter-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #cfd7e3;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+
+  .filter-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .button,
+  button {
+    display: inline-block;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #4a90e2;
+    color: white;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .button:hover,
+  button:hover {
+    background: #357abd;
+  }
+
+  .button-secondary {
+    background: #6c7a89;
+  }
+
+  .button-secondary:hover {
+    background: #586472;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-top: 18px;
+  }
+
+  .summary-card {
+    background: #f4f7fb;
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .summary-card strong {
+    display: block;
+    font-size: 24px;
+    margin-top: 8px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+  }
+
+  th {
+    background: #f4f7fb;
+    text-align: left;
+    padding: 10px;
+  }
+
+  td {
+    padding: 10px;
+    border-bottom: 1px solid #e9edf3;
+    vertical-align: top;
+  }
+
+  .positive {
+    color: #1f7a1f;
+    font-weight: 600;
+  }
+
+  .negative {
+    color: #b23b3b;
+    font-weight: 600;
+  }
+
+  .error-message {
+    background: #fdecec;
+    color: #8a1f1f;
+    padding: 12px 14px;
+    border-radius: 8px;
+    margin-bottom: 18px;
+  }
+</style>
+
+<div class="report-container">
+  <div class="report-title">
+    <h1>Point Transactions Report</h1>
+  </div>
+
+  <div class="section-card">
+    <h2>Filters</h2>
+
+    {% if error %}
+      <div class="error-message">{{ error }}</div>
+    {% endif %}
+
+    <form method="GET">
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label for="driver_id">Driver</label>
+          <select id="driver_id" name="driver_id">
+            <option value="">All Drivers</option>
+            {% for option in driver_options %}
+              <option
+                value="{{ option.driver_id }}"
+                {{ 'selected' if selected_driver_id == option.driver_id else '' }}
+              >
+                {{ option.driver_name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="start_date">Start Date</label>
+          <input id="start_date" type="date" name="start_date" value="{{ start_date }}">
+        </div>
+
+        <div class="filter-group">
+          <label for="end_date">End Date</label>
+          <input id="end_date" type="date" name="end_date" value="{{ end_date }}">
+        </div>
+
+        <div class="filter-actions">
+          <button type="submit">Apply Filters</button>
+          <a class="button button-secondary" href="{{ url_for('sponsor.point_transactions_report') }}">
+            Clear
+          </a>
+          <a class="button button-secondary" href="{{ url_for('sponsor.dashboard') }}">
+            Back to Dashboard
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="section-card">
+    <h2>Redemption Summary</h2>
+    <p>Order totals include only pending and completed redemptions for the selected filters.</p>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        Pending Orders
+        <strong>{{ summary_totals.pending_orders }}</strong>
+      </div>
+      <div class="summary-card">
+        Pending Points
+        <strong>{{ summary_totals.pending_points }}</strong>
+      </div>
+      <div class="summary-card">
+        Completed Orders
+        <strong>{{ summary_totals.completed_orders }}</strong>
+      </div>
+      <div class="summary-card">
+        Completed Points
+        <strong>{{ summary_totals.completed_points }}</strong>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <tr>
+          <th>Driver</th>
+          <th>Pending Orders</th>
+          <th>Pending Points</th>
+          <th>Completed Orders</th>
+          <th>Completed Points</th>
+        </tr>
+        {% for row in redemption_summary %}
+          <tr>
+            <td>{{ row.driver_name }}</td>
+            <td>{{ row.pending_orders }}</td>
+            <td>{{ row.pending_points }}</td>
+            <td>{{ row.completed_orders }}</td>
+            <td>{{ row.completed_points }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5" style="text-align: center;">No matching redemption data found.</td>
+          </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <h2>Point Transaction Details</h2>
+
+    <div class="table-wrap">
+      <table>
+        <tr>
+          <th>Driver Name</th>
+          <th>Total Points</th>
+          <th>Point Change</th>
+          <th>Date of Point Change</th>
+          <th>Sponsor Making Change</th>
+          <th>Reason</th>
+        </tr>
+        {% for row in point_transactions %}
+          <tr>
+            <td>{{ row.driver_name }}</td>
+            <td>{{ row.total_points }}</td>
+            <td class="{{ 'positive' if row.point_change > 0 else 'negative' }}">
+              {{ "%+d"|format(row.point_change) }}
+            </td>
+            <td>{{ row.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ row.sponsor_name }}</td>
+            <td>{{ row.reason }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6" style="text-align: center;">No point transactions found.</td>
+          </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

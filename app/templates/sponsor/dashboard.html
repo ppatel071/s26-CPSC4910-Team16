@@ -114,6 +114,9 @@
   <div class="section-card">
     <div class="section-title"><h2>Administrative</h2></div>
     <p>
+      <a class="button" href="{{ url_for('sponsor.point_transactions_report') }}">
+        Point Transactions Report
+      </a>
       <a class="button" href="{{ url_for('sponsor.audit_log') }}">
         View Audit Log
       </a>
@@ -151,36 +154,6 @@
     {% else %}
       <p>No users found.</p>
     {% endif %}
-  </div>
-
-  <div class="section-card">
-    <div class="section-title">
-      <h2>Driver Redemption Totals</h2>
-    </div>
-
-    <table>
-      <tr>
-        <th>Driver</th>
-        <th>Total Redemptions</th>
-        <th>Total Points Redeemed</th>
-      </tr>
-
-      {% for row in redemption_totals %}
-        <tr>
-          <td>
-            {{ row.first_name or "" }} {{ row.last_name or "" }}
-          </td>
-          <td>{{ row.total_orders }}</td>
-          <td>{{ row.total_points }}</td>
-        </tr>
-      {% else %}
-        <tr>
-          <td colspan="3" style="text-align:center;">
-            No completed redemptions yet.
-          </td>
-        </tr>
-      {% endfor %}
-    </table>
   </div>
 
 </div>

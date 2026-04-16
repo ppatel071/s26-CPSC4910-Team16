@@ -1,7 +1,7 @@
 import datetime as dt
 from decimal import Decimal, InvalidOperation
 from typing import Tuple, List
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.orm import joinedload
 from app.catalog_api.client import catalog_client
 from app.extensions import db
@@ -18,9 +18,11 @@ from app.models import (
     DriverStatus,
     Notification,
     NotificationCategory,
-    PointTransaction
+    PointTransaction,
+    Order,
 )
 from app.auth.services import register_user
+from app.models.enums import OrderStatus
 
 
 def normalize_profile_fields(
@@ -322,6 +324,131 @@ def get_driver_point_transactions_for_sponsor(
         .order_by(PointTransaction.create_time.desc())
         .all()
     )
+
+
+def build_user_display_name(user: User | None) -> str:
+    if not user:
+        return "Unknown User"
+
+    name_parts = []
+    for raw_part in [user.first_name, user.last_name]:
+        clean_part = (raw_part or "").strip()
+        if clean_part and clean_part.lower() != "none":
+            name_parts.append(clean_part)
+
+    display_name = " ".join(name_parts).strip()
+    if display_name:
+        return display_name
+    return user.username
+
+
+def _apply_report_date_filters(query, model, start_date: dt.date | None, end_date: dt.date | None):
+    if start_date:
+        start_dt = dt.datetime.combine(start_date, dt.time.min)
+        query = query.filter(model.create_time >= start_dt)
+
+    if end_date:
+        end_dt = dt.datetime.combine(end_date + dt.timedelta(days=1), dt.time.min)
+        query = query.filter(model.create_time < end_dt)
+
+    return query
+
+
+def get_point_transaction_report_for_sponsor(
+    organization_id: int,
+    *,
+    driver_id: int | None = None,
+    start_date: dt.date | None = None,
+    end_date: dt.date | None = None,
+) -> List[dict]:
+    sponsorships = get_organization_drivers(organization_id)
+    balances_by_driver_id = {
+        sponsorship.driver_id: sponsorship.point_balance for sponsorship in sponsorships
+    }
+
+    query = (
+        PointTransaction.query.options(
+            joinedload(PointTransaction.driver).joinedload(Driver.user),
+            joinedload(PointTransaction.performed_by_user),
+        )
+        .filter(PointTransaction.organization_id == organization_id)
+    )
+
+    if driver_id is not None:
+        query = query.filter(PointTransaction.driver_id == driver_id)
+
+    query = _apply_report_date_filters(query, PointTransaction, start_date, end_date)
+
+    transactions = query.order_by(PointTransaction.create_time.desc()).all()
+
+    return [
+        {
+            "transaction_id": transaction.transaction_id,
+            "driver_name": build_user_display_name(transaction.driver.user),
+            "total_points": balances_by_driver_id.get(transaction.driver_id, 0),
+            "point_change": transaction.point_change,
+            "create_time": transaction.create_time,
+            "sponsor_name": build_user_display_name(transaction.performed_by_user),
+            "reason": transaction.reason,
+        }
+        for transaction in transactions
+    ]
+
+
+def get_redemption_summary_for_sponsor(
+    organization_id: int,
+    *,
+    driver_id: int | None = None,
+    start_date: dt.date | None = None,
+    end_date: dt.date | None = None,
+) -> List[dict]:
+    sponsorships = get_organization_drivers(organization_id)
+    driver_names: dict[int, str] = {}
+    summary_by_driver_id: dict[int, dict] = {}
+    for sponsorship in sponsorships:
+        if driver_id is not None and sponsorship.driver_id != driver_id:
+            continue
+        driver_names[sponsorship.driver_id] = build_user_display_name(sponsorship.driver.user)
+
+    query = (
+        db.session.query(
+            Order.driver_id,
+            Order.order_status,
+            func.count(Order.order_id).label("order_count"),
+            func.coalesce(func.sum(Order.points), 0).label("total_points"),
+        )
+        .filter(
+            Order.organization_id == organization_id,
+            Order.order_status.in_([OrderStatus.PENDING, OrderStatus.COMPLETED]),
+        )
+    )
+
+    if driver_id is not None:
+        query = query.filter(Order.driver_id == driver_id)
+
+    query = _apply_report_date_filters(query, Order, start_date, end_date)
+
+    for row in query.group_by(Order.driver_id, Order.order_status).all():
+        summary = summary_by_driver_id.setdefault(
+            row.driver_id,
+            {
+                "driver_id": row.driver_id,
+                "driver_name": driver_names.get(row.driver_id, None) or f"Driver #{row.driver_id}",
+                "pending_orders": 0,
+                "pending_points": 0,
+                "completed_orders": 0,
+                "completed_points": 0,
+            },
+        )
+
+        if row.order_status == OrderStatus.PENDING:
+            summary["pending_orders"] = row.order_count
+            summary["pending_points"] = row.total_points
+        elif row.order_status == OrderStatus.COMPLETED:
+            summary["completed_orders"] = row.order_count
+            summary["completed_points"] = row.total_points
+
+    return sorted(summary_by_driver_id.values(), key=lambda row: row["driver_name"].lower())
 
 
 def set_driver_status_for_sponsor(

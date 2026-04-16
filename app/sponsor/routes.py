@@ -51,6 +51,13 @@ def normalize_catalog_category(value: str | None) -> str:
     return sub(r"[^a-z0-9]+", "-", (value or "").strip().lower()).strip("-")
 
 
+def _parse_optional_date(date_str: str) -> dt.date | None:
+    clean_date = (date_str or "").strip()
+    if not clean_date:
+        return None
+    return dt.date.fromisoformat(clean_date)
+
+
 @sponsor_bp.context_processor
 def inject_sponsor_context():
     if not current_user.is_authenticated or current_user.role_type != RoleType.SPONSOR:
@@ -263,9 +270,84 @@ def render_catalog_browser_page(
     )
 
 
-from sqlalchemy import func
-from app.models import Order, Driver, User
-from app.models.enums import OrderStatus
+def render_point_transactions_report_page(
+    org_id: int,
+    *,
+    selected_driver_id: int | None = None,
+    start_date_str: str = "",
+    end_date_str: str = "",
+):
+    sponsorships = get_organization_drivers(org_id)
+    driver_options = [
+        {
+            "driver_id": sponsorship.driver_id,
+            "driver_name": build_user_display_name(sponsorship.driver.user),
+        }
+        for sponsorship in sponsorships
+    ]
+    valid_driver_ids = {option["driver_id"] for option in driver_options}
+    error = None
+
+    try:
+        start_date = _parse_optional_date(start_date_str)
+        end_date = _parse_optional_date(end_date_str)
+    except ValueError:
+        error = "Invalid date format. Use YYYY-MM-DD."
+        start_date = None
+        end_date = None
+
+    if error is None and start_date and end_date and end_date < start_date:
+        error = "End date must be on or after start date."
+
+    if (
+        error is None
+        and selected_driver_id is not None
+        and selected_driver_id not in valid_driver_ids
+    ):
+        error = "Selected driver was not found for your organization."
+
+    redemption_summary = []
+    point_transactions = []
+    summary_totals = {
+        "pending_orders": 0,
+        "pending_points": 0,
+        "completed_orders": 0,
+        "completed_points": 0,
+    }
+
+    if error is None:
+        redemption_summary = get_redemption_summary_for_sponsor(
+            org_id,
+            driver_id=selected_driver_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        point_transactions = get_point_transaction_report_for_sponsor(
+            org_id,
+            driver_id=selected_driver_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        summary_totals = {
+            "pending_orders": sum(row["pending_orders"] for row in redemption_summary),
+            "pending_points": sum(row["pending_points"] for row in redemption_summary),
+            "completed_orders": sum(row["completed_orders"] for row in redemption_summary),
+            "completed_points": sum(row["completed_points"] for row in redemption_summary),
+        }
+
+    return render_template(
+        "sponsor/point_transactions_report.html",
+        driver_options=driver_options,
+        selected_driver_id=selected_driver_id,
+        start_date=start_date_str,
+        end_date=end_date_str,
+        redemption_summary=redemption_summary,
+        summary_totals=summary_totals,
+        point_transactions=point_transactions,
+        error=error,
+        breadcrumbs=sponsor_breadcrumbs(("Point Transactions Report", None)),
+    )
+
 
 @sponsor_bp.route("/dashboard")
 @login_required
@@ -281,29 +363,24 @@ def dashboard():
     pending_applications, _ = get_driver_applications(org_id)
     pending_applications = pending_applications or []
 
-    # 🔥 Redemption totals by driver
-    redemption_totals = (
-        db.session.query(
-            Driver.driver_id,
-            User.first_name,
-            User.last_name,
-            func.count(Order.order_id).label("total_orders"),
-            func.coalesce(func.sum(Order.points), 0).label("total_points"),
-        )
-        .join(Order, Order.driver_id == Driver.driver_id)
-        .join(User, User.user_id == Driver.user_id)
-        .filter(Order.organization_id == org_id)
-        .filter(Order.order_status == OrderStatus.COMPLETED)
-        .group_by(Driver.driver_id, User.first_name, User.last_name)
-        .all()
-    )
-
     return render_template(
         "sponsor/dashboard.html",
         users=users,
         num_applications=len(pending_applications),
-        redemption_totals=redemption_totals,
         breadcrumbs=[("Sponsor Dashboard", None)],
+    )
+
+
+@sponsor_bp.route("/reports/point-transactions")
+@login_required
+@sponsor_required
+def point_transactions_report():
+    org_id = current_user.sponsor_user.organization_id
+    return render_point_transactions_report_page(
+        org_id,
+        selected_driver_id=request.args.get("driver_id", type=int),
+        start_date_str=request.args.get("start_date", "").strip(),
+        end_date_str=request.args.get("end_date", "").strip(),
     )
 
 
