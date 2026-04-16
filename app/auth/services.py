@@ -88,8 +88,17 @@ def authenticate(username: str, password: str) -> Tuple[User | None, str]:
     return None, error
 
 
-def register_user(username: str, password: str, role: RoleType, email: str,
-                  first_name: str, last_name: str, confpass: str | None = None) -> User:
+def register_user(
+    username: str,
+    password: str,
+    role: RoleType,
+    email: str,
+    first_name: str,
+    last_name: str,
+    confpass: str | None = None,
+    *,
+    commit: bool = True,
+) -> User:
     valid, msg = validate_complexity(password, confpass)
     if not valid:
         raise ValueError(msg)
@@ -117,7 +126,10 @@ def register_user(username: str, password: str, role: RoleType, email: str,
     )
 
     db.session.add(user)
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
 
     if role == RoleType.DRIVER:
         driver = Driver(
@@ -125,7 +137,10 @@ def register_user(username: str, password: str, role: RoleType, email: str,
         )
 
         db.session.add(driver)
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
     return user
 
 

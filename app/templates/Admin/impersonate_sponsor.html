@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Impersonate Sponsor{% endblock %}
+
+{% block content %}
+<style>
+  .impersonate-page {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  .impersonate-panel {
+    background: #dfeaf6;
+    border: 1px solid #8ea6bf;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(30, 41, 59, 0.08);
+    overflow: hidden;
+  }
+
+  .impersonate-header {
+    padding: 22px 24px 12px;
+    border-bottom: 1px solid #9bb1c8;
+    background: #c8d9ec;
+    color: #102033;
+  }
+
+  .impersonate-header h1 {
+    margin: 0 0 8px;
+  }
+
+  .impersonate-header p {
+    margin: 0;
+  }
+
+  .impersonate-table-wrap {
+    overflow-x: auto;
+  }
+
+  .impersonate-search {
+    padding: 18px 24px 0;
+    background: #10263d;
+    color: #fff;
+  }
+
+  .impersonate-search form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .impersonate-search input {
+    min-width: 240px;
+  }
+
+  .impersonate-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .impersonate-table th,
+  .impersonate-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #e8edf4;
+    text-align: left;
+    vertical-align: middle;
+  }
+
+  .impersonate-table th {
+    background: #9cb9d6;
+    color: #0d1b2a;
+    font-size: 0.95rem;
+  }
+
+  .impersonate-table tbody tr:nth-child(odd) {
+    background: #eef4fb;
+  }
+
+  .impersonate-table tbody tr:nth-child(even) {
+    background: #d7e5f4;
+  }
+
+  .impersonate-table td {
+    color: #102033;
+  }
+
+  .sponsor-name {
+    font-weight: 600;
+    color: #102033;
+  }
+
+  .empty-value {
+    color: #405468;
+    font-style: italic;
+  }
+
+  .impersonate-actions {
+    padding: 18px 24px 24px;
+  }
+</style>
+
+<div class="impersonate-page">
+  <section class="impersonate-panel">
+    <div class="impersonate-header">
+      <h1>Impersonate Sponsor</h1>
+      <p>Choose a sponsor user by username. Starting impersonation opens the live sponsor account and any actions taken there affect real system data.</p>
+    </div>
+
+    <div class="impersonate-search">
+      <form method="GET" action="{{ url_for('admin.impersonate_sponsor_page') }}">
+        <label for="impersonate-username-search">Search by username:</label>
+        <input
+          id="impersonate-username-search"
+          name="username"
+          type="text"
+          value="{{ username or '' }}"
+          placeholder="e.g. jsmith"
+        >
+        <button type="submit">Search</button>
+        {% if username %}
+          <a class="button" href="{{ url_for('admin.impersonate_sponsor_page') }}">Clear</a>
+        {% endif %}
+      </form>
+    </div>
+
+    <div class="impersonate-table-wrap">
+      <table class="impersonate-table">
+        <thead>
+          <tr>
+            <th>User ID</th>
+            <th>Sponsor User ID</th>
+            <th>Username</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Organization</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in sponsor_users %}
+            {% set first_name = '' if not user.first_name or user.first_name|lower == 'none' else user.first_name %}
+            {% set last_name = '' if not user.last_name or user.last_name|lower == 'none' else user.last_name %}
+            {% set sponsor_name = (first_name ~ ' ' ~ last_name).strip() %}
+            <tr>
+              <td>{{ user.user_id }}</td>
+              <td>{{ user.sponsor_user.sponsor_id }}</td>
+              <td class="sponsor-name">{{ user.username }}</td>
+              <td>
+                {% if sponsor_name %}
+                  {{ sponsor_name }}
+                {% else %}
+                  <span class="empty-value">No name on file</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if user.email %}
+                  {{ user.email }}
+                {% else %}
+                  <span class="empty-value">No email on file</span>
+                {% endif %}
+              </td>
+              <td>{{ user.sponsor_user.organization.name }}</td>
+              <td>
+                <form method="POST" action="{{ url_for('admin.impersonate_sponsor', user_id=user.user_id) }}">
+                  <button type="submit">Impersonate</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7">No sponsor users found.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="impersonate-actions">
+      <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+    </div>
+  </section>
+</div>
+{% endblock %}

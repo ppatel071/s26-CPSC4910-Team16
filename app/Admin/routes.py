@@ -1,10 +1,16 @@
 import datetime as dt
-from flask import render_template, abort, request, redirect, url_for, flash
+import csv
+from io import StringIO
+from flask import render_template, abort, request, redirect, url_for, flash, Response
 from functools import wraps
 from flask_login import current_user, login_required
 from flask_login import login_user
 from app.Admin import admin_bp
-from app.auth.impersonation import start_admin_driver_impersonation
+from app.auth.impersonation import (
+    start_admin_driver_impersonation,
+    start_admin_sponsor_impersonation,
+)
+from app.bulk_upload import build_text_stream, process_bulk_upload_stream
 from app.models.enums import RoleType, DriverStatus
 from app.models import User, Driver, DriverSponsorship, SponsorOrganization
 from app.auth.services import register_user
@@ -16,6 +22,8 @@ from app.Admin.services import (
     get_sales_by_sponsor,
     get_sales_by_driver,
     get_driver_purchase_summary,
+    get_invoice_report,
+    format_money,
     get_all_admin_users,
     get_all_drivers,
     get_all_drivers_for_impersonation,
@@ -26,6 +34,8 @@ from app.Admin.services import (
     create_driver_account,
     admin_update_own_profile,
     get_all_sponsor_users,
+    get_all_sponsor_users_for_impersonation,
+    get_sponsor_user_for_impersonation,
     create_sponsor_account,
     get_users_for_removal_page,
     deactivate_driver_user,
@@ -77,6 +87,15 @@ def _parse_optional_date(date_str: str) -> dt.date | None:
         return None
     return dt.date.fromisoformat(clean_date)
 
+
+def render_bulk_upload_page(*, report=None, error: str | None = None):
+    return render_template(
+        'Admin/bulk_upload.html',
+        report=report,
+        error=error,
+        breadcrumbs=admin_breadcrumbs(("Bulk Upload", None)),
+    )
+
 @admin_bp.route('/dashboard')
 @login_required
 @admin_required
@@ -84,6 +103,33 @@ def dashboard():
     breadcrumbs = [("Admin Dashboard", None)]
 
     return render_template('Admin/admin_dashboard.html', breadcrumbs=breadcrumbs)
+
+
+@admin_bp.route('/bulk-upload', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def bulk_upload():
+    if request.method == 'POST':
+        upload = request.files.get('bulk_upload_file')
+        if upload is None or not upload.filename:
+            return render_bulk_upload_page(error='Choose a pipe-delimited text file to upload.')
+
+        try:
+            stream = build_text_stream(upload)
+            report = process_bulk_upload_stream(
+                stream,
+                acting_user=current_user,
+                scope='admin',
+            )
+        except UnicodeDecodeError:
+            return render_bulk_upload_page(error='The uploaded file must be UTF-8 text.')
+        finally:
+            if 'stream' in locals():
+                stream.detach()
+
+        return render_bulk_upload_page(report=report)
+
+    return render_bulk_upload_page()
 
 
 @admin_bp.route('/reports')
@@ -163,6 +209,71 @@ def sales_by_sponsor_report():
         error=error,
     )
 
+@admin_bp.route('reports/sales-by-sponsor/csv')
+@login_required
+@admin_required
+def download_sales_by_sponsor_csv():
+    detail = request.args.get('detail') == '1'
+    search = request.args.get('search', '').strip()
+    start_str = request.args.get('start_date', '').strip()
+    end_str = request.args.get('end_date', '').strip()
+
+    start_date = None
+    end_date = None
+    error = None
+
+    if detail:
+        try:
+            start_date = _parse_optional_date(start_str)
+            end_date = _parse_optional_date(end_str)
+        except ValueError:
+            error = 'Invalid date format. Use YYYY-MM-DD.'
+
+        if error is None and start_date and end_date and end_date < start_date:
+            error = 'End date must be on or after start date.'
+
+    rows = [] if error else get_sales_by_sponsor(
+        detail,
+        search=search,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    si = StringIO()
+    writer = csv.writer(si)
+
+    if detail:
+        writer.writerow(["Sponsor", "Driver", "Amount (Points)", "Sale Time"])
+
+        for row in rows:
+            writer.writerow([
+                row.sponsor_name,
+                row.driver_username,
+                row.amount,
+                row.sale_time
+            ])
+    else:
+        writer.writerow(["Sponsor", "Sales", "Total Amount (Points)"])
+
+        for row in rows:
+            writer.writerow([
+                row.sponsor_name,
+                row.sale_count,
+                row.total_amount,
+            ])
+    
+    output = si.getvalue()
+    si.close
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=sales_by_sponsor.csv"
+        }
+    )
+
+
 
 @admin_bp.route('/reports/sales-by-driver')
 @login_required
@@ -205,6 +316,72 @@ def sales_by_driver_report():
         start_date=start_str,
         end_date=end_str,
         error=error,
+    )
+
+
+
+@admin_bp.route('/reports/sales-by-driver/csv')
+@login_required
+@admin_required
+def download_sales_by_driver_csv():
+    detail = request.args.get('detail') == '1'
+    search = request.args.get('search', '').strip()
+    start_str = request.args.get('start_date', '').strip()
+    end_str = request.args.get('end_date', '').strip()
+
+    start_date = None
+    end_date = None
+    error = None
+
+    if detail:
+        try:
+            start_date = _parse_optional_date(start_str)
+            end_date = _parse_optional_date(end_str)
+        except ValueError:
+            error = 'Invalid date format. Use YYYY-MM-DD.'
+
+        if error is None and start_date and end_date and end_date < start_date:
+            error = 'End date must be on or after start date.'
+
+    rows = [] if error else get_sales_by_driver(
+        detail,
+        search=search,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    si = StringIO()
+    writer = csv.writer(si)
+
+    if detail:
+        writer.writerow(["Driver", "Sponsor", "Amount (Points)", "Sale Time"])
+
+        for row in rows:
+            writer.writerow([
+                row.driver_username,
+                row.sponsor_name,
+                row.amount,
+                row.sale_time
+            ])
+    else:
+        writer.writerow(["Driver", "Sales", "Total Amount (Points)"])
+
+        for row in rows:
+            writer.writerow([
+                row.driver_username,
+                row.sale_count,
+                row.total_amount,
+            ])
+    
+    output = si.getvalue()
+    si.close
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=sales_by_driver.csv"
+        }
     )
 
 
@@ -254,6 +431,181 @@ def driver_purchases_summary():
         start_date=start_date.isoformat(),
         end_date=end_date.isoformat(),
         breadcrumbs=breadcrumbs
+    )
+
+
+@admin_bp.route('/reports/driver-purchases-summary/csv')
+@login_required
+@admin_required
+def download_driver_purchase_summary_csv():
+    today = dt.date.today()
+    default_start = today - dt.timedelta(days=6)
+
+    search = request.args.get('search', '').strip()
+    start_str = request.args.get('start_date') or default_start.isoformat()
+    end_str = request.args.get('end_date') or today.isoformat()
+
+    start_date = dt.date.fromisoformat(start_str)
+    end_date = dt.date.fromisoformat(end_str)
+
+    rows = get_driver_purchase_summary(start_date, end_date, search=search)
+
+    si = StringIO()
+    writer = csv.writer(si)
+
+    writer.writerow(["Driver", "Purchases", "Total Value (Points)"])
+
+    for row in rows:
+        writer.writerow([
+            row.driver_username,
+            row.purchase_count,
+            row.total_amount,
+        ])
+    
+    output = si.getvalue()
+    si.close
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=driver_purchase_summary.csv"
+        }
+    )
+
+
+
+
+def _parse_invoice_filters():
+    today = dt.date.today()
+    default_start = today - dt.timedelta(days=6)
+
+    sponsor_id_raw = (request.args.get('sponsor_id') or '').strip()
+    search = request.args.get('search', '').strip()
+    start_str = request.args.get('start_date') or default_start.isoformat()
+    end_str = request.args.get('end_date') or today.isoformat()
+
+    sponsor_id = None
+    if sponsor_id_raw:
+        try:
+            sponsor_id = int(sponsor_id_raw)
+        except ValueError:
+            raise ValueError('Invalid sponsor selection.')
+
+    try:
+        start_date = dt.date.fromisoformat(start_str)
+        end_date = dt.date.fromisoformat(end_str)
+    except ValueError:
+        raise ValueError('Invalid date format. Use YYYY-MM-DD.')
+
+    if end_date < start_date:
+        raise ValueError('End date must be on or after start date.')
+
+    if sponsor_id is not None and SponsorOrganization.query.get(sponsor_id) is None:
+        raise ValueError('Selected sponsor was not found.')
+
+    return sponsor_id, sponsor_id_raw, search, start_date, end_date, start_str, end_str
+
+
+@admin_bp.route('/reports/invoice')
+@login_required
+@admin_required
+def invoice_report():
+    sponsors = get_all_sponsors()
+    breadcrumbs = admin_breadcrumbs(("Reports", url_for("admin.reports")), ("Invoice", None))
+    error = None
+    invoices = []
+
+    try:
+        sponsor_id, sponsor_id_raw, search, start_date, end_date, start_str, end_str = _parse_invoice_filters()
+        invoices = get_invoice_report(
+            sponsor_id=sponsor_id,
+            start_date=start_date,
+            end_date=end_date,
+            search=search,
+        )
+    except ValueError as e:
+        sponsor_id_raw = (request.args.get('sponsor_id') or '').strip()
+        search = request.args.get('search', '').strip()
+        start_str = request.args.get('start_date') or ''
+        end_str = request.args.get('end_date') or ''
+        error = str(e)
+
+    return render_template(
+        'Admin/invoice_report.html',
+        sponsors=sponsors,
+        invoices=invoices,
+        selected_sponsor_id=sponsor_id_raw,
+        search=search,
+        start_date=start_str,
+        end_date=end_str,
+        invoice_date=dt.date.today().isoformat(),
+        error=error,
+        breadcrumbs=breadcrumbs,
+        format_money=format_money,
+    )
+
+@admin_bp.route('/reports/invoice/csv')
+@login_required
+@admin_required
+def download_invoice_report_csv():
+    sponsors = get_all_sponsors()
+    invoices = []
+
+
+    sponsor_id, sponsor_id_raw, search, start_date, end_date, start_str, end_str = _parse_invoice_filters()
+    invoices = get_invoice_report(
+        sponsor_id=sponsor_id,
+        start_date=start_date,
+        end_date=end_date,
+        search=search,
+    )
+
+    si = StringIO()
+    writer = csv.writer(si)
+
+    for invoice in invoices:
+        sponsor = invoice['sponsor']
+
+        writer.writerow(["Sponsor:", sponsor.name])
+
+        writer.writerow([
+            "Order ID",
+            "Order Status",
+            "Purchase Date",
+            "Driver",
+            "Product",
+            "Quantity",
+            "Purchase Amount",
+            "Fee Amount",
+            ])
+
+        for row in invoice['detail_rows']:
+            writer.writerow([
+                row['order_id'],
+                row['order_status'],
+                row['purchase_date'].strftime('%Y-%m-%d'),
+                row['driver_name'],
+                row['product_name'],
+                row['quantity'],
+                row['purchase_amount'],
+                row['fee_amount'],
+            ])
+        
+        writer.writerow(["", "", "", "", "", "", "Total Fee:", str(invoice['total_fee_due'])])
+
+        writer.writerow([])
+        writer.writerow([])
+    
+    output = si.getvalue()
+    si.close()
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=Invoice_Report.csv"
+        }
     )
 
 
@@ -534,6 +886,44 @@ def sponsor_users_list():
         username=username,
     )
 
+
+@admin_bp.route('/sponsors/impersonate')
+@login_required
+@admin_required
+def impersonate_sponsor_page():
+    username = request.args.get('username', '').strip()
+    sponsor_users = get_all_sponsor_users_for_impersonation(username=username)
+    breadcrumbs = admin_breadcrumbs(
+        ("Sponsor Users", url_for("admin.sponsor_users_list")),
+        ("Impersonate Sponsor", None),
+    )
+    return render_template(
+        'Admin/impersonate_sponsor.html',
+        sponsor_users=sponsor_users,
+        breadcrumbs=breadcrumbs,
+        username=username,
+    )
+
+
+@admin_bp.route('/sponsors/<int:user_id>/impersonate', methods=['POST'])
+@login_required
+@admin_required
+def impersonate_sponsor(user_id):
+    try:
+        sponsor_user = get_sponsor_user_for_impersonation(user_id)
+    except ValueError:
+        abort(404)
+
+    admin_user_id = current_user.user_id
+
+    start_admin_sponsor_impersonation(admin_user_id)
+    login_user(sponsor_user)
+
+    display_name = _build_user_display_name(sponsor_user)
+    flash(f"You are now impersonating {display_name}.", "success")
+    return redirect(url_for('sponsor.dashboard'))
+
+
 @admin_bp.route('/sponsors/new', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -547,6 +937,7 @@ def create_sponsor_user():
         sponsor_organization_id_raw = request.form.get('sponsor_organization_id', '').strip()
         new_sponsor_organization_name = request.form.get('new_sponsor_organization_name', '').strip()
         password = request.form.get('password', '')
+        confpass = request.form.get('confpass', '')
 
         try:
             sponsor_organization_id = int(sponsor_organization_id_raw) if sponsor_organization_id_raw else None
@@ -556,6 +947,7 @@ def create_sponsor_user():
                 sponsor_organization_id=sponsor_organization_id,
                 new_sponsor_organization_name=new_sponsor_organization_name,
                 password=password,
+                confpass=confpass,
             )
             return redirect(url_for('admin.sponsor_users_list'))
         except ValueError as e:
@@ -883,7 +1275,7 @@ def assign_user_role(user_id):
     )
 
 
-@admin_bp.route('/audit-log/password-resets')
+@admin_bp.route('/audit-log/password-resets/csv')
 @login_required
 @admin_required
 def password_reset_audit_log():
@@ -930,6 +1322,52 @@ def password_reset_audit_log():
         end_date=end_date_str,
         breadcrumbs=breadcrumbs,
     )
+
+
+@admin_bp.route('/audit-log/password-resets')
+@login_required
+@admin_required
+def download_password_reset_audit_log_csv():
+    username = request.args.get('username', '').strip()
+    start_date_str = request.args.get('start_date', '').strip()
+    end_date_str = request.args.get('end_date', '').strip()
+
+    start_date = dt.date.fromisoformat(start_date_str) if start_date_str else None
+    end_date = dt.date.fromisoformat(end_date_str) if end_date_str else None
+
+    entries = get_admin_password_reset_audit_entries(
+        username=username,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    si = StringIO()
+    writer = csv.writer(si)
+
+    writer.writerow(["Changed At", "User ID", "Username", "Email", "Role"])
+
+    for entry in entries:
+        writer.writerow([
+            entry.change_time,
+            entry.user_id,
+            entry.username,
+            entry.email or '',
+            entry.role_type.value,
+        ])
+    
+    output = si.getvalue()
+    si.close
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=password_reset_audit_log.csv"
+        }
+    )
+
+
+
 
 
 @admin_bp.route('/users/<int:user_id>/password-reset', methods=['GET', 'POST'])

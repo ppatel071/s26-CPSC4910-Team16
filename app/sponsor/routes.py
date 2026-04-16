@@ -3,9 +3,14 @@ from functools import wraps
 from re import sub
 
 from flask import abort, flash, redirect, render_template, request, url_for
-from flask_login import current_user, login_required, login_user
+from flask_login import current_user, login_required, login_user, logout_user
 
-from app.auth.impersonation import start_sponsor_driver_impersonation
+from app.auth.impersonation import (
+    clear_admin_sponsor_impersonation,
+    get_impersonator_admin_sponsor_user_id,
+    start_sponsor_driver_impersonation,
+)
+from app.bulk_upload import build_text_stream, process_bulk_upload_stream
 from app.catalog_api.utils import (
     CATALOG_PAGE_SIZE,
     browse_catalog_products,
@@ -46,6 +51,26 @@ def normalize_catalog_category(value: str | None) -> str:
     return sub(r"[^a-z0-9]+", "-", (value or "").strip().lower()).strip("-")
 
 
+def _parse_optional_date(date_str: str) -> dt.date | None:
+    clean_date = (date_str or "").strip()
+    if not clean_date:
+        return None
+    return dt.date.fromisoformat(clean_date)
+
+
+@sponsor_bp.context_processor
+def inject_sponsor_context():
+    if not current_user.is_authenticated or current_user.role_type != RoleType.SPONSOR:
+        return {
+            "is_admin_impersonating_sponsor": False,
+            "impersonation_banner_message": None,
+            "impersonation_exit_endpoint": None,
+            "impersonation_exit_label": None,
+        }
+
+    return build_admin_sponsor_impersonation_banner_context()
+
+
 def render_driver_management_page(
     org_id: int,
     *,
@@ -83,6 +108,15 @@ def render_driver_management_page(
         error=error,
         point_form_state=point_form_state,
         breadcrumbs=sponsor_breadcrumbs(("Driver Management", None)),
+    )
+
+
+def render_bulk_upload_page(*, report=None, error: str | None = None):
+    return render_template(
+        "sponsor/bulk_upload.html",
+        report=report,
+        error=error,
+        breadcrumbs=sponsor_breadcrumbs(("Bulk Upload", None)),
     )
 
 
@@ -236,16 +270,97 @@ def render_catalog_browser_page(
     )
 
 
+def render_point_transactions_report_page(
+    org_id: int,
+    *,
+    selected_driver_id: int | None = None,
+    start_date_str: str = "",
+    end_date_str: str = "",
+):
+    sponsorships = get_organization_drivers(org_id)
+    driver_options = [
+        {
+            "driver_id": sponsorship.driver_id,
+            "driver_name": build_user_display_name(sponsorship.driver.user),
+        }
+        for sponsorship in sponsorships
+    ]
+    valid_driver_ids = {option["driver_id"] for option in driver_options}
+    error = None
+
+    try:
+        start_date = _parse_optional_date(start_date_str)
+        end_date = _parse_optional_date(end_date_str)
+    except ValueError:
+        error = "Invalid date format. Use YYYY-MM-DD."
+        start_date = None
+        end_date = None
+
+    if error is None and start_date and end_date and end_date < start_date:
+        error = "End date must be on or after start date."
+
+    if (
+        error is None
+        and selected_driver_id is not None
+        and selected_driver_id not in valid_driver_ids
+    ):
+        error = "Selected driver was not found for your organization."
+
+    redemption_summary = []
+    point_transactions = []
+    summary_totals = {
+        "pending_orders": 0,
+        "pending_points": 0,
+        "completed_orders": 0,
+        "completed_points": 0,
+    }
+
+    if error is None:
+        redemption_summary = get_redemption_summary_for_sponsor(
+            org_id,
+            driver_id=selected_driver_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        point_transactions = get_point_transaction_report_for_sponsor(
+            org_id,
+            driver_id=selected_driver_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        summary_totals = {
+            "pending_orders": sum(row["pending_orders"] for row in redemption_summary),
+            "pending_points": sum(row["pending_points"] for row in redemption_summary),
+            "completed_orders": sum(row["completed_orders"] for row in redemption_summary),
+            "completed_points": sum(row["completed_points"] for row in redemption_summary),
+        }
+
+    return render_template(
+        "sponsor/point_transactions_report.html",
+        driver_options=driver_options,
+        selected_driver_id=selected_driver_id,
+        start_date=start_date_str,
+        end_date=end_date_str,
+        redemption_summary=redemption_summary,
+        summary_totals=summary_totals,
+        point_transactions=point_transactions,
+        error=error,
+        breadcrumbs=sponsor_breadcrumbs(("Point Transactions Report", None)),
+    )
+
+
 @sponsor_bp.route("/dashboard")
 @login_required
 @sponsor_required
 def dashboard():
     s_user: SponsorUser = current_user.sponsor_user
-    sponsor_users = s_user.organization.sponsor_users
+    org = s_user.organization
+    org_id = org.organization_id
+
+    sponsor_users = org.sponsor_users
     users = [s.user for s in sponsor_users if s.sponsor_id != s_user.sponsor_id]
-    pending_applications, _ = get_driver_applications(
-        current_user.sponsor_user.organization_id
-    )
+
+    pending_applications, _ = get_driver_applications(org_id)
     pending_applications = pending_applications or []
 
     return render_template(
@@ -254,6 +369,43 @@ def dashboard():
         num_applications=len(pending_applications),
         breadcrumbs=[("Sponsor Dashboard", None)],
     )
+
+
+@sponsor_bp.route("/reports/point-transactions")
+@login_required
+@sponsor_required
+def point_transactions_report():
+    org_id = current_user.sponsor_user.organization_id
+    return render_point_transactions_report_page(
+        org_id,
+        selected_driver_id=request.args.get("driver_id", type=int),
+        start_date_str=request.args.get("start_date", "").strip(),
+        end_date_str=request.args.get("end_date", "").strip(),
+    )
+
+
+@sponsor_bp.route("/impersonation/stop", methods=["POST"])
+@login_required
+@sponsor_required
+def stop_impersonation():
+    admin_user_id = get_impersonator_admin_sponsor_user_id()
+    clear_admin_sponsor_impersonation()
+
+    if admin_user_id is None:
+        return redirect(url_for("sponsor.dashboard"))
+
+    admin_user = get_admin_user_for_impersonation_return(admin_user_id)
+    if admin_user is None:
+        logout_user()
+        flash(
+            "The impersonation session ended, but the admin account could not be restored.",
+            "error",
+        )
+        return redirect(url_for("auth.login"))
+
+    login_user(admin_user)
+    flash("Returned to the admin impersonation page.", "success")
+    return redirect(url_for("admin.impersonate_sponsor_page"))
 
 
 @sponsor_bp.route("/organization", methods=["GET", "POST"])
@@ -357,6 +509,36 @@ def create_user():
     return render_template(
         "sponsor/create_user.html", fields=fields, breadcrumbs=breadcrumbs
     )
+
+
+@sponsor_bp.route("/bulk-upload", methods=["GET", "POST"])
+@login_required
+@sponsor_required
+def bulk_upload():
+    if request.method == "POST":
+        assert isinstance(current_user, User)
+        upload = request.files.get("bulk_upload_file")
+        if upload is None or not upload.filename:
+            return render_bulk_upload_page(error="Choose a pipe-delimited text file to upload.")
+
+        try:
+            stream = build_text_stream(upload)
+            report = process_bulk_upload_stream(
+                stream,
+                acting_user=current_user,
+                scope="sponsor",
+            )
+        except UnicodeDecodeError:
+            return render_bulk_upload_page(
+                error="The uploaded file must be UTF-8 text."
+            )
+        finally:
+            if "stream" in locals():
+                stream.detach()
+
+        return render_bulk_upload_page(report=report)
+
+    return render_bulk_upload_page()
 
 
 @sponsor_bp.route("/applications")
@@ -498,6 +680,8 @@ def catalog_browse():
 @login_required
 @sponsor_required
 def decide_application(application_id: int):
+    assert isinstance(current_user, User)
+    assert isinstance(current_user.sponsor_user, SponsorUser)
     decision = (request.form.get("decision", "") or "").upper()
     reason = (request.form.get("reason", "") or "").strip()
 
@@ -516,7 +700,9 @@ def decide_application(application_id: int):
     decision_enum = DriverApplicationStatus[decision]
     if decision_enum == DriverApplicationStatus.APPROVED:
         approve_driver_for_sponsor(
-            application.driver, current_user.sponsor_user.organization_id
+            application.driver,
+            current_user.sponsor_user.organization_id,
+            acting_user=current_user,
         )
         message = "Your sponsor application has been approved."
     else:
@@ -677,6 +863,9 @@ def impersonate_driver(driver_sponsorship_id: int):
     driver_user = sponsorship.driver.user
     if not driver_user or driver_user.role_type != RoleType.DRIVER:
         abort(404)
+    if not driver_user.is_user_active or driver_user.is_login_locked:
+        flash("Only active, unlocked drivers can be impersonated.", "error")
+        return redirect(url_for("sponsor.driver_management"))
 
     sponsor_user_id = current_user.user_id
     start_sponsor_driver_impersonation(

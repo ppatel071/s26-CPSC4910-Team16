@@ -1,11 +1,28 @@
+import datetime as dt
 from decimal import Decimal, InvalidOperation
 from typing import Tuple, List
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.orm import joinedload
 from app.catalog_api.client import catalog_client
 from app.extensions import db
-from app.models import *
+from app.models import (
+    User,
+    RoleType,
+    SponsorOrganization,
+    SponsorUser,
+    SponsorCatalogItem,
+    DriverApplication,
+    DriverApplicationStatus,
+    Driver,
+    DriverSponsorship,
+    DriverStatus,
+    Notification,
+    NotificationCategory,
+    PointTransaction,
+    Order,
+)
 from app.auth.services import register_user
+from app.models.enums import OrderStatus
 
 
 def normalize_profile_fields(
@@ -50,6 +67,32 @@ def validate_and_apply_user_profile_updates(
     user.first_name = clean_first
     user.last_name = clean_last
     return user
+
+
+def get_admin_user_for_impersonation_return(admin_user_id: int) -> User | None:
+    admin_user = User.query.get(admin_user_id)
+    if not admin_user or admin_user.role_type != RoleType.ADMIN:
+        return None
+    return admin_user
+
+
+def build_admin_sponsor_impersonation_banner_context() -> dict[str, str | bool | None]:
+    from app.auth.impersonation import is_admin_sponsor_impersonation_active
+
+    if not is_admin_sponsor_impersonation_active():
+        return {
+            "is_admin_impersonating_sponsor": False,
+            "impersonation_banner_message": None,
+            "impersonation_exit_endpoint": None,
+            "impersonation_exit_label": None,
+        }
+
+    return {
+        "is_admin_impersonating_sponsor": True,
+        "impersonation_banner_message": "You are impersonating this sponsor as an admin",
+        "impersonation_exit_endpoint": "sponsor.stop_impersonation",
+        "impersonation_exit_label": "Return to Admin View",
+    }
 
 
 def update_sponsor_organization(
@@ -123,10 +166,18 @@ def create_sponsor_user(
     first_name: str,
     last_name: str,
     organization: SponsorOrganization,
+    *,
+    commit: bool = True,
 ) -> User:
 
     user = register_user(
-        username, password, RoleType.SPONSOR, email, first_name, last_name
+        username,
+        password,
+        RoleType.SPONSOR,
+        email,
+        first_name,
+        last_name,
+        commit=commit,
     )
 
     sponsor_user = SponsorUser(
@@ -134,7 +185,10 @@ def create_sponsor_user(
         organization=organization,
     )
     db.session.add(sponsor_user)
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return user
 
 
@@ -160,7 +214,13 @@ def get_driver_applications(
     return (pending_applications, historic_applications)
 
 
-def approve_driver_for_sponsor(driver: Driver, organization_id: int):
+def approve_driver_for_sponsor(
+    driver: Driver,
+    organization_id: int,
+    *,
+    acting_user: User | None = None,
+    commit: bool = True,
+):
     if not driver:
         raise ValueError("Driver does not exist")
     sponsorship = DriverSponsorship.query.filter_by(
@@ -177,6 +237,21 @@ def approve_driver_for_sponsor(driver: Driver, organization_id: int):
         db.session.add(sponsorship)
 
     sponsorship.status = DriverStatus.ACTIVE
+    pending_applications = DriverApplication.query.filter_by(
+        driver_id=driver.driver_id,
+        organization_id=organization_id,
+        status=DriverApplicationStatus.PENDING,
+    ).all()
+    decision_time = dt.datetime.now(tz=dt.timezone.utc)
+    for application in pending_applications:
+        application.status = DriverApplicationStatus.APPROVED
+        application.decision_date = decision_time
+        application.decided_by_user_id = acting_user.user_id if acting_user else None
+
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return sponsorship
 
 
@@ -251,6 +326,131 @@ def get_driver_point_transactions_for_sponsor(
     )
 
 
+def build_user_display_name(user: User | None) -> str:
+    if not user:
+        return "Unknown User"
+
+    name_parts = []
+    for raw_part in [user.first_name, user.last_name]:
+        clean_part = (raw_part or "").strip()
+        if clean_part and clean_part.lower() != "none":
+            name_parts.append(clean_part)
+
+    display_name = " ".join(name_parts).strip()
+    if display_name:
+        return display_name
+    return user.username
+
+
+def _apply_report_date_filters(query, model, start_date: dt.date | None, end_date: dt.date | None):
+    if start_date:
+        start_dt = dt.datetime.combine(start_date, dt.time.min)
+        query = query.filter(model.create_time >= start_dt)
+
+    if end_date:
+        end_dt = dt.datetime.combine(end_date + dt.timedelta(days=1), dt.time.min)
+        query = query.filter(model.create_time < end_dt)
+
+    return query
+
+
+def get_point_transaction_report_for_sponsor(
+    organization_id: int,
+    *,
+    driver_id: int | None = None,
+    start_date: dt.date | None = None,
+    end_date: dt.date | None = None,
+) -> List[dict]:
+    sponsorships = get_organization_drivers(organization_id)
+    balances_by_driver_id = {
+        sponsorship.driver_id: sponsorship.point_balance for sponsorship in sponsorships
+    }
+
+    query = (
+        PointTransaction.query.options(
+            joinedload(PointTransaction.driver).joinedload(Driver.user),
+            joinedload(PointTransaction.performed_by_user),
+        )
+        .filter(PointTransaction.organization_id == organization_id)
+    )
+
+    if driver_id is not None:
+        query = query.filter(PointTransaction.driver_id == driver_id)
+
+    query = _apply_report_date_filters(query, PointTransaction, start_date, end_date)
+
+    transactions = query.order_by(PointTransaction.create_time.desc()).all()
+
+    return [
+        {
+            "transaction_id": transaction.transaction_id,
+            "driver_name": build_user_display_name(transaction.driver.user),
+            "total_points": balances_by_driver_id.get(transaction.driver_id, 0),
+            "point_change": transaction.point_change,
+            "create_time": transaction.create_time,
+            "sponsor_name": build_user_display_name(transaction.performed_by_user),
+            "reason": transaction.reason,
+        }
+        for transaction in transactions
+    ]
+
+
+def get_redemption_summary_for_sponsor(
+    organization_id: int,
+    *,
+    driver_id: int | None = None,
+    start_date: dt.date | None = None,
+    end_date: dt.date | None = None,
+) -> List[dict]:
+    sponsorships = get_organization_drivers(organization_id)
+    driver_names: dict[int, str] = {}
+    summary_by_driver_id: dict[int, dict] = {}
+    for sponsorship in sponsorships:
+        if driver_id is not None and sponsorship.driver_id != driver_id:
+            continue
+        driver_names[sponsorship.driver_id] = build_user_display_name(sponsorship.driver.user)
+
+    query = (
+        db.session.query(
+            Order.driver_id,
+            Order.order_status,
+            func.count(Order.order_id).label("order_count"),
+            func.coalesce(func.sum(Order.points), 0).label("total_points"),
+        )
+        .filter(
+            Order.organization_id == organization_id,
+            Order.order_status.in_([OrderStatus.PENDING, OrderStatus.COMPLETED]),
+        )
+    )
+
+    if driver_id is not None:
+        query = query.filter(Order.driver_id == driver_id)
+
+    query = _apply_report_date_filters(query, Order, start_date, end_date)
+
+    for row in query.group_by(Order.driver_id, Order.order_status).all():
+        summary = summary_by_driver_id.setdefault(
+            row.driver_id,
+            {
+                "driver_id": row.driver_id,
+                "driver_name": driver_names.get(row.driver_id, None) or f"Driver #{row.driver_id}",
+                "pending_orders": 0,
+                "pending_points": 0,
+                "completed_orders": 0,
+                "completed_points": 0,
+            },
+        )
+
+        if row.order_status == OrderStatus.PENDING:
+            summary["pending_orders"] = row.order_count
+            summary["pending_points"] = row.total_points
+        elif row.order_status == OrderStatus.COMPLETED:
+            summary["completed_orders"] = row.order_count
+            summary["completed_points"] = row.total_points
+
+    return sorted(summary_by_driver_id.values(), key=lambda row: row["driver_name"].lower())
+
+
 def set_driver_status_for_sponsor(
     organization_id: int,
     driver_sponsorship_id: int,
@@ -290,6 +490,8 @@ def adjust_driver_points_for_sponsor(
     point_change: int,
     reason: str,
     acting_user: User,
+    *,
+    commit: bool = True,
 ) -> DriverSponsorship:
     driver_sponsorship = get_organization_driver_sponsorship(
         organization_id, driver_sponsorship_id
@@ -340,7 +542,10 @@ def adjust_driver_points_for_sponsor(
         )
     )
 
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return driver_sponsorship
 
 

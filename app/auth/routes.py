@@ -1,6 +1,6 @@
 from flask import flash, render_template, request, redirect, url_for
 from app.auth import auth_bp
-from app.auth.impersonation import clear_driver_impersonation
+from app.auth.impersonation import clear_impersonation
 from app.auth.services import authenticate, register_user, reset_user_password, email_reset_password, send_reset_email, hash_id, check_id_hash
 from app.extensions import db
 from flask_login import login_user, logout_user, login_required, current_user
@@ -134,7 +134,7 @@ def about():
 @auth_bp.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
-    clear_driver_impersonation()
+    clear_impersonation()
     logout_user()
     return redirect(url_for('auth.login'))
 

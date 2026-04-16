@@ -17,4 +17,7 @@ login_manager = LoginManager()
 @login_manager.user_loader
 def load_user(user_id):
     from app.models.users import User
-    return User.query.get(int(user_id))
+    user = User.query.get(int(user_id))
+    if user is None or not user.is_user_active:
+        return None
+    return user

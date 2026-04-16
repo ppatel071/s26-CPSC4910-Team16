@@ -29,19 +29,48 @@
     margin-bottom: 15px;
     font-size: 20px;
     font-weight: 600;
-    color:black;
+    color: black;
   }
 
-  button {
+  .action-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+
+  table th {
+    background: #f4f7fb;
+    padding: 10px;
+    text-align: left;
+  }
+
+  table td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+  }
+
+  table tr:hover {
+    background: #f9fbff;
+  }
+
+  button, .button {
     padding: 8px 14px;
     border: none;
     border-radius: 6px;
     background: #4a90e2;
     color: white;
     cursor: pointer;
+    text-decoration: none;
   }
 
-  button:hover {
+  button:hover, .button:hover {
     background: #357abd;
   }
 </style>
@@ -52,42 +81,72 @@
     <h1>Sponsor Dashboard</h1>
   </div>
 
+  <!-- Organization -->
   <div class="section-card">
     <div class="section-title"><h2>Organization</h2></div>
-    <p><a class="button" href="{{ url_for('sponsor.organization') }}">My Organization</a></p>
+    <div class="action-group">
+      <a class="button" href="{{ url_for('sponsor.organization') }}">
+        My Organization
+      </a>
+    </div>
   </div>
 
-
+  <!-- Sponsor Users -->
   <div class="section-card">
     <div class="section-title"><h2>Sponsor Users</h2></div>
-    <p>
-      <a class="button" href="{{ url_for('sponsor.profile_edit') }}">Edit My Profile</a>
-      <a class="button" href="{{ url_for('sponsor.create_user') }}">Add Sponsor User</a>
-    </p>
+    <div class="action-group">
+      <a class="button" href="{{ url_for('sponsor.profile_edit') }}">
+        Edit My Profile
+      </a>
+      <a class="button" href="{{ url_for('sponsor.create_user') }}">
+        Add Sponsor User
+      </a>
+    </div>
   </div>
 
+  <!-- Drivers -->
   <div class="section-card">
     <div class="section-title"><h2>Drivers</h2></div>
-    <p>
-      <a class="button" href="{{ url_for('sponsor.get_applications') }}">Driver Applications ({{ num_applications }})</a>
-      <a class="button" href="{{ url_for('sponsor.driver_management') }}">Driver Management</a>
-    </p>
+    <div class="action-group">
+      <a class="button" href="{{ url_for('sponsor.get_applications') }}">
+        Driver Applications ({{ num_applications }})
+      </a>
+      <a class="button" href="{{ url_for('sponsor.driver_management') }}">
+        Driver Management
+      </a>
+    </div>
   </div>
 
+  <!-- Administrative -->
   <div class="section-card">
-    <div class="section-title"><h2>Audit</h2></div>
-    <p>
-      <a class="button" href="{{ url_for('sponsor.audit_log') }}">View Audit Log</a>
-    </p>
+    <div class="section-title"><h2>Administrative</h2></div>
+    <div class="action-group">
+      <a class="button" href="{{ url_for('sponsor.point_transactions_report') }}">
+        Point Transactions Report
+      </a>
+      <a class="button" href="{{ url_for('sponsor.audit_log') }}">
+        View Audit Log
+      </a>
+      <a class="button" href="{{ url_for('sponsor.bulk_upload') }}">
+        Bulk Upload Sponsors and Drivers
+      </a>
+    </div>
   </div>
 
+  <!-- Catalog -->
   <div class="section-card">
     <div class="section-title"><h2>Catalog</h2></div>
-    <p><a class="button" href="{{ url_for('sponsor.catalog_management') }}">Manage Catalog</a></p>
+    <div class="action-group">
+      <a class="button" href="{{ url_for('sponsor.catalog_management') }}">
+        Manage Catalog
+      </a>
+    </div>
   </div>
 
+  <!-- Sponsor Users List -->
   <div class="section-card">
     <div class="section-title"><h2>Users</h2></div>
+
     {% if users %}
       <ul>
         {% for user in users %}
@@ -102,7 +161,8 @@
     {% else %}
       <p>No users found.</p>
     {% endif %}
-    {% endblock %}
   </div>
 
 </div>
+
+{% endblock %}

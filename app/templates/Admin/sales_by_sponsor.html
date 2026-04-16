@@ -14,19 +14,22 @@
 
   {% if detail %}
     <label for="search">Search user:</label>
-    <input id="search" type="search" name="search" value="{{ search }}" placeholder="Username or name">
+    <input style="margin-bottom: 5px;" id="search" type="search" name="search" value="{{ search }}" placeholder="Username or name">
 
+    <br>
     <label for="start_date">Start date:</label>
-    <input id="start_date" type="date" name="start_date" value="{{ start_date }}">
+    <input style="margin-bottom: 5px;" id="start_date" type="date" name="start_date" value="{{ start_date }}">
 
+    <br>
     <label for="end_date">End date:</label>
-    <input id="end_date" type="date" name="end_date" value="{{ end_date }}">
+    <input style="margin-bottom: 5px;" id="end_date" type="date" name="end_date" value="{{ end_date }}">
   {% else %}
     <label for="search">Search sponsor:</label>
-    <input id="search" type="search" name="search" value="{{ search }}" placeholder="Sponsor name">
+    <input style="margin-bottom: 5px;" id="search" type="search" name="search" value="{{ search }}" placeholder="Sponsor name">
   {% endif %}
 
-  <button type="submit">Apply</button>
+  <br>
+  <button style="margin-bottom: 15px;" type="submit">Apply</button> <br>
   <a class="button" href="{{ url_for('admin.sales_by_sponsor_report', detail=1) if detail else url_for('admin.sales_by_sponsor_report') }}">Clear</a>
 </form>
 
@@ -78,7 +81,12 @@
   {% endif %}
 {% endif %}
 
-<p>
-  <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+<br>
+<a style="margin-bottom: 5px; margin-top: 10px;" class="button" href="{{ url_for('admin.download_sales_by_sponsor_csv', detail=1 if detail else 0, search=search, start_date=start_date, end_date=end_date) }}">
+  Download CSV
+</a>
+
+<p style="margin-top: 20px;">
+  <a style="margin-top: 5px;" class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
 </p>
 {% endblock %}

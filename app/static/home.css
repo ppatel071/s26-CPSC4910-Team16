@@ -5,6 +5,9 @@
     background: #4a90e2;
     color: white;
     cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
 }
 
 .button:hover {
