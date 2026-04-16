@@ -1275,7 +1275,7 @@ def assign_user_role(user_id):
     )
 
 
-@admin_bp.route('/audit-log/password-resets')
+@admin_bp.route('/audit-log/password-resets/csv')
 @login_required
 @admin_required
 def password_reset_audit_log():
@@ -1322,6 +1322,52 @@ def password_reset_audit_log():
         end_date=end_date_str,
         breadcrumbs=breadcrumbs,
     )
+
+
+@admin_bp.route('/audit-log/password-resets')
+@login_required
+@admin_required
+def download_password_reset_audit_log_csv():
+    username = request.args.get('username', '').strip()
+    start_date_str = request.args.get('start_date', '').strip()
+    end_date_str = request.args.get('end_date', '').strip()
+
+    start_date = dt.date.fromisoformat(start_date_str) if start_date_str else None
+    end_date = dt.date.fromisoformat(end_date_str) if end_date_str else None
+
+    entries = get_admin_password_reset_audit_entries(
+        username=username,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    si = StringIO()
+    writer = csv.writer(si)
+
+    writer.writerow(["Changed At", "User ID", "Username", "Email", "Role"])
+
+    for entry in entries:
+        writer.writerow([
+            entry.change_time,
+            entry.user_id,
+            entry.username,
+            entry.email or '',
+            entry.role_type.value,
+        ])
+    
+    output = si.getvalue()
+    si.close
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=password_reset_audit_log.csv"
+        }
+    )
+
+
+
 
 
 @admin_bp.route('/users/<int:user_id>/password-reset', methods=['GET', 'POST'])
