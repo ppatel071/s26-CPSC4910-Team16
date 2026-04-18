@@ -2,7 +2,11 @@ import datetime as dt
 from functools import wraps
 from re import sub
 
-from flask import abort, flash, redirect, render_template, request, url_for
+import csv
+
+from io import StringIO
+
+from flask import abort, flash, redirect, render_template, request, url_for, Response
 from flask_login import current_user, login_required, login_user, logout_user
 
 from app.auth.impersonation import (
@@ -560,12 +564,72 @@ def get_applications():
 @sponsor_bp.route("/audit_log")
 @login_required
 @sponsor_required
-
 def audit_log():
     org_id = current_user.sponsor_user.organization_id
-    audits = get_organization_audit_logs(org_id)
 
-    return render_template("sponsor/audit_log.html", audits=audits)
+    event_type = request.args.get("event_type", "").strip()
+    start_date = request.args.get("start_date", "")
+    end_date = request.args.get("end_date", "")
+
+
+    audits = get_organization_audit_logs(
+        org_id,
+        event_type=event_type,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+    return render_template(
+        "sponsor/audit_log.html", 
+        audits=audits,
+        selected_event_type=event_type,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+
+@sponsor_bp.route("/audit_log/csv")
+@login_required
+@sponsor_required
+def download_sponsor_audit_log_csv():
+    org_id = current_user.sponsor_user.organization_id
+
+    event_type = request.args.get("event_type", "").strip()
+    start_date = request.args.get("start_date", "")
+    end_date = request.args.get("end_date", "")
+
+
+    audits = get_organization_audit_logs(
+        org_id,
+        event_type=event_type,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+    si = StringIO()
+    writer = csv.writer(si)
+
+    writer.writerow(["Username", "Event", "Description", "Time"])
+
+    for audit in audits:
+        writer.writerow([
+            audit['username'],
+            audit['event_type'],
+            audit['detail'],
+            audit['event_time'].strftime('%Y-%m-%d %H:%M')
+        ])
+
+    output = si.getvalue()
+    si.close
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=sponsor_audit_log.csv"
+        }
+    )
+
 
 @sponsor_bp.route("/catalog", methods=["GET", "POST"])
 @login_required

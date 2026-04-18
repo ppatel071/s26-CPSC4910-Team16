@@ -6,21 +6,70 @@
 
 <h1>Audit Log</h1>
 
-<table border="1" cellpadding="6" cellspacing="0" style="width: 60%;">
-    <tr>
-        <th>Username</th>
-        <th>Event</th>
-        <th>Description</th>
-        <th>Time</th>
-    </tr>
-    {% for audit in audits %}
+<form method="GET" style="margin-bottom: 15px;">
+  <label for="event_type">Event Type:</label>
+  <select id="event_type" name="event_type">
+    <option value="">All</option>
+    <option value="Login Attempt" {% if selected_event_type == "Login Attempt" %}selected{% endif %}>
+      Login Attempt
+    </option>
+    <option value="Password Change" {% if selected_event_type == "Password Change" %}selected{% endif %}>
+      Password Change
+    </option>
+    <option value="Point Transaction" {% if selected_event_type == "Point Transaction" %}selected{% endif %}>
+      Point Transaction
+    </option>
+    <option value="Driver Application" {% if selected_event_type == "Driver Application" %}selected{% endif %}>
+      Driver Application
+    </option>
+  </select>
+
+  <br><br>
+
+  <label for="start_date">Start Date:</label>
+  <input id="start_date" type="date" name="start_date" value="{{ start_date }}">
+
+  <br><br>
+
+  <label for="end_date">End Date:</label>
+  <input id="end_date" type="date" name="end_date" value="{{ end_date }}">
+
+  <br><br>
+
+  <button type="submit">Apply Filters</button>
+  <a class="button" href="{{ url_for('sponsor.audit_log') }}">Clear</a>
+</form>
+
+{% if audits %}
+    <table border="1" cellpadding="6" cellspacing="0" style="width: 60%;">
         <tr>
-            <td>{{ audit.username }}</td>
-            <td>{{ audit.event_type }}</td>
-            <td>{{ audit.detail }}</td>
-            <td>{{ audit.event_time }}</td>
+            <th>Username</th>
+            <th>Event</th>
+            <th>Description</th>
+            <th>Time</th>
         </tr>
-    {% endfor %}
-</table>
+        {% for audit in audits %}
+            <tr>
+                <td>{{ audit.username }}</td>
+                <td>{{ audit.event_type }}</td>
+                <td>{{ audit.detail }}</td>
+                <td>{{ audit.event_time.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% else %}
+    <p>No entries found.</p>
+{% endif %}
+
+<br>
+<a style="margin-bottom: 5px; margin-top: 10px;" class="button" href="{{ url_for('sponsor.download_sponsor_audit_log_csv', audits=audits, selected_event_type=event_type, start_date=start_date, end_date=end_date) }}">
+  Download CSV
+</a>
+
+<br>
+<br>
+<a class="button button-secondary" href="{{ url_for('sponsor.dashboard') }}">
+Back to Dashboard
+</a>
 
 {% endblock %}

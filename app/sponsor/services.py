@@ -549,16 +549,33 @@ def adjust_driver_points_for_sponsor(
     return driver_sponsorship
 
 
-def get_organization_audit_logs(org_id: int):
+def get_organization_audit_logs(org_id: int, event_type=None, start_date=None, end_date=None):
 
-    query = text(f"SELECT username, event_type, detail, event_time FROM audit_log WHERE organization_id = {org_id}")
-    rows = db.session.execute(query).fetchall()
+    query = """SELECT username, event_type, detail, event_time
+                from audit_log
+                WHERE organization_id = :org_id"""
+    
+    params = {"org_id": org_id}
 
-    audits = [{
-        'username' : row[0],
-        'event_type' : row[1],
-        'detail' : row[2],
-        'event_time' : row[3]
+    if event_type:
+        query += " AND event_type COLLATE utf8mb4_unicode_ci = :event_type"
+        params["event_type"] = event_type
+
+    if start_date:
+        query += " AND event_time >= :start_date"
+        params["start_date"] = start_date
+
+    if end_date:
+        query += " AND event_time <= :end_date"
+        params["end_date"] = end_date
+
+    query += " ORDER BY event_time DESC"
+
+    rows = db.session.execute(text(query), params).fetchall()
+
+    return [{
+        'username': row[0],
+        'event_type': row[1],
+        'detail': row[2],
+        'event_time': row[3]
     } for row in rows]
-
-    return audits
