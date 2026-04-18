@@ -1275,22 +1275,54 @@ def assign_user_role(user_id):
         breadcrumbs=breadcrumbs,
     )
 
+def parse_audit_log_filters():
+    event_type = (request.args.get("event_type") or "").strip()
+    organization_id_raw = (request.args.get("organization_id") or "").strip()
+    start_date_raw = request.args.get("start_date") or ""
+    end_date_raw = request.args.get("end_date") or ""
 
+    organization_id = None
+    if organization_id_raw:
+        try:
+            organization_id = int(organization_id_raw)
+        except ValueError:
+            organization_id = None
+
+    start_date = None
+    if start_date_raw:
+        try:
+            start_date = dt.datetime.strptime(start_date_raw, "%Y-%m-%d")
+        except ValueError:
+            start_date = None
+
+    end_date = None
+    if end_date_raw:
+        try:
+            end_date = dt.datetime.strptime(end_date_raw, "%Y-%m-%d") + dt.timedelta(days=1)
+        except ValueError:
+            end_date = None
+
+    return {
+        "event_type": event_type,
+        "organization_id": organization_id,
+        "organization_id_raw": organization_id_raw,
+        "start_date": start_date,
+        "end_date": end_date,
+        "start_date_raw": start_date_raw,
+        "end_date_raw": end_date_raw,
+    }
 
 @admin_bp.route("/reports/audit-log")
 @login_required
 @admin_required
 def audit_log_report():
-    event_type = request.args.get("event_type", "").strip()
-    start_date = request.args.get("start_date", "")
-    end_date = request.args.get("end_date", "")
-    organization_id = request.args.get("organization_id", "").strip()
+    filters = parse_audit_log_filters()
 
     audits = get_all_audit_logs(
-        event_type=event_type,
-        start_date=start_date,
-        end_date=end_date,
-        organization_id=organization_id,
+        event_type=filters["event_type"],
+        start_date=filters["start_date"],
+        end_date=filters["end_date"],
+        organization_id=filters["organization_id"],
     )
 
     sponsors = get_all_sponsors()
@@ -1299,11 +1331,53 @@ def audit_log_report():
         "Admin/audit_log_report.html",
         audits=audits,
         sponsors=sponsors,
-        selected_event_type=event_type,
-        selected_org_id=organization_id,
-        start_date=start_date,
-        end_date=end_date,
+        selected_event_type=filters["event_type"],
+        selected_org_id=filters["organization_id_raw"],
+        start_date=filters["start_date_raw"],
+        end_date=filters["end_date_raw"],
     )
+
+
+
+@admin_bp.route("/reports/audit-log/csv")
+@login_required
+@admin_required
+def download_audit_log_report_csv():
+    filters = parse_audit_log_filters()
+
+    audits = get_all_audit_logs(
+        event_type=filters["event_type"],
+        start_date=filters["start_date"],
+        end_date=filters["end_date"],
+        organization_id=filters["organization_id"],
+    )
+
+
+    si = StringIO()
+    writer = csv.writer(si)
+
+    writer.writerow(["Sponsor", "Username", "Event", "Description", "Time"])
+
+    for audit in audits:
+        writer.writerow([
+            audit['organization_name'],
+            audit['username'],
+            audit['event_type'],
+            audit['detail'],
+            audit['event_time'].strftime('%Y-%m-%d %H:%M')
+        ])
+
+    output = si.getvalue()
+    si.close
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=admin_audit_log.csv"
+        }
+    )
+
 
 
 @admin_bp.route('/audit-log/password-resets')

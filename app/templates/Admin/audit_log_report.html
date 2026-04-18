@@ -90,6 +90,11 @@
   <p>No entries found for the selected filters.</p>
 {% endif %}
 
+<br>
+<a style="margin-bottom: 5px; margin-top: 10px;" class="button" href="{{ url_for('admin.download_audit_log_report_csv', event_type=selected_event_type, organization_id=selected_org_id, start_date=start_date, end_date=end_date,) }}">
+  Download CSV
+</a>
+
 <p style="margin-top: 20px;">
   <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
 </p>

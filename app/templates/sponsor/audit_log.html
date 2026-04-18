@@ -62,7 +62,7 @@
 {% endif %}
 
 <br>
-<a style="margin-bottom: 5px; margin-top: 10px;" class="button" href="{{ url_for('sponsor.download_sponsor_audit_log_csv', audits=audits, selected_event_type=event_type, start_date=start_date, end_date=end_date) }}">
+<a style="margin-bottom: 5px; margin-top: 10px;" class="button" href="{{ url_for('sponsor.download_sponsor_audit_log_csv', audits=audits, event_type=selected_event_type, start_date=start_date, end_date=end_date) }}">
   Download CSV
 </a>
 

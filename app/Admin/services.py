@@ -915,12 +915,12 @@ def get_all_audit_logs(*, event_type=None, start_date=None, end_date=None, organ
         params["start_date"] = start_date
 
     if end_date:
-        query += " AND a.event_time <= :end_date"
+        query += " AND a.event_time < :end_date"   # note: < because we added +1 day
         params["end_date"] = end_date
 
     if organization_id:
         query += " AND a.organization_id = :org_id"
-        params["org_id"] = int(organization_id)
+        params["org_id"] = organization_id
 
     query += " ORDER BY a.event_time DESC"
 
@@ -931,7 +931,6 @@ def get_all_audit_logs(*, event_type=None, start_date=None, end_date=None, organ
         "event_type": row[1],
         "detail": row[2],
         "event_time": row[3],
-        "organization_id": row[4],
         "organization_name": row[5] or "None"
     } for row in rows]
 
