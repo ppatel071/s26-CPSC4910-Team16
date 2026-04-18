@@ -83,16 +83,13 @@ def register():
 def forgot_password():
     if request.method == 'POST':
         user_email = request.form.get('user_email')
+        send_reset_email(user_email)
 
         try:
-            user_id = send_reset_email(user_email)
-            id_hash = hash_id(user_id)
-
             return (render_template(
                 'forgot_password.html',
                 form_sent=True,
-                user_email=user_email,
-                url=f'/email_reset/{user_id}/{id_hash}'
+                user_email=user_email
             ))
         except ValueError as e:
             return render_template(

@@ -5,7 +5,11 @@ from app.models import User, RoleType, Driver, PasswordChange, PasswordChangeTyp
 from app.extensions import db
 from werkzeug.security import check_password_hash, generate_password_hash
 from typing import Tuple
-from redmail import gmail
+
+import os
+from dotenv import load_dotenv
+import smtplib
+from email.mime.text import MIMEText
 
 MAX_FAILED_LOGIN_ATTEMPTS = 5
 
@@ -144,7 +148,7 @@ def register_user(
     return user
 
 
-def send_reset_email(user_email: str) -> int:
+def send_reset_email(user_email: str):
     user_info = (
         db.session.query(
             User.user_id,
@@ -154,15 +158,36 @@ def send_reset_email(user_email: str) -> int:
         .first()
     )
 
+    if not user_info:
+        raise ValueError('Username or email not found')
+
     email = user_info.email
     user_id = user_info.user_id
 
-    if not email:
-        raise ValueError('Email not found')
-    
-    ## send email
+    if 'clemson' in email:
+        g_email = email.replace('clemson', 'g.clemson')
 
-    return user_id
+    id_hash = hash_id(user_id)
+
+    if os.getenv('DEV_HOST'):
+        url = f'{os.getenv('DEV_HOST')}/email_reset/{user_id}/{id_hash}'
+    else:
+        url = f'http://ec2-54-145-178-149.compute-1.amazonaws.com/email_reset/{user_id}/{id_hash}'
+    
+    msg = MIMEText(f'''
+        Click <a href="{url}">here</a> to reset your password.
+    ''', 'html')
+
+    sender = 'cpsc4910.team16@gmail.com'
+    password = 'xenc cnnv koxa mhzz'
+
+    msg['Subject'] = 'Password Reset for Team16'
+    msg['From'] = sender
+    msg['To'] = f'{email}, {g_email}'
+
+    smtp_server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+    smtp_server.login(sender, password)
+    smtp_server.sendmail(sender, [email, g_email], msg.as_string())
 
 def hash_id(user_id : int) -> str:
     return generate_password_hash(str(user_id))[17:]
