@@ -10,6 +10,9 @@
   <label for="event_type">Event Type:</label>
   <select id="event_type" name="event_type">
     <option value="">All</option>
+    <option value="Driver Application" {% if selected_event_type == "Driver Application" %}selected{% endif %}>
+      Driver Application
+    </option>
     <option value="Login Attempt" {% if selected_event_type == "Login Attempt" %}selected{% endif %}>
       Login Attempt
     </option>
@@ -18,9 +21,6 @@
     </option>
     <option value="Point Transaction" {% if selected_event_type == "Point Transaction" %}selected{% endif %}>
       Point Transaction
-    </option>
-    <option value="Driver Application" {% if selected_event_type == "Driver Application" %}selected{% endif %}>
-      Driver Application
     </option>
   </select>
 

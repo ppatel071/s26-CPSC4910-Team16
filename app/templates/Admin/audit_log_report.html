@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Log Report{% endblock %}
+
+{% block content %}
+
+<h1>Audit Log Report</h1>
+
+<form method="GET" style="margin-bottom: 20px;">
+
+  <div style="margin-bottom: 10px;">
+    <label for="organization_id">Sponsor:</label>
+    <select id="organization_id" name="organization_id">
+      <option value="">All Sponsors</option>
+      {% for sponsor in sponsors %}
+        <option value="{{ sponsor.organization_id }}"
+          {% if selected_org_id and selected_org_id|int == sponsor.organization_id %}selected{% endif %}>
+          {{ sponsor.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div style="margin-bottom: 10px;">
+    <label for="event_type">Event Type:</label>
+    <select id="event_type" name="event_type">
+        <option value="">All</option>
+        <option value="Driver Application" {% if selected_event_type == "Driver Application" %}selected{% endif %}>
+            Driver Application
+        </option>        
+        <option value="Login Attempt" {% if selected_event_type == "Login Attempt" %}selected{% endif %}>
+            Login Attempt
+        </option>
+        <option value="Password Change" {% if selected_event_type == "Password Change" %}selected{% endif %}>
+            Password Change
+        </option>
+        <option value="Point Transaction" {% if selected_event_type == "Point Transaction" %}selected{% endif %}>
+            Point Transaction
+        </option>
+    </select>
+  </div>
+
+  <div style="margin-bottom: 10px;">
+    <label for="start_date">Start Date:</label>
+    <input id="start_date" type="date" name="start_date" value="{{ start_date or '' }}">
+  </div>
+
+  <div style="margin-bottom: 10px;">
+    <label for="end_date">End Date:</label>
+    <input id="end_date" type="date" name="end_date" value="{{ end_date or '' }}">
+  </div>
+
+  <!-- Buttons -->
+  <div style="margin-top: 10px;">
+    <button type="submit">Apply Filters</button>
+    <a class="button" href="{{ url_for('admin.audit_log_report') }}">Clear</a>
+  </div>
+</form>
+
+{% if audits %}
+  <table border="1" cellpadding="6" cellspacing="0" style="width: 80%;">
+    <thead>
+      <tr>
+        <th scope="col">Sponsor</th>
+        <th scope="col">Username</th>
+        <th scope="col">Event</th>
+        <th scope="col">Description</th>
+        <th scope="col">Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for audit in audits %}
+        <tr>
+          <td>{{ audit.organization_name }}</td>
+          <td>{{ audit.username }}</td>
+          <td>{{ audit.event_type }}</td>
+          <td>{{ audit.detail }}</td>
+          <td>
+            {% if audit.event_time %}
+              {{ audit.event_time.strftime('%Y-%m-%d %H:%M') }}
+            {% else %}
+              -
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No entries found for the selected filters.</p>
+{% endif %}
+
+<p style="margin-top: 20px;">
+  <a class="button" href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+</p>
+
+{% endblock %}

@@ -52,6 +52,7 @@ from app.Admin.services import (
     resolve_sponsor_organization_for_role_assignment,
     user_has_driver_dependencies,
     get_available_organizations,
+    get_all_audit_logs,
 )
 
 
@@ -1275,7 +1276,37 @@ def assign_user_role(user_id):
     )
 
 
-@admin_bp.route('/audit-log/password-resets/csv')
+
+@admin_bp.route("/reports/audit-log")
+@login_required
+@admin_required
+def audit_log_report():
+    event_type = request.args.get("event_type", "").strip()
+    start_date = request.args.get("start_date", "")
+    end_date = request.args.get("end_date", "")
+    organization_id = request.args.get("organization_id", "").strip()
+
+    audits = get_all_audit_logs(
+        event_type=event_type,
+        start_date=start_date,
+        end_date=end_date,
+        organization_id=organization_id,
+    )
+
+    sponsors = get_all_sponsors()
+
+    return render_template(
+        "Admin/audit_log_report.html",
+        audits=audits,
+        sponsors=sponsors,
+        selected_event_type=event_type,
+        selected_org_id=organization_id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+
+@admin_bp.route('/audit-log/password-resets')
 @login_required
 @admin_required
 def password_reset_audit_log():
@@ -1324,7 +1355,7 @@ def password_reset_audit_log():
     )
 
 
-@admin_bp.route('/audit-log/password-resets')
+@admin_bp.route('/audit-log/password-resets/csv')
 @login_required
 @admin_required
 def download_password_reset_audit_log_csv():

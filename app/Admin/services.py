@@ -1,6 +1,6 @@
 import datetime as dt
 from decimal import Decimal, ROUND_HALF_UP
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, text
 from sqlalchemy.orm import joinedload
 from app.extensions import db
 from app.auth.services import check_unique, register_user, validate_complexity
@@ -887,6 +887,53 @@ def resolve_sponsor_organization_for_role_assignment(
         return organization.organization_id
 
     raise ValueError('Sponsor organization is required for sponsor users')
+
+
+def get_all_audit_logs(*, event_type=None, start_date=None, end_date=None, organization_id=None):
+    query = """
+        SELECT 
+            a.username,
+            a.event_type,
+            a.detail,
+            a.event_time,
+            a.organization_id,
+            o.name AS organization_name
+        FROM audit_log a
+        LEFT JOIN sponsor_organization o
+            ON a.organization_id = o.organization_id
+        WHERE 1=1
+    """
+
+    params = {}
+
+    if event_type:
+        query += " AND a.event_type COLLATE utf8mb4_unicode_ci = :event_type"
+        params["event_type"] = event_type
+
+    if start_date:
+        query += " AND a.event_time >= :start_date"
+        params["start_date"] = start_date
+
+    if end_date:
+        query += " AND a.event_time <= :end_date"
+        params["end_date"] = end_date
+
+    if organization_id:
+        query += " AND a.organization_id = :org_id"
+        params["org_id"] = int(organization_id)
+
+    query += " ORDER BY a.event_time DESC"
+
+    rows = db.session.execute(text(query), params).fetchall()
+
+    return [{
+        "username": row[0],
+        "event_type": row[1],
+        "detail": row[2],
+        "event_time": row[3],
+        "organization_id": row[4],
+        "organization_name": row[5] or "None"
+    } for row in rows]
 
 
 def get_admin_password_reset_audit_entries(
