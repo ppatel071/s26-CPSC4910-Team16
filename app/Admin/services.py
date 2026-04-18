@@ -129,6 +129,7 @@ def get_sales_by_driver(
     search: str = '',
     start_date: dt.date | None = None,
     end_date: dt.date | None = None,
+    sponsor_id: int | None = None,
 ):
     if detail:
         query = (
@@ -143,9 +144,17 @@ def get_sales_by_driver(
             .join(Driver.user)
             .join(Order.organization)
         )
+
         query = _apply_driver_search(query, search)
         query = _apply_order_date_range(query, start_date, end_date)
-        return query.order_by(User.username.asc(), Order.create_time.desc()).all()
+
+        if sponsor_id:
+            query = query.filter(Order.organization_id == sponsor_id)
+
+        return query.order_by(
+            User.username.asc(),
+            Order.create_time.desc()
+        ).all()
 
     query = (
         db.session.query(
@@ -157,8 +166,15 @@ def get_sales_by_driver(
         .join(Order.driver)
         .join(Driver.user)
     )
-    query = _apply_driver_search(query, search)
-    return query.group_by(User.username).order_by(User.username.asc()).all()
+
+    if search:
+        query = query.filter(User.username.ilike(f"%{search}%"))
+
+    return query.group_by(
+        User.username
+    ).order_by(
+        User.username.asc()
+    ).all()
 
 
 def get_driver_purchase_summary(

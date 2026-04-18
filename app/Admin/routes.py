@@ -284,6 +284,7 @@ def sales_by_driver_report():
     search = request.args.get('search', '').strip()
     start_str = request.args.get('start_date', '').strip()
     end_str = request.args.get('end_date', '').strip()
+    sponsor_id = request.args.get('sponsor_id', type=int)
 
     start_date = None
     end_date = None
@@ -304,6 +305,7 @@ def sales_by_driver_report():
         search=search,
         start_date=start_date,
         end_date=end_date,
+        sponsor_id=sponsor_id
     )
 
     breadcrumbs = admin_breadcrumbs(("Reports", url_for("admin.reports")), ("Sales by Driver", None))
@@ -316,6 +318,8 @@ def sales_by_driver_report():
         search=search,
         start_date=start_str,
         end_date=end_str,
+        selected_sponsor_id=sponsor_id,
+        sponsors=get_all_sponsors(),
         error=error,
     )
 
@@ -329,6 +333,7 @@ def download_sales_by_driver_csv():
     search = request.args.get('search', '').strip()
     start_str = request.args.get('start_date', '').strip()
     end_str = request.args.get('end_date', '').strip()
+    sponsor_id = request.args.get('sponsor_id', type=int)
 
     start_date = None
     end_date = None
@@ -349,6 +354,7 @@ def download_sales_by_driver_csv():
         search=search,
         start_date=start_date,
         end_date=end_date,
+        sponsor_id=sponsor_id
     )
 
     si = StringIO()

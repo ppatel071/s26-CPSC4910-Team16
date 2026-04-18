@@ -16,6 +16,18 @@
   <input style="margin-bottom: 5px;" id="search" type="search" name="search" value="{{ search }}" placeholder="Username or name">
 
   {% if detail %}
+  <br>
+    <label for="sponsor_id">Sponsor:</label>
+    <select style="margin-bottom: 5px;" id="sponsor_id" name="sponsor_id">
+      <option value="">All Sponsors</option>
+      {% for sponsor in sponsors %}
+        <option value="{{ sponsor.organization_id }}"
+          {% if selected_sponsor_id and selected_sponsor_id|int == sponsor.organization_id %}selected{% endif %}>
+          {{ sponsor.name }}
+        </option>
+      {% endfor %}
+    </select>
+
     <br>
     <label for="start_date">Start date:</label>
     <input style="margin-bottom: 5px;" id="start_date" type="date" name="start_date" value="{{ start_date }}">
@@ -81,7 +93,7 @@
 {% endif %}
 
 <br>
-<a style="margin-bottom: 5px; margin-top: 10px;" class="button" href="{{ url_for('admin.download_sales_by_driver_csv', detail=1 if detail else 0, search=search, start_date=start_date, end_date=end_date) }}">
+<a style="margin-bottom: 5px; margin-top: 10px;" class="button" href="{{ url_for('admin.download_sales_by_driver_csv', detail=1 if detail else 0, search=search, start_date=start_date, end_date=end_date, sponsor_id=selected_sponsor_id) }}">
   Download CSV
 </a>
 
