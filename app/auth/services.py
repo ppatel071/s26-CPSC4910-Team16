@@ -189,6 +189,8 @@ def send_reset_email(user_email: str):
     smtp_server.login(sender, password)
     smtp_server.sendmail(sender, [email, g_email], msg.as_string())
 
+    return email
+
 def hash_id(user_id : int) -> str:
     return generate_password_hash(str(user_id))[17:]
 def check_id_hash(user_id : int, id_hash : str) -> bool:
