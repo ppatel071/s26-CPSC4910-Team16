@@ -388,6 +388,82 @@ def point_transactions_report():
     )
 
 
+@sponsor_bp.route("/reports/point-transactions/csv")
+@login_required
+@sponsor_required
+def download_point_transactions_csv():
+    org_id = current_user.sponsor_user.organization_id
+
+    driver_id = request.args.get("driver_id", type=int)
+    start_date_str = request.args.get("start_date", "").strip()
+    end_date_str = request.args.get("end_date", "").strip()
+
+    start_date = _parse_optional_date(start_date_str) if start_date_str else None
+    end_date = _parse_optional_date(end_date_str) if end_date_str else None
+
+    redemption_summary = get_redemption_summary_for_sponsor(
+        org_id,
+        driver_id=driver_id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    point_transactions = get_point_transaction_report_for_sponsor(
+        org_id,
+        driver_id=driver_id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    si = StringIO()
+    writer = csv.writer(si)
+
+    writer.writerow(["Redemption Summary"])
+    writer.writerow(["Driver", "Pending Orders", "Pending Points", "Completed Orders", "Completed Points"])
+
+    for row in redemption_summary:
+        writer.writerow([
+            row["driver_name"],
+            row["pending_orders"],
+            row["pending_points"],
+            row["completed_orders"],
+            row["completed_points"],
+        ])
+
+    writer.writerow([])
+
+    writer.writerow(["Point Transaction Details"])
+    writer.writerow([
+        "Driver Name",
+        "Total Points",
+        "Point Change",
+        "Date",
+        "Sponsor",
+        "Reason"
+    ])
+
+    for row in point_transactions:
+        writer.writerow([
+            row["driver_name"],
+            row["total_points"],
+            row["point_change"],
+            row["create_time"].strftime("%Y-%m-%d %H:%M"),
+            row["sponsor_name"],
+            row["reason"],
+        ])
+
+    output = si.getvalue()
+    si.close()
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=point_transactions_report.csv"
+        }
+    )
+
+
 @sponsor_bp.route("/impersonation/stop", methods=["POST"])
 @login_required
 @sponsor_required

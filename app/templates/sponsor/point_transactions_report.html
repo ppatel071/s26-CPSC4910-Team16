@@ -184,6 +184,9 @@
           <a class="button button-secondary" href="{{ url_for('sponsor.dashboard') }}">
             Back to Dashboard
           </a>
+          <a class="button button-secondary" href="{{ url_for('sponsor.download_point_transactions_csv', driver_id=selected_driver_id, start_date=start_date, end_date=end_date) }}">
+            Download CSV
+          </a>
         </div>
       </div>
     </form>
