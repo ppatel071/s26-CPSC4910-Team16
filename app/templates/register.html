@@ -5,7 +5,7 @@
 {% block content %}
 <h1>Sign Up</h1>
 
-<p><a href="{{ url_for('auth.login') }}">Already have an account? Log in</a></p>
+<p><a class="button" href="{{ url_for('auth.login') }}">Already have an account? Log in</a></p>
 
 <form id="form" action="/register", method="POST">
     First Name:<br>
